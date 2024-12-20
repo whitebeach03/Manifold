@@ -12,6 +12,7 @@ from torch.utils.data import random_split, DataLoader
 from tqdm import tqdm
 from src.models.mlp import MLP
 from sklearn.metrics import accuracy_score
+from sklearn.decomposition import PCA
 
 i = 0
 
@@ -27,7 +28,7 @@ def main():
         train_dataset = torchvision.datasets.MNIST(root='./data', train=True,  transform=transforms.ToTensor(), download=True)
         test_dataset  = torchvision.datasets.MNIST(root='./data', train=False, transform=transforms.ToTensor(), download=True)
     elif data_type == 'cifar10':
-        transform = transforms.Compose([transforms.ToTensor() ,transforms.Normalize(mean = [0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])])
+        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean = [0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,  transform=transforms.ToTensor(), download=True)
         test_dataset  = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transforms.ToTensor(), download=True)
 
