@@ -7,17 +7,18 @@ import torchvision.transforms as transforms
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import argparse
 from torch.utils.data import random_split, DataLoader
 from tqdm import tqdm
 from src.models.mlp import MLP
 from sklearn.metrics import accuracy_score
 
-print(torch.cuda.is_available())
 i = 0
-data_type = 'cifar10'
 
 def main():
-    epochs = 100
+    args = parse_args()
+    epochs = args.epochs
+    data_type = args.data_type
     batch_size = 128
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = MLP().to(device)
@@ -64,15 +65,15 @@ def main():
         pickle.dump(history, f)
 
     # Model Test #
-    model.load_state_dict(torch.load('./logs/' + str(epochs) + '_' + str(i) + '.pth'))
+    model.load_state_dict(torch.load('./logs/' + str(epochs) + '_' + str(i) + '.pth', weights_only=True))
     model.eval()
-    test = {'acc': [], 'loss': []}
+    test_history = {'acc': [], 'loss': []}
     test_loss, test_acc = test(model, test_loader, criterion, device)
     print(f'test_loss: {test_loss:.3f}, test_accuracy: {test_acc:.3f}')
-    test['acc'].append(test_acc)
-    test['loss'].append(test_loss)
+    test_history['acc'].append(test_acc)
+    test_history['loss'].append(test_loss)
     with open('./history/' + str(epochs) + '_' + 'test' + str(i) + '.pickle', mode='wb') as f: 
-        pickle.dump(test, f)
+        pickle.dump(test_history, f)
 
 
 
@@ -139,6 +140,13 @@ def test(model, test_loader, criterion, device):
         test_loss /= len(test_loader)
         test_acc /= len(test_loader)
     return test_loss, test_acc
+
+def parse_args():
+    """コマンドライン引数を処理"""
+    parser = argparse.ArgumentParser(description="Train a model with CIFAR-10 or MNIST")
+    parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
+    parser.add_argument("--data_type", type=str, choices=["mnist", "cifar10"], default="cifar10", help="Dataset to use")
+    return parser.parse_args()
 
 if __name__ == '__main__':
     main()
