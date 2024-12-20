@@ -52,5 +52,3 @@ ax[1].set_title("Image (not noised)")
 ax[2].imshow(reconstructed_image_aug, cmap='gray')
 ax[2].set_title("Image (noised)")
 plt.savefig('./result/sample.png')
-
-
