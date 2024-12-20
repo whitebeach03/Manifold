@@ -100,7 +100,6 @@ def train(model, train_loader, criterion, optimizer, device):
     train_acc /= len(train_loader)
     return train_loss, train_acc
 
-
 def val(model, val_loader, criterion, device):
     model.eval()
     val_loss = 0.0
