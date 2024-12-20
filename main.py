@@ -6,9 +6,15 @@ import torchvision
 import torchvision.transforms as transforms
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
+from torch.utils.data import random_split, DataLoader
 from tqdm import tqdm
-from models.mlp import MLP
+from src.models.mlp import MLP
 from sklearn.metrics import accuracy_score
+
+print(torch.cuda.is_available())
+i = 0
+data_type = 'cifar10'
 
 def main():
     epochs = 100
@@ -16,16 +22,22 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = MLP().to(device)
 
-    train_dataset = torchvision.datasets.MNIST(root='./data', train=True,  transform=transforms.ToTensor(), download=True)
-    test_dataset  = torchvision.datasets.MNIST(root='./data', train=False, transform=transforms.ToTensor(), download=True)
+    if data_type == 'mnist':
+        train_dataset = torchvision.datasets.MNIST(root='./data', train=True,  transform=transforms.ToTensor(), download=True)
+        test_dataset  = torchvision.datasets.MNIST(root='./data', train=False, transform=transforms.ToTensor(), download=True)
+    elif data_type == 'cifar10':
+        transform = transforms.Compose([transforms.ToTensor() ,transforms.Normalize(mean = [0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])])
+        train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,  transform=transforms.ToTensor(), download=True)
+        test_dataset  = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transforms.ToTensor(), download=True)
+
     n_samples = len(train_dataset)
     n_train   = int(n_samples * 0.8)
     n_val     = n_samples - n_train
     train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
 
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader   = torch.utils.data.DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
-    test_loader  = torch.utils.data.DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
+    test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=True)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
@@ -63,12 +75,15 @@ def main():
         pickle.dump(test, f)
 
 
+
 def train(model, train_loader, criterion, optimizer, device):
     model.train()
     train_loss = 0.0
     train_acc = 0.0
     for (images, labels) in tqdm(train_loader, leave=False):
-        images, labels = images.to(device), labels.to(device)
+        # images, labels = images.to(device), labels.to(device)
+        images = images.view(images.size(0), -1).to(device)
+        labels = labels.to(device)
         
         preds = model(images)
         loss  = criterion(preds, labels)
@@ -91,7 +106,9 @@ def val(model, val_loader, criterion, device):
     val_acc = 0.0
     with torch.no_grad():
         for (images, labels) in val_loader:
-            images,labels = images.to(device), labels.to(device)
+            # images,labels = images.to(device), labels.to(device)
+            images = images.view(images.size(0), -1).to(device)
+            labels = labels.to(device)  
             
             preds = model(images)
             loss = criterion(preds, labels)
@@ -109,7 +126,9 @@ def test(model, test_loader, criterion, device):
     test_acc = 0.0
     with torch.no_grad():
         for (images, labels) in test_loader:
-            images, labels = images.to(device), labels.to(device)
+            # images, labels = images.to(device), labels.to(device)
+            images = images.view(images.size(0), -1).to(device)
+            labels = labels.to(device)
             
             preds = model(images)
             loss = criterion(preds, labels)
