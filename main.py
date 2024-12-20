@@ -54,7 +54,7 @@ def main():
         if score <= val_acc:
             print('save param')
             score = val_acc
-            torch.save(model.state_dict(), './logs/' + str(epochs) + '_' + str(i) + '.pth') 
+            torch.save(model.state_dict(), './logs/normal' + str(epochs) + '_' + str(i) + '.pth') 
         
         history['loss'].append(train_loss)
         history['accuracy'].append(train_acc)
@@ -62,18 +62,18 @@ def main():
         history['val_accuracy'].append(val_acc)
         print(f'epoch: {epoch+1}, loss: {train_loss:.3f}, accuracy: {train_acc:.3f}, val_loss: {val_loss:.3f}, val_accuracy: {val_acc:.3f}')
 
-    with open('./history/' + str(epochs) + '_' + str(i) + '.pickle', mode='wb') as f: 
+    with open('./history/normal/' + str(epochs) + '_' + str(i) + '.pickle', mode='wb') as f: 
         pickle.dump(history, f)
 
     # Model Test #
-    model.load_state_dict(torch.load('./logs/' + str(epochs) + '_' + str(i) + '.pth', weights_only=True))
+    model.load_state_dict(torch.load('./logs/normal' + str(epochs) + '_' + str(i) + '.pth', weights_only=True))
     model.eval()
     test_history = {'acc': [], 'loss': []}
     test_loss, test_acc = test(model, test_loader, criterion, device)
     print(f'test_loss: {test_loss:.3f}, test_accuracy: {test_acc:.3f}')
     test_history['acc'].append(test_acc)
     test_history['loss'].append(test_loss)
-    with open('./history/' + str(epochs) + '_' + 'test' + str(i) + '.pickle', mode='wb') as f: 
+    with open('./history/normal' + str(epochs) + '_' + 'test' + str(i) + '.pickle', mode='wb') as f: 
         pickle.dump(test_history, f)
 
 
@@ -145,7 +145,7 @@ def parse_args():
     """コマンドライン引数を処理"""
     parser = argparse.ArgumentParser(description="Train a model with CIFAR-10 or MNIST")
     parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
-    parser.add_argument("--data_type", type=str, choices=["mnist", "cifar10"], default="cifar10", help="Dataset to use")
+    parser.add_argument("--data_type", type=str, choices=["mnist", "cifar10"], default="mnist", help="Dataset to use")
     return parser.parse_args()
 
 if __name__ == '__main__':
