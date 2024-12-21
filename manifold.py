@@ -7,13 +7,19 @@ import torchvision.datasets as datasets
 import numpy as np
 import matplotlib.pyplot as plt
 import umap
+import argparse
 from torch.utils.data import DataLoader
 from sklearn.decomposition import PCA, KernelPCA
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--reducer', type=str, default='umap', help='reducer')
+parser.add_argument('--dim',     type=int, default=20,     help='pca_dim')
+args = parser.parse_args()
+
 # Hyperparameters
-reducer = 'umap'
+reducer = args.reducer
+pca_dim = args.dim
 epsilon = 0.1
-pca_dim = 20
 
 device    = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -23,24 +29,23 @@ dataloader = DataLoader(dataset, batch_size=len(dataset), shuffle=False)
 
 images, _  = next(iter(dataloader))  
 images     = images.view(len(dataset), -1).numpy()  
+# images     = images[dataset.targets == 0]
 
 if reducer == 'pca':
     pca = PCA(n_components=pca_dim)
     pca.fit(images)
-    images = images[dataset.targets == 0]
     vec = pca.transform(images)
-elif reducer == 'kernel_pca':
+elif reducer == 'kpca':
     kernel_pca = KernelPCA(n_components=pca_dim, kernel='rbf', gamma=0.1)  # RBFカーネル
     vec = kernel_pca.fit_transform(images)
 elif reducer == 'umap':
-    # images = images[dataset.targets == 0]
-    reducer = umap.UMAP(n_components=pca_dim)
-    reduce_vec = reducer.fit_transform(images)
-    targets = dataset.targets.numpy()
-    plt.scatter(reduce_vec[:, 0], reduce_vec[:, 1], c=dataset.targets.numpy(), cmap='Spectral', s=5)
-    plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
-    plt.title("UMAP projection") 
-    plt.show()
+    redu = umap.UMAP(n_components=pca_dim)
+    reduce_vec = redu.fit_transform(images)
+    # targets = dataset.targets.numpy()
+    # plt.scatter(reduce_vec[:, 0], reduce_vec[:, 1], c=dataset.targets.numpy(), cmap='Spectral', s=5)
+    # plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
+    # plt.title("UMAP projection") 
+    # plt.show()
     np.save("umap_results.npy", reduce_vec)
     vec = np.load("umap_results.npy")
 
