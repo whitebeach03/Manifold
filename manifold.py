@@ -33,11 +33,12 @@ elif reducer == 'kernel_pca':
     kernel_pca = KernelPCA(n_components=pca_dim, kernel='rbf', gamma=0.1)  # RBFカーネル
     vec = kernel_pca.fit_transform(images)
 elif reducer == 'umap':
-    images = images[dataset.targets == 0]
-    reducer = umap.UMAP(n_components=pca_dim, random_state=42)
-    # reducer = umap.UMAP()
+    # images = images[dataset.targets == 0]
+    reducer = umap.UMAP(n_components=pca_dim)
     reduce_vec = reducer.fit_transform(images)
-    plt.scatter(reduce_vec[:, 0], reduce_vec[:, 1])
+    targets = dataset.targets.numpy()
+    plt.scatter(reduce_vec[:, 0], reduce_vec[:, 1], c=dataset.targets.numpy(), cmap='Spectral', s=5)
+    plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
     plt.title("UMAP projection") 
     plt.show()
     np.save("umap_results.npy", reduce_vec)
