@@ -66,3 +66,5 @@ def sample_from_gaussian(mean, covariance, n_samples):
 
 if __name__ == "__main__":
     main()
+
+    
