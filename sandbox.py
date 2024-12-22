@@ -1,101 +1,66 @@
+import torch
+import torch.nn as nn
+import torchvision
+import torchvision.transforms as transforms
+import torch.optim as optim
+import torchvision.datasets as datasets
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.datasets import make_swiss_roll
-from sklearn.decomposition import KernelPCA
-from sklearn.svm import SVR
-from scipy.stats import multivariate_normal
-from sklearn.neighbors import KernelDensity
+import umap
+import argparse
+from torch.utils.data import DataLoader
+from sklearn.decomposition import PCA, KernelPCA
 
-def main():
-    ### Generate Swiss Roll ###
-    n_samples   = 5000
-    noise       = 0.05 
-    data, color = make_swiss_roll(n_samples=n_samples, noise=noise)
+parser = argparse.ArgumentParser()
+parser.add_argument('--reducer', type=str, default='umap', help='reducer')
+parser.add_argument('--dim',     type=int, default=20,     help='pca_dim')
+args = parser.parse_args()
 
-    ### Plot Swiss Roll ###
-    # plot_swiss_roll(data, color)
+# Hyperparameters
+reducer = args.reducer
+pca_dim = args.dim
+epsilon = 0.1
 
-    ### Dimensionality reduction using KPCA ###
-    reduced_data, kpca_model = kernel_pca_reduction(data, kernel='rbf', n_components=2, gamma=0.01, random_state=42)
+device    = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    ### Train Manifold Regressor ###
-    regressors = train_manifold_regressor(reduced_data, data, kernel='rbf', C=10.0, gamma=0.1)
+transform  = transforms.ToTensor()
+dataset    = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+dataloader = DataLoader(dataset, batch_size=len(dataset), shuffle=False)
 
-    # 乱数で新しい低次元データを生成
-    new_low_dim_data = np.random.rand(100, 2)  
-    # 確率密度推定で新しい低次元データを生成
-    new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=1500)
+images, _  = next(iter(dataloader))  
+images     = images.view(len(dataset), -1).numpy()  
+# images     = images[dataset.targets == 0]
 
-    ### Generate High Dimensional Data ###
-    generated_high_dim_data = generate_high_dim_data(regressors, new_low_dim_data)
+if reducer == 'pca':
+    pca = PCA(n_components=pca_dim)
+    pca.fit(images)
+    vec = pca.transform(images)
+elif reducer == 'kpca':
+    kernel_pca = KernelPCA(n_components=pca_dim, kernel='rbf', gamma=0.1)  # RBFカーネル
+    vec = kernel_pca.fit_transform(images)
+elif reducer == 'umap':
+    redu = umap.UMAP(n_components=pca_dim)
+    reduce_vec = redu.fit_transform(images)
+    # targets = dataset.targets.numpy()
+    # plt.scatter(reduce_vec[:, 0], reduce_vec[:, 1], c=dataset.targets.numpy(), cmap='Spectral', s=5)
+    # plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
+    # plt.title("UMAP projection") 
+    # plt.show()
+    np.save("umap_results.npy", reduce_vec)
+    vec = np.load("umap_results.npy")
 
-    ### Plot Swiss Roll Reduced ###
-    reduced_data = np.vstack([reduced_data, new_low_dim_data])
-    plot_swiss_roll_reduced(reduced_data)
+sample_vec0 = vec[0]
+sample_vec1 = vec[1]
 
-    ### Plot Original and Generated High Dimensional Data ###
-    data = np.vstack([data, generated_high_dim_data])
-    # color = np.hstack([color, np.zeros(1500)])
-    plot_swiss_roll(data, color)
+print(sample_vec0)
+print(sample_vec1)
 
+original_image0 = images[0].reshape(28, 28)
+original_image1 = images[1].reshape(28, 28)
 
-
-def kernel_pca_reduction(data, kernel='rbf', n_components=2, gamma=None, random_state=42):
-    """
-    高次元データを非線形次元削減する関数
-    """
-    kpca = KernelPCA(n_components=n_components, kernel=kernel, gamma=gamma)
-    reduced_data = kpca.fit_transform(data)
-    return reduced_data, kpca
-
-def train_manifold_regressor(low_dim_data, high_dim_data, kernel='rbf', C=1.0, epsilon=0.1, gamma=None):
-    """
-    低次元データから高次元データへの写像を学習する回帰モデル(SVM回帰)を構築
-    """
-    regressors = []
-    for i in range(high_dim_data.shape[1]):
-        svr = SVR(kernel=kernel, C=C, epsilon=epsilon, gamma=gamma)
-        svr.fit(low_dim_data, high_dim_data[:, i])
-        regressors.append(svr)
-    print(regressors)
-    return regressors
-
-def generate_high_dim_data(regressors, low_dim_data):
-    """
-    低次元データから高次元データを生成
-    """
-    high_dim_data = np.zeros((low_dim_data.shape[0], len(regressors)))
-    for i, regressor in enumerate(regressors):
-        high_dim_data[:, i] = regressor.predict(low_dim_data)
-    return high_dim_data
-
-def sample_from_gaussian(mean, covariance, n_samples):
-    """
-    ガウシアン分布から低次元データをサンプリング
-    """
-    return multivariate_normal.rvs(mean=mean, cov=covariance, size=n_samples)
-
-def plot_swiss_roll(data, color):
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=color, cmap=plt.cm.viridis, s=10)
-    ax.set_title("3D Swiss Roll")
-    plt.savefig("swiss_roll.png")
-
-def plot_swiss_roll_reduced(data):
-    plt.scatter(data[:, 0], data[:, 1], label='Original Data', alpha=0.7)
-    plt.xlabel("Component 1")
-    plt.ylabel("Component 2")
-    plt.savefig('swiss_roll_reduced.png')
-
-def generate_samples_from_kde(low_dim_data, n_samples, bandwidth=0.1):
-    """
-    KDEで低次元データからサンプルを生成
-    """
-    kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth)
-    kde.fit(low_dim_data)
-    new_samples = kde.sample(n_samples)
-    return new_samples
-
-if __name__ == "__main__":
-    main()
+fig, ax = plt.subplots(1, 2, figsize=(8, 4))
+ax[0].imshow(original_image0, cmap='gray')
+ax[0].set_title("Image #1")
+ax[1].imshow(original_image1, cmap='gray')
+ax[1].set_title("Image #2")
+plt.savefig('./result/sample.png')

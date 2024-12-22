@@ -1,66 +1,61 @@
-import torch
-import torch.nn as nn
-import torchvision
-import torchvision.transforms as transforms
-import torch.optim as optim
-import torchvision.datasets as datasets
-import numpy as np
-import matplotlib.pyplot as plt
-import umap
 import argparse
-from torch.utils.data import DataLoader
-from sklearn.decomposition import PCA, KernelPCA
+import numpy as np
+from sklearn.datasets import make_swiss_roll
+from scipy.stats import multivariate_normal
+from src.reducer import *
+from src.regressor import *
+from src.sampling import *
+from src.plot_data import *
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--reducer', type=str, default='umap', help='reducer')
-parser.add_argument('--dim',     type=int, default=20,     help='pca_dim')
-args = parser.parse_args()
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--red', default='lle',   choices=['kpca', 'lle'])
+    parser.add_argument('--reg', default='rf',    choices=['svr', 'rf'])
+    parser.add_argument('--sam', default='mixup', choices=['kde', 'mixup'])
+    args = parser.parse_args() 
+    
+    red = args.red
+    reg = args.reg
+    sam = args.sam
+    
+    ### Swiss Roll ###
+    n_samples   = 5000
+    noise       = 0.05
+    data, color = make_swiss_roll(n_samples=n_samples, noise=noise)
 
-# Hyperparameters
-reducer = args.reducer
-pca_dim = args.dim
-epsilon = 0.1
+    ### Dimensionality reduction ###
+    if red == 'kpca':
+        reduced_data, kpca_model = kernel_pca_reduction(data, kernel='rbf', n_components=2, gamma=0.01, random_state=42)
+    elif red == 'lle':
+        reduced_data, lle_model = lle_reduction(data, n_components=2, n_neighbors=10)
 
-device    = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    ### Train Manifold Regressor ###
+    if reg == 'svr':
+        regressors = train_manifold_regressor(reduced_data, data, kernel='rbf', C=10.0, gamma=0.1)
+    elif reg == 'rf':
+        regressors = train_manifold_regressor_rf(reduced_data, data, n_estimators=100, max_depth=None)
 
-transform  = transforms.ToTensor()
-dataset    = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-dataloader = DataLoader(dataset, batch_size=len(dataset), shuffle=False)
+    ### Generate Low-Dimensional Data ###
+    if sam == 'kde':
+        new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=5000)
+    elif sam == 'mixup':
+        new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=5000)
 
-images, _  = next(iter(dataloader))  
-images     = images.view(len(dataset), -1).numpy()  
-# images     = images[dataset.targets == 0]
+    ### Generate High Dimensional Data using Regressor ###
+    generated_high_dim_data = generate_high_dim_data(regressors, new_low_dim_data)
 
-if reducer == 'pca':
-    pca = PCA(n_components=pca_dim)
-    pca.fit(images)
-    vec = pca.transform(images)
-elif reducer == 'kpca':
-    kernel_pca = KernelPCA(n_components=pca_dim, kernel='rbf', gamma=0.1)  # RBFカーネル
-    vec = kernel_pca.fit_transform(images)
-elif reducer == 'umap':
-    redu = umap.UMAP(n_components=pca_dim)
-    reduce_vec = redu.fit_transform(images)
-    # targets = dataset.targets.numpy()
-    # plt.scatter(reduce_vec[:, 0], reduce_vec[:, 1], c=dataset.targets.numpy(), cmap='Spectral', s=5)
-    # plt.colorbar(boundaries=np.arange(11)-0.5).set_ticks(np.arange(10))
-    # plt.title("UMAP projection") 
-    # plt.show()
-    np.save("umap_results.npy", reduce_vec)
-    vec = np.load("umap_results.npy")
+    ### Visualization ###
+    plot_high_dim_comparison_with_overlay(data, color, generated_high_dim_data)
+    plot_high_dim_comparison(data, color, generated_high_dim_data)
+    plot_low_dim_comparison(reduced_data, new_low_dim_data)
 
-sample_vec0 = vec[0]
-sample_vec1 = vec[1]
 
-print(sample_vec0)
-print(sample_vec1)
+def generate_high_dim_data(regressors, low_dim_data):
+    high_dim_data = np.zeros((low_dim_data.shape[0], len(regressors)))
+    for i, regressor in enumerate(regressors):
+        high_dim_data[:, i] = regressor.predict(low_dim_data)
+    return high_dim_data
 
-original_image0 = images[0].reshape(28, 28)
-original_image1 = images[1].reshape(28, 28)
 
-fig, ax = plt.subplots(1, 2, figsize=(8, 4))
-ax[0].imshow(original_image0, cmap='gray')
-ax[0].set_title("Image #1")
-ax[1].imshow(original_image1, cmap='gray')
-ax[1].set_title("Image #2")
-plt.savefig('./result/sample.png')
+if __name__ == "__main__":
+    main()
