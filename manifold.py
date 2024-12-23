@@ -11,7 +11,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--red', default='lle', choices=['kpca', 'lle', 'tsne', 'umap'])
     parser.add_argument('--reg', default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
-    parser.add_argument('--sam', default='mixup', choices=['kde', 'mixup'])
+    parser.add_argument('--sam', default='knn', choices=['kde', 'mixup', 'knn'])
     args = parser.parse_args() 
     
     red = args.red
@@ -54,8 +54,8 @@ def main():
         new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=n_new_samples)
     elif sam == 'mixup':
         new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=n_new_samples)
-    # plot_low_dim_comparison(reduced_data, new_low_dim_data)
-    # plot_low_dim_comparison_with_overlay(reduced_data, new_low_dim_data)
+    elif sam == 'knn':
+        new_low_dim_data = generate_samples_from_knn(reduced_data, n_samples=n_new_samples)
     plot_low_dim(reduced_data, new_low_dim_data)
 
     ### Generate High Dimensional Data using Regressor ###
@@ -63,8 +63,8 @@ def main():
     generated_high_dim_data = generate_high_dim_data(regressors, new_low_dim_data)
 
     ### Visualization ###
-    # plot_high_dim_comparison(data, color, generated_high_dim_data)
-    # plot_high_dim_comparison_with_overlay(data, color, generated_high_dim_data)
+    plot_high_dim_comparison(data, color, generated_high_dim_data)
+    plot_high_dim_comparison_with_overlay(data, color, generated_high_dim_data)
     plot_high_dim(data, color, generated_high_dim_data)
     
 
