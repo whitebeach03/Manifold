@@ -1,6 +1,8 @@
+import warnings
 from sklearn.manifold import LocallyLinearEmbedding, TSNE
 from sklearn.decomposition import KernelPCA
 from umap import UMAP
+warnings.filterwarnings("ignore", category=FutureWarning, module="sklearn")
 
 ### LLE (Locally Linear Embedding) ###
 def lle_reduction(data, n_components=2, n_neighbors=10, method='modified'):
@@ -15,7 +17,7 @@ def kernel_pca_reduction(data, kernel='rbf', n_components=2, gamma=None, random_
     return reduced_data, kpca
 
 ### UMAP ###
-def umap_reduction(data, n_components=2, n_neighbors=15, min_dist=0.1, random_state=None):
+def umap_reduction(data, n_components=2, n_neighbors=15, min_dist=0.1, random_state=None, n_jobs=-1):
     """    
     Parameters:
         data (array-like): 高次元データ (n_samples, n_features)
@@ -29,7 +31,7 @@ def umap_reduction(data, n_components=2, n_neighbors=15, min_dist=0.1, random_st
     return reduced_data, umap_model
 
 ### t-SNE ###
-def tsne_reduction(data, n_components=2, perplexity=30.0, learning_rate=200.0, n_iter=1000, random_state=None):
+def tsne_reduction(data, n_components=2, perplexity=30.0, learning_rate=200.0, max_iter=1000, random_state=None):
     """
     Parameters:
         data (array-like): 高次元データ (n_samples, n_features)
@@ -43,6 +45,6 @@ def tsne_reduction(data, n_components=2, perplexity=30.0, learning_rate=200.0, n
         reduced_data (array): 次元削減されたデータ (n_samples, n_components)
         tsne (TSNE): トレーニング済みのt-SNEオブジェクト
     """
-    tsne = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=learning_rate, n_iter=n_iter, random_state=random_state)
+    tsne = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=learning_rate, max_iter=max_iter, random_state=random_state)
     reduced_data = tsne.fit_transform(data)
     return reduced_data, tsne

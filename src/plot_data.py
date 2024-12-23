@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 ### 高次元データのプロット ###
-def plot_high_dim_comparison(original_data, original_color, generated_data):
+def plot_high_dim_comparison(original_data, original_color, generated_data, red, reg, sam):
     fig = plt.figure(figsize=(12, 6))
 
     # 元のデータ
@@ -16,10 +16,11 @@ def plot_high_dim_comparison(original_data, original_color, generated_data):
                 c='black', s=10, alpha=0.5)
     ax2.set_title("Generated High-Dimensional Data")
 
-    plt.savefig("result/high_dim/comparison.png")
+    filename = f"result/high_dim/comparison/{red}_{reg}_{sam}.png"
+    plt.savefig(filename)
     plt.show()
 
-def plot_high_dim_comparison_with_overlay(original_data, original_color, generated_data):
+def plot_high_dim_comparison_with_overlay(original_data, original_color, generated_data, red, reg, sam):
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
 
@@ -33,56 +34,11 @@ def plot_high_dim_comparison_with_overlay(original_data, original_color, generat
 
     ax.set_title("Overlay of Original and Generated High-Dimensional Data")
     ax.legend()
-    plt.savefig("result/high_dim/overlay.png")
+    filename = f"result/high_dim/overlay/{red}_{reg}_{sam}.png"
+    plt.savefig(filename)
     plt.show()
 
-### 低次元データのプロット ###
-def plot_low_dim_comparison(original_low_dim_data, generated_low_dim_data):
-    plt.figure(figsize=(12, 6))
-
-    # 元のデータ
-    ax1 = plt.subplot(121)
-    ax1.scatter(original_low_dim_data[:, 0], original_low_dim_data[:, 1], 
-                c='blue', alpha=0.5)
-    ax1.set_title("Original Low-Dimensional Data")
-    ax1.set_xlabel("Component 1")
-    ax1.set_ylabel("Component 2")
-
-    # 生成されたデータ
-    ax2 = plt.subplot(122)
-    ax2.scatter(generated_low_dim_data[:, 0], generated_low_dim_data[:, 1], 
-                c='black', alpha=0.5)
-    ax2.set_title("Generated Low-Dimensional Data")
-    ax2.set_xlabel("Component 1")
-    ax2.set_ylabel("Component 2")
-
-    plt.savefig("result/low_dim/comparison.png")
-    plt.show()
-
-def plot_low_dim_comparison_with_overlay(original_low_dim_data, generated_low_dim_data):
-    plt.figure(figsize=(8, 6))
-
-    # 元の低次元データ
-    plt.scatter(original_low_dim_data[:, 0], original_low_dim_data[:, 1], 
-                c='blue', alpha=0.5, label='Original Low-Dim Data')
-
-    # 生成された低次元データ
-    plt.scatter(generated_low_dim_data[:, 0], generated_low_dim_data[:, 1], 
-                c='black', alpha=0.5, label='Generated Low-Dim Data')
-
-    plt.xlabel("Component 1")
-    plt.ylabel("Component 2")
-    plt.title("Low-Dimensional Data Comparison")
-    plt.legend()
-    plt.savefig("result/low_dim/overlay.png")
-    plt.show()
-
-
-def plot_high_dim(original_data, original_color, generated_data):
-    """
-    高次元データの比較プロットを表示
-    - Overlayと2つのサブプロットを1つの図で同時に表示
-    """
+def plot_high_dim(original_data, original_color, generated_data, red, reg, sam):
     fig = plt.figure(figsize=(18, 12))
 
     # Overlayプロット
@@ -107,10 +63,13 @@ def plot_high_dim(original_data, original_color, generated_data):
     ax3.set_title("Generated High-Dimensional Data")
 
     plt.tight_layout()
-    plt.savefig("result/high_dim/combined.png")
+    filename = f"result/high_dim/all/{red}_{reg}_{sam}.png"
+    plt.savefig(filename)
     plt.show()
 
-def plot_low_dim(original_low_dim_data, generated_low_dim_data):
+
+### 低次元データのプロット ###
+def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam):
     """
     低次元データの比較プロットを表示
     - Overlayと2つのサブプロットを1つの図で同時に表示
@@ -145,5 +104,50 @@ def plot_low_dim(original_low_dim_data, generated_low_dim_data):
     ax3.set_ylabel("Component 2")
 
     plt.tight_layout()
-    plt.savefig("result/low_dim/combined.png")
+    filename = f"result/low_dim/{red}_{reg}_{sam}.png"
+    plt.savefig(filename)
     plt.show()
+
+def plot_low_dim_comparison(original_low_dim_data, generated_low_dim_data):
+    plt.figure(figsize=(12, 6))
+
+    # 元のデータ
+    ax1 = plt.subplot(121)
+    ax1.scatter(original_low_dim_data[:, 0], original_low_dim_data[:, 1], 
+                c='blue', alpha=0.5)
+    ax1.set_title("Original Low-Dimensional Data")
+    ax1.set_xlabel("Component 1")
+    ax1.set_ylabel("Component 2")
+
+    # 生成されたデータ
+    ax2 = plt.subplot(122)
+    ax2.scatter(generated_low_dim_data[:, 0], generated_low_dim_data[:, 1], 
+                c='black', alpha=0.5)
+    ax2.set_title("Generated Low-Dimensional Data")
+    ax2.set_xlabel("Component 1")
+    ax2.set_ylabel("Component 2")
+
+    filename = "result/low_dim/comparison.png"
+    plt.savefig("result/low_dim/comparison.png")
+    plt.show()
+
+def plot_low_dim_comparison_with_overlay(original_low_dim_data, generated_low_dim_data):
+    plt.figure(figsize=(8, 6))
+
+    # 元の低次元データ
+    plt.scatter(original_low_dim_data[:, 0], original_low_dim_data[:, 1], 
+                c='blue', alpha=0.5, label='Original Low-Dim Data')
+
+    # 生成された低次元データ
+    plt.scatter(generated_low_dim_data[:, 0], generated_low_dim_data[:, 1], 
+                c='black', alpha=0.5, label='Generated Low-Dim Data')
+
+    plt.xlabel("Component 1")
+    plt.ylabel("Component 2")
+    plt.title("Low-Dimensional Data Comparison")
+    plt.legend()
+    plt.savefig("result/low_dim/overlay.png")
+    plt.show()
+
+
+

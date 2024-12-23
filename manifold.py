@@ -11,7 +11,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--red', default='lle', choices=['kpca', 'lle', 'tsne', 'umap'])
     parser.add_argument('--reg', default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
-    parser.add_argument('--sam', default='knn', choices=['kde', 'mixup', 'knn'])
+    parser.add_argument('--sam', default='mixup', choices=['kde', 'mixup', 'knn'])
     args = parser.parse_args() 
     
     red = args.red
@@ -31,7 +31,7 @@ def main():
     elif red == 'lle':
         reduced_data, _ = lle_reduction(data, n_components=2, n_neighbors=10, method='modified')
     elif red == 'tsne':
-        reduced_data, _ = tsne_reduction(data, n_components=2, perplexity=30.0, learning_rate=200.0, n_iter=1000, random_state=42)
+        reduced_data, _ = tsne_reduction(data, n_components=2, perplexity=30.0, learning_rate=200.0, max_iter=1000, random_state=42)
     elif red == 'umap':
         reduced_data, _ = umap_reduction(data, n_components=2, n_neighbors=15, min_dist=0.1, random_state=42)
 
@@ -56,16 +56,16 @@ def main():
         new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=n_new_samples)
     elif sam == 'knn':
         new_low_dim_data = generate_samples_from_knn(reduced_data, n_samples=n_new_samples)
-    plot_low_dim(reduced_data, new_low_dim_data)
+    plot_low_dim(reduced_data, new_low_dim_data, red, reg, sam)
 
     ### Generate High Dimensional Data using Regressor ###
     print(f"Generate High-Dimensional Data using Regressor...")
     generated_high_dim_data = generate_high_dim_data(regressors, new_low_dim_data)
 
     ### Visualization ###
-    plot_high_dim_comparison(data, color, generated_high_dim_data)
-    plot_high_dim_comparison_with_overlay(data, color, generated_high_dim_data)
-    plot_high_dim(data, color, generated_high_dim_data)
+    plot_high_dim_comparison(data, color, generated_high_dim_data, red, reg, sam)
+    plot_high_dim_comparison_with_overlay(data, color, generated_high_dim_data, red, reg, sam)
+    plot_high_dim(data, color, generated_high_dim_data, red, reg, sam)
     
 
 def generate_high_dim_data(regressors, low_dim_data):
