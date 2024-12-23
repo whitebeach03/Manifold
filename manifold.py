@@ -9,7 +9,7 @@ from src.plot_data import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--red', default='lle',   choices=['kpca', 'lle'])
+    parser.add_argument('--red', default='lle',   choices=['kpca', 'lle', 'umap'])
     parser.add_argument('--reg', default='rf',    choices=['svr', 'rf'])
     parser.add_argument('--sam', default='mixup', choices=['kde', 'mixup'])
     args = parser.parse_args() 
@@ -27,7 +27,9 @@ def main():
     if red == 'kpca':
         reduced_data, kpca_model = kernel_pca_reduction(data, kernel='rbf', n_components=2, gamma=0.01, random_state=42)
     elif red == 'lle':
-        reduced_data, lle_model = lle_reduction(data, n_components=2, n_neighbors=10)
+        reduced_data, lle_model  = lle_reduction(data, n_components=2, n_neighbors=10)
+    elif red == 'umap':
+        reduced_data, umap_model = umap_reduction(data, n_components=2, n_neighbors=15, min_dist=0.1, random_state=42)
 
     ### Train Manifold Regressor ###
     if reg == 'svr':
@@ -40,6 +42,7 @@ def main():
         new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=5000)
     elif sam == 'mixup':
         new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=5000)
+    plot_low_dim_comparison(reduced_data, new_low_dim_data)
 
     ### Generate High Dimensional Data using Regressor ###
     generated_high_dim_data = generate_high_dim_data(regressors, new_low_dim_data)
@@ -47,7 +50,7 @@ def main():
     ### Visualization ###
     plot_high_dim_comparison_with_overlay(data, color, generated_high_dim_data)
     plot_high_dim_comparison(data, color, generated_high_dim_data)
-    plot_low_dim_comparison(reduced_data, new_low_dim_data)
+    
 
 
 def generate_high_dim_data(regressors, low_dim_data):
