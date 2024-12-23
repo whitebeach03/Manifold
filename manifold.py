@@ -9,7 +9,7 @@ from src.plot_data import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--red', default='tsne', choices=['kpca', 'lle', 'tsne', 'umap'])
+    parser.add_argument('--red', default='lle', choices=['kpca', 'lle', 'tsne', 'umap'])
     parser.add_argument('--reg', default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
     parser.add_argument('--sam', default='mixup', choices=['kde', 'mixup'])
     args = parser.parse_args() 
@@ -19,9 +19,10 @@ def main():
     sam = args.sam
     
     ### Swiss Roll ###
-    n_samples   = 5000
-    noise       = 0.05
-    data, color = make_swiss_roll(n_samples=n_samples, noise=noise)
+    n_samples     = 5000
+    n_new_samples = 5000
+    noise         = 0.05
+    data, color   = make_swiss_roll(n_samples=n_samples, noise=noise)
 
     ### Dimensionality reduction ###
     print(f"Dimensionality reduction...")
@@ -52,9 +53,9 @@ def main():
     ### Generate Low-Dimensional Data ###
     print(f"Generate Low-Dimensional Data...")
     if sam == 'kde':
-        new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=5000)
+        new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=n_new_samples)
     elif sam == 'mixup':
-        new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=5000)
+        new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=n_new_samples)
     plot_low_dim_comparison(reduced_data, new_low_dim_data)
 
     ### Generate High Dimensional Data using Regressor ###
