@@ -45,8 +45,6 @@ def main():
         regressors = train_manifold_regressor_gb(reduced_data, data, n_estimators=100, learning_rate=0.1, max_depth=3)
     elif reg == 'knn':
         regressors = train_manifold_regressor_knn(reduced_data, data, n_neighbors=5, weights='uniform', algorithm='auto')
-    elif reg == 'gpr':
-        regressors = train_manifold_regressor_gpr(reduced_data, data, kernel=RBF(length_scale=1.0), random_state=42)
     elif reg == 'poly':
         regressors = train_manifold_regressor_poly(reduced_data, data, degree=3)
 
@@ -56,15 +54,18 @@ def main():
         new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=n_new_samples)
     elif sam == 'mixup':
         new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=n_new_samples)
-    plot_low_dim_comparison(reduced_data, new_low_dim_data)
+    # plot_low_dim_comparison(reduced_data, new_low_dim_data)
+    # plot_low_dim_comparison_with_overlay(reduced_data, new_low_dim_data)
+    plot_low_dim(reduced_data, new_low_dim_data)
 
     ### Generate High Dimensional Data using Regressor ###
     print(f"Generate High-Dimensional Data using Regressor...")
     generated_high_dim_data = generate_high_dim_data(regressors, new_low_dim_data)
 
     ### Visualization ###
-    plot_high_dim_comparison_with_overlay(data, color, generated_high_dim_data)
-    plot_high_dim_comparison(data, color, generated_high_dim_data)
+    # plot_high_dim_comparison(data, color, generated_high_dim_data)
+    # plot_high_dim_comparison_with_overlay(data, color, generated_high_dim_data)
+    plot_high_dim(data, color, generated_high_dim_data)
     
 
 def generate_high_dim_data(regressors, low_dim_data):
