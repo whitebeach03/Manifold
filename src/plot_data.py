@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 ### 高次元データのプロット ###
-def plot_high_dim_comparison(original_data, original_color, generated_data, red, reg, sam):
+def plot_high_dim_comparison(original_data, original_color, generated_data, red, reg, sam, data_type):
     fig = plt.figure(figsize=(12, 6))
 
     # 元のデータ
@@ -16,11 +16,11 @@ def plot_high_dim_comparison(original_data, original_color, generated_data, red,
                 c='black', s=10, alpha=0.5)
     ax2.set_title("Generated High-Dimensional Data")
 
-    filename = f"result/high_dim/comparison/{red}_{reg}_{sam}.png"
+    filename = f"result/{data_type}/high_dim/comparison/{red}_{reg}_{sam}.png"
     plt.savefig(filename)
     plt.show()
 
-def plot_high_dim_comparison_with_overlay(original_data, original_color, generated_data, red, reg, sam):
+def plot_high_dim_comparison_with_overlay(original_data, original_color, generated_data, red, reg, sam, data_type):
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
 
@@ -34,11 +34,11 @@ def plot_high_dim_comparison_with_overlay(original_data, original_color, generat
 
     ax.set_title("Overlay of Original and Generated High-Dimensional Data")
     ax.legend()
-    filename = f"result/high_dim/overlay/{red}_{reg}_{sam}.png"
+    filename = f"result/{data_type}/high_dim/overlay/{red}_{reg}_{sam}.png"
     plt.savefig(filename)
     plt.show()
 
-def plot_high_dim(original_data, original_color, generated_data, red, reg, sam):
+def plot_high_dim(original_data, original_color, generated_data, red, reg, sam, data_type):
     fig = plt.figure(figsize=(18, 12))
 
     # Overlayプロット
@@ -63,13 +63,13 @@ def plot_high_dim(original_data, original_color, generated_data, red, reg, sam):
     ax3.set_title("Generated High-Dimensional Data")
 
     plt.tight_layout()
-    filename = f"result/high_dim/all/{red}_{reg}_{sam}.png"
+    filename = f"result/{data_type}/high_dim/all/{red}_{reg}_{sam}.png"
     plt.savefig(filename)
     plt.show()
 
 
 ### 低次元データのプロット ###
-def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam):
+def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam, data_type):
     """
     低次元データの比較プロットを表示
     - Overlayと2つのサブプロットを1つの図で同時に表示
@@ -104,7 +104,7 @@ def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam):
     ax3.set_ylabel("Component 2")
 
     plt.tight_layout()
-    filename = f"result/low_dim/{red}_{reg}_{sam}.png"
+    filename = f"result/{data_type}/low_dim/{red}_{reg}_{sam}.png"
     plt.savefig(filename)
     plt.show()
 
