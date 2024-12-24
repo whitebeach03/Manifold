@@ -13,22 +13,26 @@ def main():
     parser.add_argument('--red',  default='kpca', choices=['kpca', 'lle', 'tsne', 'umap'])
     parser.add_argument('--reg',  default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
     parser.add_argument('--sam',  default='knn', choices=['kde', 'mixup', 'knn'])
-    parser.add_argument('--data', default='spiral', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
+    parser.add_argument('--data_type', default='spiral', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
     args = parser.parse_args() 
     
     red = args.red
     reg = args.reg
     sam = args.sam
-    data_type = args.data
+    data_type = args.data_type
     
     ### Swiss Roll ###
     n_samples     = 5000
     n_new_samples = 5000
     noise         = 0.05
-    # data, color   = make_swiss_roll(n_samples=n_samples, noise=noise)
-    # data, color   = make_s_curve(n_samples=n_samples, noise=noise)
-    # data, color   = make_helix(n_samples)
-    # data, color   = make_spiral(n_samples)
+    if data_type == 'swiss_roll':
+        data, color   = make_swiss_roll(n_samples=n_samples, noise=noise)
+    elif data_type == 's_curve':
+        data, color   = make_s_curve(n_samples=n_samples, noise=noise)
+    elif data_type == 'helix':
+        data, color   = make_helix(n_samples)
+    elif data_type == 'spiral':    
+        data, color   = make_spiral(n_samples)
 
     ### Dimensionality reduction ###
     print(f"Dimensionality reduction...")
