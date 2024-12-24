@@ -6,14 +6,14 @@ from src.reducer import *
 from src.regressor import *
 from src.sampling import *
 from src.plot_data import *
-from src.utils import evaluate_regression
+from src.utils import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--red',  default='lle', choices=['kpca', 'lle', 'tsne', 'umap'])
+    parser.add_argument('--red',  default='kpca', choices=['kpca', 'lle', 'tsne', 'umap'])
     parser.add_argument('--reg',  default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
-    parser.add_argument('--sam',  default='mixup', choices=['kde', 'mixup', 'knn'])
-    parser.add_argument('--data', default='s_curve', choices=['swiss_roll', 's_curve'])
+    parser.add_argument('--sam',  default='knn', choices=['kde', 'mixup', 'knn'])
+    parser.add_argument('--data', default='spiral', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
     args = parser.parse_args() 
     
     red = args.red
@@ -26,7 +26,9 @@ def main():
     n_new_samples = 5000
     noise         = 0.05
     # data, color   = make_swiss_roll(n_samples=n_samples, noise=noise)
-    data, color   = make_s_curve(n_samples=n_samples, noise=noise)
+    # data, color   = make_s_curve(n_samples=n_samples, noise=noise)
+    # data, color   = make_helix(n_samples)
+    # data, color   = make_spiral(n_samples)
 
     ### Dimensionality reduction ###
     print(f"Dimensionality reduction...")

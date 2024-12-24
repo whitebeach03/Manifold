@@ -65,7 +65,6 @@ def plot_high_dim(original_data, original_color, generated_data, red, reg, sam, 
     plt.tight_layout()
     filename = f"result/{data_type}/high_dim/all/{red}_{reg}_{sam}.png"
     plt.savefig(filename)
-    plt.show()
 
 
 ### 低次元データのプロット ###

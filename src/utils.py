@@ -44,3 +44,24 @@ def evaluate_regression(regressors, low_dim_data, high_dim_data, test_size=0.2, 
     print(f"R² Score: {metrics['R2_Score']}")
     
     return metrics
+
+
+def make_helix(n_samples):
+    n_samples = 5000
+    t = np.linspace(0, 4 * np.pi, n_samples)
+    x = np.sin(t)
+    y = np.cos(t)
+    z = t
+    data = np.vstack((x, y, z)).T
+    color = t
+    return data, color
+
+def make_spiral(n_samples):
+    t = np.linspace(0, 4 * np.pi, n_samples)
+    x = t * np.cos(t)
+    y = t * np.sin(t)
+    z = t
+    data = np.vstack((x, y, z)).T
+    color = t
+    return data, color
+
