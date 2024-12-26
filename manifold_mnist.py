@@ -22,7 +22,7 @@ def main():
     sam = args.sam
 
     ### Loading MNIST ###
-    with open("mnist.pkl", "rb") as f:
+    with open("./data/log/mnist.pkl", "rb") as f:
         mnist_dict = pickle.load(f)
     
     for l in range(10):
