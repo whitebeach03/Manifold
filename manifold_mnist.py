@@ -54,7 +54,7 @@ def main():
         elif reg == 'poly':
             regressors = train_manifold_regressor_poly(reduced_data, data, degree=3)
         
-        # ### Generate Low-Dimensional Data ###
+        ### Generate Low-Dimensional Data ###
         print("Generate Low-Dimensional Data...")
         if sam == 'kde':
             new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=n_new_samples)
