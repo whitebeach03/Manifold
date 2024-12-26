@@ -21,7 +21,6 @@ class MLP(nn.Module):
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
         x = F.relu(self.fc4(x))
-        # print(x.shape) # (128, 64) ... (batch_size, 次元)
         x = self.fc5(x)
         return x
 

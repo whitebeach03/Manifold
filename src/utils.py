@@ -1,4 +1,7 @@
 import numpy as np
+import torch
+import pickle
+from torchvision import datasets, transforms
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
@@ -65,3 +68,34 @@ def make_spiral(n_samples):
     color = t
     return data, color
 
+
+def load_mnist_data_by_label(n_samples_per_label=5000):
+    transform = transforms.Compose([
+        transforms.ToTensor(),  
+        transforms.Normalize((0.5,), (0.5,)) 
+    ])
+    
+    mnist_dataset = datasets.MNIST(root='../data', train=True, download=True, transform=transform)
+    
+    data_by_label = {label: [] for label in range(10)}
+    
+    for image, label in mnist_dataset:
+        if len(data_by_label[label]) < n_samples_per_label:
+            data_by_label[label].append(image.view(-1).numpy())  # Flatten the image
+        
+        if all(len(data_by_label[l]) >= n_samples_per_label for l in range(10)):
+            break
+    
+    for label in data_by_label:
+        data_by_label[label] = np.array(data_by_label[label])
+    
+    with open("mnist.pkl", "wb") as f:
+        pickle.dump(data_by_label, f)
+    
+    return data_by_label
+
+def generate_high_dim_data(regressors, low_dim_data):
+    high_dim_data = np.zeros((low_dim_data.shape[0], len(regressors)))
+    for i, regressor in enumerate(regressors):
+        high_dim_data[:, i] = regressor.predict(low_dim_data)
+    return high_dim_data
