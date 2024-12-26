@@ -1,4 +1,5 @@
 import numpy as np
+import ot
 from sklearn.neighbors import KernelDensity
 from sklearn.neighbors import NearestNeighbors
 
