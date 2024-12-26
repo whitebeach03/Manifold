@@ -1,4 +1,5 @@
 data/
 logs/
 history/
-result/MNIST/
+umap_results.npy
+mnist.pkl
