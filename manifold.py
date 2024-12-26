@@ -11,9 +11,9 @@ from src.utils import *
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--red',  default='kpca', choices=['kpca', 'lle', 'tsne', 'umap'])
-    parser.add_argument('--reg',  default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
+    parser.add_argument('--reg',  default='rf', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
     parser.add_argument('--sam',  default='knn', choices=['kde', 'mixup', 'knn'])
-    parser.add_argument('--data_type', default='spiral', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
+    parser.add_argument('--data_type', default='swiss_roll', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
     args = parser.parse_args() 
     
     red = args.red
@@ -33,11 +33,12 @@ def main():
         data, color   = make_helix(n_samples)
     elif data_type == 'spiral':    
         data, color   = make_spiral(n_samples)
+    plot_3d_data(data, color, data_type)
 
     ### Dimensionality reduction ###
     print(f"Dimensionality reduction...")
     if red == 'kpca':
-        reduced_data, _ = kernel_pca_reduction(data, kernel='rbf', n_components=2, gamma=0.01, random_state=42)
+        reduced_data, _ = kernel_pca_reduction(data, kernel='rbf', n_components=2, gamma=0.1, random_state=42)
     elif red == 'lle':
         reduced_data, _ = lle_reduction(data, n_components=2, n_neighbors=10, method='modified')
     elif red == 'tsne':

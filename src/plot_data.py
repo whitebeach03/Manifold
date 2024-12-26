@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 ### 高次元データのプロット ###
 def plot_high_dim_comparison(original_data, original_color, generated_data, red, reg, sam, data_type):
@@ -106,6 +107,21 @@ def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam, d
     filename = f"result/{data_type}/low_dim/{red}_{reg}_{sam}.png"
     plt.savefig(filename)
     plt.show()
+
+def plot_3d_data(data, color, title="3D Data Visualization", cmap="viridis"):
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(
+        data[:, 0], data[:, 1], data[:, 2],
+        c=color, cmap=cmap, s=15
+    )
+    ax.set_title(title, fontsize=14)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    plt.show()
+
+
 
 def plot_low_dim_comparison(original_low_dim_data, generated_low_dim_data):
     plt.figure(figsize=(12, 6))

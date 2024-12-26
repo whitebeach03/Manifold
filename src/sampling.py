@@ -18,15 +18,6 @@ def generate_samples_from_mixup(low_dim_data, n_samples, alpha=0.2):
 
 ### k-Nearest Neighbors Sampling ###
 def generate_samples_from_knn(low_dim_data, n_samples, n_neighbors=5):
-    """
-    Parameters:
-    - low_dim_data (ndarray): Original low-dimensional data (shape: [n_samples, n_features]).
-    - n_samples (int): Number of new samples to generate.
-    - n_neighbors (int): Number of nearest neighbors to consider.
-
-    Returns:
-    - new_samples (ndarray): Generated low-dimensional samples (shape: [n_samples, n_features]).
-    """
     # Fit the nearest neighbors model to the data
     nbrs = NearestNeighbors(n_neighbors=n_neighbors).fit(low_dim_data)
 
