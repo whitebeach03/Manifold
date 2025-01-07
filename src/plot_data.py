@@ -113,7 +113,7 @@ def plot_3d_data(data, color, title="3D Data Visualization", cmap="viridis"):
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(
         data[:, 0], data[:, 1], data[:, 2],
-        c=color, cmap=cmap, s=5
+        c=color, cmap=cmap, s=10
     )
     ax.set_title(title, fontsize=14)
     ax.set_xlabel("X")

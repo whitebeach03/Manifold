@@ -10,10 +10,10 @@ from src.utils import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--red',  default='lle', choices=['kpca', 'lle', 'tsne', 'umap'])
+    parser.add_argument('--red',  default='tsne', choices=['kpca', 'lle', 'tsne', 'umap'])
     parser.add_argument('--reg',  default='rf', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
-    parser.add_argument('--sam',  default='knn', choices=['kde', 'mixup', 'knn'])
-    parser.add_argument('--data_type', default='s_curve', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
+    parser.add_argument('--sam',  default='mixup', choices=['kde', 'mixup', 'knn'])
+    parser.add_argument('--data_type', default='swiss_roll', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
     args = parser.parse_args() 
     
     red = args.red
