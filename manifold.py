@@ -10,10 +10,10 @@ from src.utils import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--red',  default='tsne', choices=['kpca', 'lle', 'tsne', 'umap'])
-    parser.add_argument('--reg',  default='rf', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
+    parser.add_argument('--red',  default='kpca', choices=['kpca', 'lle', 'tsne', 'umap'])
+    parser.add_argument('--reg',  default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
     parser.add_argument('--sam',  default='mixup', choices=['kde', 'mixup', 'knn'])
-    parser.add_argument('--data_type', default='swiss_roll', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
+    parser.add_argument('--data_type', default='s_curve', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])
     args = parser.parse_args() 
     
     red = args.red
@@ -67,7 +67,7 @@ def main():
         new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=n_new_samples)
     elif sam == 'knn':
         new_low_dim_data = generate_samples_from_knn(reduced_data, n_samples=n_new_samples)
-    plot_low_dim(reduced_data, new_low_dim_data, red, reg, sam, data_type)
+    plot_low_dim(reduced_data, new_low_dim_data, red, reg, sam, data_type, color)
 
     ### Generate High Dimensional Data using Regressor ###
     print(f"Generate High-Dimensional Data using Regressor...")

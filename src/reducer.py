@@ -1,6 +1,6 @@
 import warnings
 from sklearn.manifold import LocallyLinearEmbedding, TSNE
-from sklearn.decomposition import KernelPCA
+from sklearn.decomposition import KernelPCA, PCA
 from umap import UMAP
 warnings.filterwarnings("ignore", category=FutureWarning, module="sklearn")
 
@@ -48,3 +48,19 @@ def tsne_reduction(data, n_components=2, perplexity=30.0, learning_rate=200.0, m
     tsne = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=learning_rate, max_iter=max_iter, random_state=random_state)
     reduced_data = tsne.fit_transform(data)
     return reduced_data, tsne
+
+### PCA ###
+def pca_reduction(data, n_components=2, random_state=42):
+    """
+    Parameters:
+        data (array-like): 高次元データ (n_samples, n_features)
+        n_components (int): 低次元の次元数 (デフォルト: 2)
+        random_state (int, optional): 再現性のためのランダムシード
+
+    Returns:
+        reduced_data (array): 次元削減されたデータ (n_samples, n_components)
+        pca (PCA): トレーニング済みのPCAオブジェクト
+    """
+    pca = PCA(n_components=n_components, random_state=random_state)
+    reduced_data = pca.fit_transform(data)
+    return reduced_data, pca

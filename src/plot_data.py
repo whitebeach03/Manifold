@@ -69,17 +69,55 @@ def plot_high_dim(original_data, original_color, generated_data, red, reg, sam, 
 
 
 ### 低次元データのプロット ###
-def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam, data_type):
+# def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam, data_type):
+#     """
+#     低次元データの比較プロットを表示
+#     - Overlayと2つのサブプロットを1つの図で同時に表示
+#     """
+#     fig = plt.figure(figsize=(18, 12))
+
+#     # Overlayプロット
+#     ax1 = fig.add_subplot(221)
+#     ax1.scatter(original_low_dim_data[:, 0], original_low_dim_data[:, 1], 
+#                 c='blue', alpha=0.5, label='Original Low-Dim Data')
+#     ax1.scatter(generated_low_dim_data[:, 0], generated_low_dim_data[:, 1], 
+#                 c='black', alpha=0.5, label='Generated Low-Dim Data')
+#     ax1.set_title("Overlay of Original and Generated Low-Dimensional Data")
+#     ax1.set_xlabel("Component 1")
+#     ax1.set_ylabel("Component 2")
+#     ax1.legend()
+
+#     # 元のデータプロット
+#     ax2 = fig.add_subplot(223)
+#     ax2.scatter(original_low_dim_data[:, 0], original_low_dim_data[:, 1], 
+#                 c='blue', alpha=0.5)
+#     ax2.set_title("Original Low-Dimensional Data")
+#     ax2.set_xlabel("Component 1")
+#     ax2.set_ylabel("Component 2")
+
+#     # 生成されたデータプロット
+#     ax3 = fig.add_subplot(224)
+#     ax3.scatter(generated_low_dim_data[:, 0], generated_low_dim_data[:, 1], 
+#                 c='black', alpha=0.5)
+#     ax3.set_title("Generated Low-Dimensional Data")
+#     ax3.set_xlabel("Component 1")
+#     ax3.set_ylabel("Component 2")
+
+#     plt.tight_layout()
+#     filename = f"result/{data_type}/low_dim/{red}_{reg}_{sam}.png"
+#     plt.savefig(filename)
+#     plt.show()
+def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam, data_type, original_color):
     """
     低次元データの比較プロットを表示
-    - Overlayと2つのサブプロットを1つの図で同時に表示
+    - オリジナルデータと生成データの色を対応付けて表示
     """
     fig = plt.figure(figsize=(18, 12))
 
     # Overlayプロット
     ax1 = fig.add_subplot(221)
     ax1.scatter(original_low_dim_data[:, 0], original_low_dim_data[:, 1], 
-                c='blue', alpha=0.5, label='Original Low-Dim Data')
+                c=original_color, alpha=0.5, label='Original Low-Dim Data')
     ax1.scatter(generated_low_dim_data[:, 0], generated_low_dim_data[:, 1], 
                 c='black', alpha=0.5, label='Generated Low-Dim Data')
     ax1.set_title("Overlay of Original and Generated Low-Dimensional Data")
@@ -90,7 +128,7 @@ def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam, d
     # 元のデータプロット
     ax2 = fig.add_subplot(223)
     ax2.scatter(original_low_dim_data[:, 0], original_low_dim_data[:, 1], 
-                c='blue', alpha=0.5)
+                c=original_color, alpha=0.5)
     ax2.set_title("Original Low-Dimensional Data")
     ax2.set_xlabel("Component 1")
     ax2.set_ylabel("Component 2")
@@ -107,6 +145,7 @@ def plot_low_dim(original_low_dim_data, generated_low_dim_data, red, reg, sam, d
     filename = f"result/{data_type}/low_dim/{red}_{reg}_{sam}.png"
     plt.savefig(filename)
     plt.show()
+
 
 def plot_3d_data(data, color, title="3D Data Visualization", cmap="viridis"):
     fig = plt.figure(figsize=(10, 7))

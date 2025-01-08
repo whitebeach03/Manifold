@@ -3,3 +3,4 @@ logs/
 history/
 umap_results.npy
 mnist.pkl
+all_generated_high_dim_data.npy
