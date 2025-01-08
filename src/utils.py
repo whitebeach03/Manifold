@@ -99,3 +99,12 @@ def generate_high_dim_data(regressors, low_dim_data):
     for i, regressor in enumerate(regressors):
         high_dim_data[:, i] = regressor.predict(low_dim_data)
     return high_dim_data
+
+def organize_by_class(dataset):
+    class_data = {label: [] for label in range(10)}  
+    for image, label in dataset:
+        flattened_image = image.view(-1).numpy()
+        class_data[label].append(flattened_image)
+    for label in class_data:
+        class_data[label] = np.array(class_data[label])
+    return class_data
