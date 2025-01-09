@@ -34,7 +34,7 @@ def main():
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model      = ResNet18().to(device)
 
-    # データセットの選択
+    # Loading Dataset
     if data_type == 'mnist':
         transform     = transforms.ToTensor()
         train_dataset = torchvision.datasets.MNIST(root='./data', train=True,  transform=transform, download=True)
@@ -48,7 +48,6 @@ def main():
         train_dataset = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
         test_dataset  = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
     
-    # トレーニング・検証データの分割
     n_samples = len(train_dataset)
     n_train   = int(n_samples * 0.8)
     n_val     = n_samples - n_train
@@ -59,11 +58,6 @@ def main():
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
     val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
     test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
-    for batch in train_loader:
-        images, labels = batch
-        print(images.shape)
-        print(labels.shape)
-        break
     
 ######################################################################################################################################################################
 
@@ -89,13 +83,13 @@ def main():
     os.makedirs('./logs/resnet18',    exist_ok=True)
     os.makedirs('./history/resnet18', exist_ok=True)
 
-    # Train #
+    # Train 
     for epoch in range(epochs):
         train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc     = val(model, val_loader, criterion, device)
 
         if score <= val_acc:
-            print('Saving model parameters...')
+            print('Save model parameters...')
             score = val_acc
             model_save_path = f'./logs/{model_type}/{data_type}_{epochs}.pth'
             torch.save(model.state_dict(), model_save_path)
@@ -109,7 +103,7 @@ def main():
     with open(f'./history/{model_type}/{data_type}_{epochs}.pickle', 'wb') as f:
         pickle.dump(history, f)
 
-    # Test #
+    # Test 
     model.load_state_dict(torch.load(model_save_path))
     model.eval()
     test_loss, test_acc = test(model, test_loader, criterion, device)
@@ -185,6 +179,7 @@ class GeneratedDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
+
 
 if __name__ == '__main__':
     main()
