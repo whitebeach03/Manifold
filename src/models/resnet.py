@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from torch.autograd import Variable
-
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -138,26 +136,6 @@ class ResNet(nn.Module):
             layers.append(block(self.in_planes, planes, stride))
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
-
-    # def forward(self, x, lin=0, lout=5):
-    #     out = x
-    #     if lin < 1 and lout > -1:
-    #         out = self.conv1(out)
-    #         out = self.bn1(out)
-    #         out = F.relu(out)
-    #     if lin < 2 and lout > 0:
-    #         out = self.layer1(out)
-    #     if lin < 3 and lout > 1:
-    #         out = self.layer2(out)
-    #     if lin < 4 and lout > 2:
-    #         out = self.layer3(out)
-    #     if lin < 5 and lout > 3:
-    #         out = self.layer4(out)
-    #     if lout > 4:
-    #         out = F.avg_pool2d(out, 4)
-    #         out = out.view(out.size(0), -1)
-    #         out = self.linear(out)
-    #     return out
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
