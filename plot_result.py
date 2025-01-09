@@ -1,8 +1,8 @@
 import pickle
 import matplotlib.pyplot as plt
 
-def plot_training_history(pickle_file_path):
-    # 保存された history ファイルをロード
+def plot_training_history(model_type, augment):
+    pickle_file_path = f'./history/{model_type}/{augment}/stl10_200.pickle'
     with open(pickle_file_path, 'rb') as f:
         history = pickle.load(f)
 
@@ -33,10 +33,24 @@ def plot_training_history(pickle_file_path):
     plt.grid(True)
 
     plt.tight_layout()
-    plt.savefig('./result_plot/resnet18/stl10_200.png')
-    plt.show()
+    plt.savefig(f'./result_plot/{model_type}/{augment}/stl10_200.png')
+    # plt.show()
+
+def load_test_history(model_type, augment):
+    pickle_file_path = f'./history/{model_type}/{augment}/stl10_200_test.pickle'
+    with open(pickle_file_path, 'rb') as f:
+        history = pickle.load(f)
+    loss = history['loss']
+    acc  = history['acc']
+    print(f'model_type: {model_type}, augment: {augment} -> Loss: {loss}, Acc: {acc}')
 
 # 使用例
 if __name__ == "__main__":
-    pickle_file_path = './history/resnet18/stl10_200.pickle'
-    plot_training_history(pickle_file_path)
+
+    model_type = 'resnet18'
+
+    plot_training_history(model_type, 'normal')
+    plot_training_history(model_type, 'mixup')
+
+    load_test_history(model_type, 'normal')
+    load_test_history(model_type, 'mixup')

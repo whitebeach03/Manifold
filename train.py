@@ -25,12 +25,16 @@ def main():
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--data_type",  type=str, default="stl10",    choices=["mnist", "cifar10", "stl10"])
     parser.add_argument("--model_type", type=str, default="resnet18", choices=["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"])
+    parser.add_argument("--augment",    type=str, default="normal",   choices=["normal", "mixup"])
+    parser.add_argument("--alpha",      type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
     args = parser.parse_args() 
 
     epochs     = args.epochs
     batch_size = args.batch_size
     data_type  = args.data_type
     model_type = args.model_type
+    augment    = args.augment
+    alpha      = args.alpha
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Select Model 
@@ -91,28 +95,28 @@ def main():
     score     = 0.0
     history   = {'loss': [], 'accuracy': [], 'val_loss': [], 'val_accuracy': []}
 
-    os.makedirs(f'./logs/{model_type}',        exist_ok=True)
-    os.makedirs(f'./history/{model_type}',     exist_ok=True)
-    os.makedirs(f'./result_plot/{model_type}', exist_ok=True)
+    os.makedirs(f'./logs/{model_type}/{augment}',        exist_ok=True)
+    os.makedirs(f'./history/{model_type}/{augment}',     exist_ok=True)
+    os.makedirs(f'./result_plot/{model_type}/{augment}', exist_ok=True)
 
     # Train 
     for epoch in range(epochs):
-        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
+        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, alpha)
         val_loss, val_acc     = val(model, val_loader, criterion, device)
 
         if score <= val_acc:
             print('Save model parameters...')
             score = val_acc
-            model_save_path = f'./logs/{model_type}/{data_type}_{epochs}.pth'
+            model_save_path = f'./logs/{model_type}/{augment}/{data_type}_{epochs}.pth'
             torch.save(model.state_dict(), model_save_path)
 
         history['loss'].append(train_loss)
         history['accuracy'].append(train_acc)
         history['val_loss'].append(val_loss)
         history['val_accuracy'].append(val_acc)
-        print(f'Epoch: {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f}')
+        print(f'| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |')
 
-    with open(f'./history/{model_type}/{data_type}_{epochs}.pickle', 'wb') as f:
+    with open(f'./history/{model_type}/{augment}/{data_type}_{epochs}.pickle', 'wb') as f:
         pickle.dump(history, f)
 
     # Test 
@@ -122,25 +126,35 @@ def main():
     print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')
 
     test_history = {'acc': test_acc, 'loss': test_loss}
-    with open(f'./history/{model_type}/{data_type}_{epochs}_test.pickle', 'wb') as f:
+    with open(f'./history/{model_type}/{augment}/{data_type}_{epochs}_test.pickle', 'wb') as f:
         pickle.dump(test_history, f)
 
 
-def train(model, train_loader, criterion, optimizer, device):
+def train(model, train_loader, criterion, optimizer, device, augment, alpha):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
-        preds = model(images)
-        loss  = criterion(preds, labels)
+
+        if augment == 'mixup':
+            images, y_a, y_b, lam = mixup_data(images, labels, alpha, device)
+            preds = model(images)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        elif augment == 'normal':
+            preds = model(images)
+            loss  = criterion(preds, labels)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        train_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+        if augment == 'mixup':
+            train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu())
+                          + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
+        elif augment == 'normal':
+            train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
 
     train_loss /= len(train_loader)
     train_acc  /= len(train_loader)
@@ -179,6 +193,26 @@ def test(model, test_loader, criterion, device):
     test_loss /= len(test_loader)
     test_acc  /= len(test_loader)
     return test_loss, test_acc
+
+def mixup_data(x, y, alpha=1.0, use_cuda=True):
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    batch_size = x.size()[0]
+    if use_cuda:
+        index = torch.randperm(batch_size).cuda()
+    else:
+        index = torch.randperm(batch_size)
+
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
+
+def mixup_criterion(criterion, pred, y_a, y_b, lam):
+    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
 
 class GeneratedDataset(Dataset):
     """生成データ用データセットクラス"""
