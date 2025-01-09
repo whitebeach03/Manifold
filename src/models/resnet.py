@@ -161,19 +161,12 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
-        print("After conv1:", out.shape)
         out = self.layer1(out)
-        print("After layer1:", out.shape)
         out = self.layer2(out)
-        print("After layer2:", out.shape)
         out = self.layer3(out)
-        print("After layer3:", out.shape)
         out = self.layer4(out)
-        print("After layer4:", out.shape)
         out = F.avg_pool2d(out, out.size()[2])
-        print("After avg_pool2d:", out.shape)
         out = out.view(out.size(0), -1)
-        print("After view:", out.shape)
         out = self.linear(out)
         return out
 
@@ -200,4 +193,4 @@ def test():
     y = net(Variable(torch.randn(1,1,96,96)))
     print(y.size())
 
-test()
+# test()

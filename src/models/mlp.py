@@ -52,14 +52,14 @@ class Manifold_MLP(nn.Module):
 
 
 # Number of parameters
-mlp = MLP()
-mmlp = Manifold_MLP()
+# mlp = MLP()
+# mmlp = Manifold_MLP()
 
-def count_parameters(model):
-    total_params = sum(p.numel() for p in model.parameters())
-    return total_params
+# def count_parameters(model):
+#     total_params = sum(p.numel() for p in model.parameters())
+#     return total_params
 
-params_mlp  = count_parameters(mlp)
-params_mmlp = count_parameters(mmlp)
-print(f"Number of parameters: {params_mlp}")
-print(f"Number of parameters: {params_mmlp}")
+# params_mlp  = count_parameters(mlp)
+# params_mmlp = count_parameters(mmlp)
+# print(f"Number of parameters: {params_mlp}")
+# print(f"Number of parameters: {params_mmlp}")

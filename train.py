@@ -13,7 +13,7 @@ from torch.utils.data import random_split, DataLoader, Dataset
 from tqdm import tqdm
 from src.models.mlp import MLP
 from src.models.cnn import SimpleCNN
-from src.models.resnet import *
+from src.models.resnet import ResNet18, ResNet34, ResNet50, ResNet101, ResNet152
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 
@@ -21,16 +21,18 @@ i = 0
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=100, help="Number of training epochs")
-    parser.add_argument("--data_type", type=str, choices=["mnist", "cifar10", "stl10"], default="stl10", help="Dataset to use")
+    parser.add_argument("--epochs",     type=int, default=200,        help="Number of training epochs")
+    parser.add_argument("--data_type",  type=str, default="stl10",    choices=["mnist", "cifar10", "stl10"], help="Dataset to use")
+    parser.add_argument("--model_type", type=str, default="resnet18", choices=["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"])
     args = parser.parse_args() 
 
-    epochs    = args.epochs
-    data_type = args.data_type
+    epochs     = args.epochs
+    data_type  = args.data_type
+    model_type = args.model_type
 
     batch_size = 128
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model      = SimpleCNN().to(device)
+    model      = ResNet18().to(device)
 
     # データセットの選択
     if data_type == 'mnist':
@@ -84,8 +86,8 @@ def main():
     score = 0.0
     history = {'loss': [], 'accuracy': [], 'val_loss': [], 'val_accuracy': []}
 
-    os.makedirs('./logs/normal', exist_ok=True)
-    os.makedirs('./history/normal', exist_ok=True)
+    os.makedirs('./logs/resnet18',    exist_ok=True)
+    os.makedirs('./history/resnet18', exist_ok=True)
 
     # Train #
     for epoch in range(epochs):
@@ -95,7 +97,7 @@ def main():
         if score <= val_acc:
             print('Saving model parameters...')
             score = val_acc
-            model_save_path = f'./logs/normal_{epochs}_epoch{epoch+1}.pth'
+            model_save_path = f'./logs/{model_type}/{data_type}_{epochs}.pth'
             torch.save(model.state_dict(), model_save_path)
 
         history['loss'].append(train_loss)
@@ -104,7 +106,7 @@ def main():
         history['val_accuracy'].append(val_acc)
         print(f'Epoch: {epoch+1}, Loss: {train_loss:.3f}, Accuracy: {train_acc:.3f}, Val Loss: {val_loss:.3f}, Val Accuracy: {val_acc:.3f}')
 
-    with open(f'./history/normal_{epochs}.pickle', 'wb') as f:
+    with open(f'./history/{model_type}/{data_type}_{epochs}.pickle', 'wb') as f:
         pickle.dump(history, f)
 
     # Test #
@@ -114,7 +116,7 @@ def main():
     print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')
 
     test_history = {'acc': test_acc, 'loss': test_loss}
-    with open(f'./history/normal_{epochs}_test.pickle', 'wb') as f:
+    with open(f'./history/{model_type}/{data_type}_{epochs}_test.pickle', 'wb') as f:
         pickle.dump(test_history, f)
 
 
