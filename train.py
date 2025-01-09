@@ -129,55 +129,55 @@ def main():
 def train(model, train_loader, criterion, optimizer, device):
     model.train()
     train_loss = 0.0
-    train_acc = 0.0
+    train_acc  = 0.0
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
         preds = model(images)
-        loss = criterion(preds, labels)
+        loss  = criterion(preds, labels)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        train_acc += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+        train_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
 
     train_loss /= len(train_loader)
-    train_acc /= len(train_loader)
+    train_acc  /= len(train_loader)
     return train_loss, train_acc
 
 def val(model, val_loader, criterion, device):
     model.eval()
     val_loss = 0.0
-    val_acc = 0.0
+    val_acc  = 0.0
     with torch.no_grad():
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
             preds = model(images)
-            loss = criterion(preds, labels)
+            loss  = criterion(preds, labels)
 
             val_loss += loss.item()
-            val_acc += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+            val_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
 
     val_loss /= len(val_loader)
-    val_acc /= len(val_loader)
+    val_acc  /= len(val_loader)
     return val_loss, val_acc
 
 def test(model, test_loader, criterion, device):
     model.eval()
     test_loss = 0.0
-    test_acc = 0.0
+    test_acc  = 0.0
     with torch.no_grad():
         for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
             preds = model(images)
-            loss = criterion(preds, labels)
+            loss  = criterion(preds, labels)
 
             test_loss += loss.item()
-            test_acc += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+            test_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
 
     test_loss /= len(test_loader)
-    test_acc /= len(test_loader)
+    test_acc  /= len(test_loader)
     return test_loss, test_acc
 
 class GeneratedDataset(Dataset):
