@@ -14,6 +14,8 @@ from tqdm import tqdm
 from src.models.mlp import MLP
 from src.models.cnn import SimpleCNN
 from src.models.resnet import ResNet18, ResNet34, ResNet50, ResNet101, ResNet152
+from src.models.resnet_hidden import ResNet18_hidden, ResNet34_hidden, ResNet50_hidden, ResNet101_hidden, ResNet152_hidden
+from src.utils import *
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 
@@ -25,7 +27,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--data_type",  type=str, default="stl10",    choices=["mnist", "cifar10", "stl10"])
     parser.add_argument("--model_type", type=str, default="resnet18", choices=["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"])
-    parser.add_argument("--augment",    type=str, default="normal",   choices=["normal", "mixup"])
+    parser.add_argument("--augment",    type=str, default="mixup_hidden",   choices=["normal", "mixup", "mixup_hidden"])
     parser.add_argument("--alpha",      type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
     args = parser.parse_args() 
 
@@ -38,16 +40,28 @@ def main():
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Select Model 
-    if model_type == 'resnet18':
-        model = ResNet18().to(device)
-    elif model_type == 'resnet34':
-        model = ResNet34().to(device)
-    elif model_type == 'resnet50':
-        model = ResNet50().to(device)
-    elif model_type == 'resnet101':
-        model = ResNet101().to(device)
-    elif model_type == 'resnet152':
-        model = ResNet152().to(device)
+    if augment == "mixup_hidden":
+        if model_type == 'resnet18':
+            model = ResNet18_hidden().to(device)
+        elif model_type == 'resnet34':
+            model = ResNet34_hidden().to(device)
+        elif model_type == 'resnet50':
+            model = ResNet50_hidden().to(device)
+        elif model_type == 'resnet101':
+            model = ResNet101_hidden().to(device)
+        elif model_type == 'resnet152':
+            model = ResNet152_hidden().to(device)
+    else:
+        if model_type == 'resnet18':
+            model = ResNet18().to(device)
+        elif model_type == 'resnet34':
+            model = ResNet34().to(device)
+        elif model_type == 'resnet50':
+            model = ResNet50().to(device)
+        elif model_type == 'resnet101':
+            model = ResNet101().to(device)
+        elif model_type == 'resnet152':
+            model = ResNet152().to(device)
 
     # Loading Dataset
     if data_type == 'mnist':
@@ -144,18 +158,25 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
         elif augment == 'normal':
             preds = model(images)
             loss  = criterion(preds, labels)
-
+        elif augment == 'mixup_hidden':
+            preds, y_a, y_b, lam = model(images, labels, mixup_hidden=True, mixup_alpha=alpha)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        
+        if loss.dim() > 0:
+            loss = loss.mean()
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        if augment == 'mixup':
+        if augment == 'normal':
+            train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
+        elif augment == 'mixup':
             train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu())
                           + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
-        elif augment == 'normal':
-            train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
-
+        else:
+            train_acc = 0
+            
     train_loss /= len(train_loader)
     train_acc  /= len(train_loader)
     return train_loss, train_acc
@@ -167,7 +188,10 @@ def val(model, val_loader, criterion, device):
     with torch.no_grad():
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
-            preds = model(images)
+            # preds = model(images)
+            preds = model(images, labels)
+            if isinstance(preds, tuple):
+                preds = preds[0]
             loss  = criterion(preds, labels)
 
             val_loss += loss.item()

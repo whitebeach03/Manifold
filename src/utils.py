@@ -6,15 +6,6 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
 def evaluate_regression(regressors, low_dim_data, high_dim_data, test_size=0.2, random_state=42):
-    """
-    Parameters:
-    - regressors (function): 回帰モデルをトレーニングする関数
-                             例: train_manifold_regressor_knn
-    - low_dim_data (ndarray): 入力データ（低次元）
-    - high_dim_data (ndarray): 出力データ（高次元）
-    - test_size (float): テストデータの割合
-    - random_state (int): データ分割の再現性を確保するためのランダムシード
-    """
     # トレーニング用とテスト用にデータを分割
     low_dim_train, low_dim_test, high_dim_train, high_dim_test = train_test_split(
         low_dim_data, high_dim_data, test_size=test_size, random_state=random_state
@@ -108,3 +99,20 @@ def organize_by_class(dataset):
     for label in class_data:
         class_data[label] = np.array(class_data[label])
     return class_data
+
+def mixup_data_hidden(x, y, alpha):
+    '''Compute the mixup data. Return mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0.:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1.
+    batch_size = x.size()[0]
+    index = torch.randperm(batch_size).cuda()
+    mixed_x = lam * x + (1 - lam) * x[index,:]
+    y_a, y_b = y, y[index]
+    
+    # Ensure lam is scalar
+    if isinstance(lam, torch.Tensor):
+        lam = lam.item()
+        
+    return mixed_x, y_a, y_b, lam
