@@ -41,8 +41,8 @@ def load_test_history(model_type, augment):
     with open(pickle_file_path, 'rb') as f:
         history = pickle.load(f)
     loss = history['loss']
-    acc  = history['acc']
-    print(f'model_type: {model_type}, augment: {augment} -> Loss: {loss}, Acc: {acc}')
+    acc  = history['acc'] * 100
+    print(f'model_type: {model_type}, augment: {augment} -> Loss: {loss:.2f}, Acc: {acc:.2f}')
 
 # 使用例
 if __name__ == "__main__":
