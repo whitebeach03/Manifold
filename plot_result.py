@@ -44,7 +44,7 @@ def load_test_history(model_type, augment):
     acc  = history['acc'] * 100
     print(f'model_type: {model_type}, augment: {augment} -> Loss: {loss:.2f}, Acc: {acc:.2f}')
 
-# 使用例
+
 if __name__ == "__main__":
 
     model_type = 'resnet18'
