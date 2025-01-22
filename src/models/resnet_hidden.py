@@ -91,7 +91,7 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, target=None, mixup_hidden = True,  mixup_alpha = 0.1, layer_mix=None):
+    def forward(self, x, target, mixup_hidden = True,  mixup_alpha = 0.1, layer_mix=None):
         # if self.per_img_std:
         #     x = per_image_standardization(x)
         

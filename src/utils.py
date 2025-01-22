@@ -4,6 +4,7 @@ import pickle
 from torchvision import datasets, transforms
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from torch.autograd import Variable
 
 def evaluate_regression(regressors, low_dim_data, high_dim_data, test_size=0.2, random_state=42):
     # トレーニング用とテスト用にデータを分割
@@ -100,19 +101,42 @@ def organize_by_class(dataset):
         class_data[label] = np.array(class_data[label])
     return class_data
 
-def mixup_data_hidden(x, y, alpha):
-    '''Compute the mixup data. Return mixed inputs, pairs of targets, and lambda'''
-    if alpha > 0.:
+# def mixup_data_hidden(x, y, alpha):
+#     '''Compute the mixup data. Return mixed inputs, pairs of targets, and lambda'''
+#     if alpha > 0.:
+#         lam = np.random.beta(alpha, alpha)
+#     else:
+#         lam = 1.
+#     batch_size = x.size()[0]
+#     index = torch.randperm(batch_size).cuda()
+#     mixed_x = lam * x + (1 - lam) * x[index,:]
+#     y_a, y_b = y, y[index]
+#     # Ensure lam is scalar
+#     if isinstance(lam, torch.Tensor):
+#         lam = lam.item()
+#     return mixed_x, y_a, y_b, lam
+def mixup_data_hidden(x, y, alpha=1.0, use_cuda=True):
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0:
         lam = np.random.beta(alpha, alpha)
     else:
-        lam = 1.
+        lam = 1
+
     batch_size = x.size()[0]
-    index = torch.randperm(batch_size).cuda()
-    mixed_x = lam * x + (1 - lam) * x[index,:]
+    if use_cuda:
+        index = torch.randperm(batch_size).cuda()
+    else:
+        index = torch.randperm(batch_size)
+
+    mixed_x = lam * x + (1 - lam) * x[index, :]
     y_a, y_b = y, y[index]
-    
-    # Ensure lam is scalar
-    if isinstance(lam, torch.Tensor):
-        lam = lam.item()
-        
     return mixed_x, y_a, y_b, lam
+
+
+def to_one_hot(inp,num_classes):
+    y_onehot = torch.FloatTensor(inp.size(0), num_classes)
+    y_onehot.zero_()
+
+    y_onehot.scatter_(1, inp.unsqueeze(1).data.cpu(), 1)
+    
+    return Variable(y_onehot.cuda(),requires_grad=False)

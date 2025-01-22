@@ -103,7 +103,9 @@ def main():
     # train_loader = DataLoader(dataset=train_dataset_generated, batch_size=batch_size, shuffle=True)
 
 ######################################################################################################################################################################
-
+    bce_loss = nn.BCELoss().cuda()
+    softmax = nn.Softmax(dim=1).cuda()
+    
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
     score     = 0.0
@@ -159,7 +161,15 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
             preds = model(images)
             loss  = criterion(preds, labels)
         elif augment == 'mixup_hidden':
-            preds, y_a, y_b, lam = model(images, labels, mixup_hidden=True, mixup_alpha=alpha)
+            # preds, y_a, y_b, lam = model(images, labels, mixup_hidden=True, mixup_alpha=alpha)
+            # loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            preds, y_a, y_b, lam = model(images, labels, mixup_hidden=True,  mixup_alpha=alpha)
+            # preds = model(images)
+            
+            lam = lam[0]
+            # target_a_one_hot = to_one_hot(y_a, 10)
+            # target_b_one_hot = to_one_hot(y_b, 10)
+            # mixed_target = target_a_one_hot * lam + target_b_one_hot * (1 - lam)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
         
         if loss.dim() > 0:
