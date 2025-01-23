@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import argparse
-from torch.utils.data import random_split, DataLoader, Dataset
+from torch.utils.data import random_split, DataLoader, Dataset, TensorDataset
 from tqdm import tqdm
 from src.models.mlp import MLP
 from src.models.cnn import SimpleCNN
@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--data_type",  type=str, default="stl10",    choices=["mnist", "cifar10", "stl10"])
     parser.add_argument("--model_type", type=str, default="resnet18", choices=["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"])
-    parser.add_argument("--augment",    type=str, default="mixup_hidden",   choices=["normal", "mixup", "mixup_hidden"])
+    parser.add_argument("--augment",    type=str, default="ours",   choices=["normal", "mixup", "mixup_hidden", "ours"])
     parser.add_argument("--alpha",      type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
     args = parser.parse_args() 
 
@@ -76,6 +76,15 @@ def main():
         transform     = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
         train_dataset = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
         test_dataset  = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
+    elif augment == 'ours':
+        transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+        images = np.load('all_generated_high_dim_data.npy')  # Shape: (5000, 96, 96)
+        labels = np.load('all_labels.npy')  # Shape: (5000,)
+        data_tensor = torch.tensor(images, dtype=torch.float32)  # Float型のTensor
+        labels_tensor = torch.tensor(labels, dtype=torch.long)  # Long型（整数）のTensor
+        train_dataset = TensorDataset(data_tensor, labels_tensor)
+        test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
+        
     
     n_samples = len(train_dataset)
     n_train   = int(n_samples * 0.8)
@@ -171,15 +180,18 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
             # target_b_one_hot = to_one_hot(y_b, 10)
             # mixed_target = target_a_one_hot * lam + target_b_one_hot * (1 - lam)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        elif augment == 'ours':
+            preds = model(images)
+            loss  = criterion(preds, labels)
         
-        if loss.dim() > 0:
-            loss = loss.mean()
+        # if loss.dim() > 0:
+        #     loss = loss.mean()
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        if augment == 'normal':
+        if augment == 'normal' or 'ours':
             train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
         elif augment == 'mixup':
             train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu())
@@ -198,10 +210,10 @@ def val(model, val_loader, criterion, device):
     with torch.no_grad():
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
-            # preds = model(images)
-            preds = model(images, labels)
-            if isinstance(preds, tuple):
-                preds = preds[0]
+            preds = model(images)
+            # preds = model(images, labels)
+            # if isinstance(preds, tuple):
+            #     preds = preds[0]
             loss  = criterion(preds, labels)
 
             val_loss += loss.item()

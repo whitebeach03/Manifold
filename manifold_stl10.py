@@ -13,6 +13,7 @@ from src.utils import *
 def main():
     n_new_samples = 500
     all_generated_high_dim_data = []
+    all_labels = []  # ラベルを保存するリストを追加
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--red',  default='umap', choices=['kpca', 'lle', 'tsne', 'umap', 'pca'])
@@ -23,18 +24,14 @@ def main():
     red = args.red
     reg = args.reg
     sam = args.sam
-    # data_type = 'CIFAR10'
     data_type = 'STL10'
 
     ### Loading dataset ###
     print("Loading Dataset...")
     transform = transforms.Compose([
-    transforms.Grayscale(num_output_channels=1), 
-    transforms.ToTensor() 
+        transforms.Grayscale(num_output_channels=1), 
+        transforms.ToTensor() 
     ])
-
-    # train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-    # test_dataset  = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
     train_dataset = torchvision.datasets.STL10(root='./data', split='train', download=True, transform=transform)
     test_dataset  = torchvision.datasets.STL10(root='./data', split='test', download=True, transform=transform)
@@ -58,9 +55,8 @@ def main():
         elif red == 'pca':
             reduced_data, _ = pca_reduction(data, n_components=5000, random_state=42)
         plot_3d_data(reduced_data, color='blue', title=f"Low-Dimensional Data ({red})")
-        # print(reduced_data.shape)
-    
-    ### Train Manifold Regressor ###
+        
+        ### Train Manifold Regressor ###
         print("Train Manifold Regressor...")
         if reg == 'svr':
             regressors = train_manifold_regressor(reduced_data, data, kernel='rbf', C=10.0, gamma=0.1)
@@ -72,8 +68,8 @@ def main():
             regressors = train_manifold_regressor_knn(reduced_data, data, n_neighbors=5, weights='uniform', algorithm='auto')
         elif reg == 'poly':
             regressors = train_manifold_regressor_poly(reduced_data, data, degree=3)
-    
-    ### Generate Low-Dimensional Data ###
+        
+        ### Generate Low-Dimensional Data ###
         print("Generate Low-Dimensional Data...")
         if sam == 'kde':
             new_low_dim_data = generate_samples_from_kde(reduced_data, n_samples=n_new_samples)
@@ -82,21 +78,30 @@ def main():
         elif sam == 'knn':
             new_low_dim_data = generate_samples_from_knn(reduced_data, n_samples=n_new_samples)
         plot_low_dim_3d(reduced_data, new_low_dim_data, red, reg, sam, data_type, l)
-    
-    ### Generate High Dimensional Data using Regressor ###
+        
+        ### Generate High Dimensional Data using Regressor ###
         print("Generate High-Dimensional Data using Regressor...")
         generated_high_dim_data = generate_high_dim_data(regressors, new_low_dim_data)
         show_images_together(data, generated_high_dim_data, num_images=10, l=l)
         print(generated_high_dim_data.shape)
 
-        # リストに保存
+        # データをリストに保存
         all_generated_high_dim_data.append(generated_high_dim_data)
-    
+        
+        # ラベルをリストに保存
+        labels = [l] * generated_high_dim_data.shape[0]  # ラベル l をデータ数分作成
+        all_labels.extend(labels)
+
     # 全クラスのデータを結合
     all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
+    all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
 
-    # 保存
+    # データとラベルを保存
     np.save('all_generated_high_dim_data.npy', all_generated_high_dim_data)
+    np.save('all_labels.npy', all_labels)
+
+    print("Data and labels saved successfully.")
+
 
 
 def generate_high_dim_data(regressors, low_dim_data):
