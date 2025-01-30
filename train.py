@@ -85,33 +85,15 @@ def main():
         train_dataset = TensorDataset(data_tensor, labels_tensor)
         test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
         
-    
     n_samples = len(train_dataset)
     n_train   = int(n_samples * 0.8)
     n_val     = n_samples - n_train
-
-######################################################################################################################################################################
 
     train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
     val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
     test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
-    
-######################################################################################################################################################################
 
-    # _, val_dataset = random_split(train_dataset, [n_train, n_val])
-
-    # val_loader  = DataLoader(dataset=val_dataset, batch_size=batch_size, shuffle=False)
-    # test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
-
-    # # 訓練データの読み込み（生成データ）
-    # generated_data = np.load('all_generated_high_dim_data.npy')
-    # labels = np.concatenate([np.full(500, i) for i in range(10)])  # 各クラス500サンプル
-
-    # train_dataset_generated = GeneratedDataset(generated_data, labels)
-    # train_loader = DataLoader(dataset=train_dataset_generated, batch_size=batch_size, shuffle=True)
-
-######################################################################################################################################################################
     bce_loss = nn.BCELoss().cuda()
     softmax = nn.Softmax(dim=1).cuda()
     
@@ -183,9 +165,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
         elif augment == 'ours':
             preds = model(images)
             loss  = criterion(preds, labels)
-        
-        # if loss.dim() > 0:
-        #     loss = loss.mean()
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
