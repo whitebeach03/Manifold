@@ -51,8 +51,10 @@ if __name__ == "__main__":
 
     plot_training_history(model_type, 'normal')
     plot_training_history(model_type, 'mixup')
+    plot_training_history(model_type, 'mixup_hidden')
     plot_training_history(model_type, 'ours')
 
     load_test_history(model_type, 'normal')
     load_test_history(model_type, 'mixup')
+    load_test_history(model_type, 'mixup_hidden')
     load_test_history(model_type, 'ours')

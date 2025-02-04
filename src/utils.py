@@ -102,20 +102,6 @@ def organize_by_class(dataset):
         class_data[label] = np.array(class_data[label])
     return class_data
 
-# def mixup_data_hidden(x, y, alpha):
-#     '''Compute the mixup data. Return mixed inputs, pairs of targets, and lambda'''
-#     if alpha > 0.:
-#         lam = np.random.beta(alpha, alpha)
-#     else:
-#         lam = 1.
-#     batch_size = x.size()[0]
-#     index = torch.randperm(batch_size).cuda()
-#     mixed_x = lam * x + (1 - lam) * x[index,:]
-#     y_a, y_b = y, y[index]
-#     # Ensure lam is scalar
-#     if isinstance(lam, torch.Tensor):
-#         lam = lam.item()
-#     return mixed_x, y_a, y_b, lam
 def mixup_data_hidden(x, y, alpha=1.0, use_cuda=True):
     '''Returns mixed inputs, pairs of targets, and lambda'''
     if alpha > 0:
