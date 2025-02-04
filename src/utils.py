@@ -5,6 +5,7 @@ from torchvision import datasets, transforms
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
+from torch.utils.data import Subset
 
 def evaluate_regression(regressors, low_dim_data, high_dim_data, test_size=0.2, random_state=42):
     # トレーニング用とテスト用にデータを分割
@@ -140,3 +141,22 @@ def to_one_hot(inp,num_classes):
     y_onehot.scatter_(1, inp.unsqueeze(1).data.cpu(), 1)
     
     return Variable(y_onehot.cuda(),requires_grad=False)
+
+def limit_dataset(dataset):
+    # クラスごとに100枚ずつサンプリング
+    num_classes = 10
+    samples_per_class = 100
+
+    # クラスごとのインデックスを取得
+    class_indices = {i: [] for i in range(num_classes)}
+
+    for idx, (_, label) in enumerate(dataset):
+        if len(class_indices[label]) < samples_per_class:
+            class_indices[label].append(idx)
+
+    # 選択したインデックスをリスト化
+    selected_indices = [idx for indices in class_indices.values() for idx in indices]
+
+    # 新しいサブセットの作成（クラスごとに100枚）
+    limited_train_dataset = Subset(dataset, selected_indices)
+    return limited_train_dataset

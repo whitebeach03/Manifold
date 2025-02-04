@@ -34,6 +34,7 @@ def main():
     ])
 
     train_dataset = torchvision.datasets.STL10(root='./data', split='train', download=True, transform=transform)
+    # train_dataset = limit_dataset(train_dataset)
     test_dataset  = torchvision.datasets.STL10(root='./data', split='test', download=True, transform=transform)
 
     train_data_by_class = organize_by_class(train_dataset)
@@ -54,7 +55,7 @@ def main():
             reduced_data, _ = umap_reduction(data, n_components=3, n_neighbors=15, min_dist=0.1, random_state=None)
         elif red == 'pca':
             reduced_data, _ = pca_reduction(data, n_components=5000, random_state=42)
-        plot_3d_data(reduced_data, color='blue', title=f"Low-Dimensional Data ({red})")
+        # plot_3d_data(reduced_data, color='blue', title=f"Low-Dimensional Data ({red})")
         
         ### Train Manifold Regressor ###
         print("Train Manifold Regressor...")
@@ -77,12 +78,12 @@ def main():
             new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=n_new_samples)
         elif sam == 'knn':
             new_low_dim_data = generate_samples_from_knn(reduced_data, n_samples=n_new_samples)
-        plot_low_dim_3d(reduced_data, new_low_dim_data, red, reg, sam, data_type, l)
+        # plot_low_dim_3d(reduced_data, new_low_dim_data, red, reg, sam, data_type, l)
         
         ### Generate High Dimensional Data using Regressor ###
         print("Generate High-Dimensional Data using Regressor...")
         generated_high_dim_data = generate_high_dim_data(regressors, new_low_dim_data)
-        show_images_together(data, generated_high_dim_data, num_images=10, l=l)
+        # show_images_together(data, generated_high_dim_data, num_images=10, l=l)
         print(generated_high_dim_data.shape)
 
         # データをリストに保存
@@ -94,6 +95,7 @@ def main():
 
     # 全クラスのデータを結合
     all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
+    all_generated_high_dim_data = all_generated_high_dim_data.reshape(5000, 1, 96, 96)
     all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
 
     # データとラベルを保存

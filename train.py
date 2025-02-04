@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import argparse
-from torch.utils.data import random_split, DataLoader, Dataset, TensorDataset
+from torch.utils.data import random_split, DataLoader, Dataset, TensorDataset, ConcatDataset
 from tqdm import tqdm
 from src.models.mlp import MLP
 from src.models.cnn import SimpleCNN
@@ -72,24 +72,34 @@ def main():
         transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,  transform=transform, download=True)
         test_dataset  = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
-    elif data_type == 'stl10':
-        transform     = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-        train_dataset = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
-        test_dataset  = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
+    # elif data_type == 'stl10':
+    #     transform     = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+    #     train_dataset = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
+    #     # train_dataset = limit_dataset(train_dataset) # 訓練データセットの制限
+    #     test_dataset  = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
     elif augment == 'ours':
         transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-        images = np.load('all_generated_high_dim_data.npy')  # Shape: (5000, 96, 96)
+        train_dataset1 = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
+        train_dataset1 = STL10TensorWrapper(train_dataset1)# STL10 のデータセットをラップしてラベルを Tensor に統一
+        images = np.load('all_generated_high_dim_data.npy')  # Shape: (5000, 1, 96, 96)
         labels = np.load('all_labels.npy')  # Shape: (5000,)
         data_tensor = torch.tensor(images, dtype=torch.float32)  # Float型のTensor
         labels_tensor = torch.tensor(labels, dtype=torch.long)  # Long型（整数）のTensor
-        train_dataset = TensorDataset(data_tensor, labels_tensor)
+        train_dataset2 = TensorDataset(data_tensor, labels_tensor)
+        train_dataset = ConcatDataset([train_dataset1, train_dataset2])
         test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
-        
-    n_samples = len(train_dataset)
-    n_train   = int(n_samples * 0.8)
-    n_val     = n_samples - n_train
 
-    train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
+    # n_samples = len(train_dataset)
+    # n_train   = int(n_samples * 0.8)
+    # n_val     = n_samples - n_train
+
+    n_samples = len(test_dataset)
+    n_val     = int(n_samples * 0.125) # validation data: 1,000 pattern
+    n_test    = n_samples - n_val      # test data:       7,000 pattern
+
+
+    # train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
+    test_dataset, val_dataset = random_split(test_dataset, [n_test, n_val])
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
     val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
     test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
@@ -252,6 +262,17 @@ class GeneratedDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
 
-
+# STL10 のラベルを Tensor に変換するためのラッパークラス
+class STL10TensorWrapper(Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, idx):
+        image, label = self.dataset[idx]
+        return image, torch.tensor(label, dtype=torch.long)  # int → Tensor に変換
+    
 if __name__ == '__main__':
     main()
