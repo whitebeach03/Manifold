@@ -1,6 +1,8 @@
 data/
 logs/
 history/
+our_dataset/
 umap_results.npy
 mnist.pkl
 all_generated_high_dim_data.npy
+all_labels.npy

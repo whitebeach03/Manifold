@@ -201,9 +201,6 @@ def val(model, val_loader, criterion, device):
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
             preds = model(images)
-            # preds = model(images, labels)
-            # if isinstance(preds, tuple):
-            #     preds = preds[0]
             loss  = criterion(preds, labels)
 
             val_loss += loss.item()

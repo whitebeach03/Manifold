@@ -11,14 +11,15 @@ from src.plot_data import *
 from src.utils import *
 
 def main():
+    reduction_dim = 1000
     n_new_samples = 500
     all_generated_high_dim_data = []
     all_labels = []  # ラベルを保存するリストを追加
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--red',  default='umap', choices=['kpca', 'lle', 'tsne', 'umap', 'pca'])
-    parser.add_argument('--reg',  default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
-    parser.add_argument('--sam',  default='mixup', choices=['kde', 'mixup', 'knn'])
+    parser.add_argument('--reg',  default='rf', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
+    parser.add_argument('--sam',  default='knn', choices=['kde', 'mixup', 'knn'])
     args = parser.parse_args() 
 
     red = args.red
@@ -46,15 +47,15 @@ def main():
         print(data.shape)
         print("Dimensionality reduction...")
         if red == 'kpca':
-            reduced_data, _ = kernel_pca_reduction(data, kernel='rbf', n_components=500, gamma=0.1, random_state=42)
+            reduced_data, _ = kernel_pca_reduction(data, kernel='rbf', n_components=reduction_dim, gamma=0.1, random_state=42)
         elif red == 'lle':
-            reduced_data, _ = lle_reduction(data, n_components=3, n_neighbors=10, method='modified')
+            reduced_data, _ = lle_reduction(data, n_components=reduction_dim, n_neighbors=10, method='modified')
         elif red == 'tsne':
             reduced_data, _ = tsne_reduction(data, n_components=2, perplexity=30.0, learning_rate=200.0, max_iter=1000, random_state=42)
         elif red == 'umap':
             reduced_data, _ = umap_reduction(data, n_components=3, n_neighbors=15, min_dist=0.1, random_state=None)
         elif red == 'pca':
-            reduced_data, _ = pca_reduction(data, n_components=5000, random_state=42)
+            reduced_data, _ = pca_reduction(data, n_components=500, random_state=42)
         # plot_3d_data(reduced_data, color='blue', title=f"Low-Dimensional Data ({red})")
         
         ### Train Manifold Regressor ###
@@ -99,8 +100,8 @@ def main():
     all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
 
     # データとラベルを保存
-    np.save('all_generated_high_dim_data.npy', all_generated_high_dim_data)
-    np.save('all_labels.npy', all_labels)
+    np.save(f'./our_dataset/images_{red}.npy', all_generated_high_dim_data)
+    np.save(f'./our_dataset/labels_{red}.npy', all_labels)
 
     print("Data and labels saved successfully.")
 
