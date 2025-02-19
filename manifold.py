@@ -10,7 +10,7 @@ from src.utils import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--red',  default='kpca', choices=['kpca', 'lle', 'tsne', 'umap'])
+    parser.add_argument('--red',  default='umap', choices=['kpca', 'lle', 'tsne', 'umap'])
     parser.add_argument('--reg',  default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
     parser.add_argument('--sam',  default='mixup', choices=['kde', 'mixup', 'knn'])
     parser.add_argument('--data_type', default='s_curve', choices=['swiss_roll', 's_curve', 'helix', 'spiral'])

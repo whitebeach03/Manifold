@@ -97,7 +97,7 @@ def plot_comparison_graph(model_type, augmentations):
     plt.grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'./result_plot/{model_type}/comparison_stl10_200.png')
+    plt.savefig(f'./result_plot/{model_type}/comparison_stl10_200_2.png')
     plt.show()
 
 if __name__ == "__main__":

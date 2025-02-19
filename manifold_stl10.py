@@ -18,8 +18,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--red',  default='umap', choices=['kpca', 'lle', 'tsne', 'umap', 'pca'])
-    parser.add_argument('--reg',  default='rf', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
-    parser.add_argument('--sam',  default='knn', choices=['kde', 'mixup', 'knn'])
+    parser.add_argument('--reg',  default='knn', choices=['svr', 'rf', 'gb', 'knn', 'poly'])
+    parser.add_argument('--sam',  default='per', choices=['kde', 'mixup', 'knn', 'per'])
     args = parser.parse_args() 
 
     red = args.red
@@ -79,6 +79,9 @@ def main():
             new_low_dim_data = generate_samples_from_mixup(reduced_data, n_samples=n_new_samples)
         elif sam == 'knn':
             new_low_dim_data = generate_samples_from_knn(reduced_data, n_samples=n_new_samples)
+        elif sam == 'per':
+            new_low_dim_data = generate_samples_by_manifold_perturbation(reduced_data, n_samples=n_new_samples, noise_scale=0.05)
+
         # plot_low_dim_3d(reduced_data, new_low_dim_data, red, reg, sam, data_type, l)
         
         ### Generate High Dimensional Data using Regressor ###

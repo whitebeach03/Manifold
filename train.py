@@ -81,13 +81,16 @@ def main():
         transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
         train_dataset1 = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
         train_dataset1 = STL10TensorWrapper(train_dataset1)# STL10 のデータセットをラップしてラベルを Tensor に統一
-        images = np.load('all_generated_high_dim_data.npy')  # Shape: (5000, 1, 96, 96)
-        labels = np.load('all_labels.npy')  # Shape: (5000,)
+        # images = np.load('./our_dataset/images_umap.npy')  # Shape: (5000, 1, 96, 96)
+        # labels = np.load('./our_dataset/labels_umap.npy')  # Shape: (5000,)
+        images = np.load('./our_dataset/images_sample.npy')
+        labels = np.load('./our_dataset/labels_sample.npy')
         data_tensor = torch.tensor(images, dtype=torch.float32)  # Float型のTensor
         labels_tensor = torch.tensor(labels, dtype=torch.long)  # Long型（整数）のTensor
         train_dataset2 = TensorDataset(data_tensor, labels_tensor)
         train_dataset = ConcatDataset([train_dataset1, train_dataset2])
         test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
+        print(len(train_dataset), len(test_dataset))
 
     # n_samples = len(train_dataset)
     # n_train   = int(n_samples * 0.8)
@@ -154,27 +157,17 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
 
-        if augment == 'mixup':
+        if augment == 'normal' or 'ours':
+            preds = model(images)
+            loss  = criterion(preds, labels)
+        elif augment == 'mixup':
             images, y_a, y_b, lam = mixup_data(images, labels, alpha, device)
             preds = model(images)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        elif augment == 'normal':
-            preds = model(images)
-            loss  = criterion(preds, labels)
         elif augment == 'mixup_hidden':
-            # preds, y_a, y_b, lam = model(images, labels, mixup_hidden=True, mixup_alpha=alpha)
-            # loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
             preds, y_a, y_b, lam = model(images, labels, mixup_hidden=True,  mixup_alpha=alpha)
-            # preds = model(images)
-            
             lam = lam[0]
-            # target_a_one_hot = to_one_hot(y_a, 10)
-            # target_b_one_hot = to_one_hot(y_b, 10)
-            # mixed_target = target_a_one_hot * lam + target_b_one_hot * (1 - lam)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        elif augment == 'ours':
-            preds = model(images)
-            loss  = criterion(preds, labels)
 
         optimizer.zero_grad()
         loss.backward()

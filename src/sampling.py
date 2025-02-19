@@ -2,6 +2,7 @@ import numpy as np
 # import ot
 from sklearn.neighbors import KernelDensity
 from sklearn.neighbors import NearestNeighbors
+from sklearn.decomposition import PCA
 
 ### カーネル密度推定 (Kernel Density Estimation) ###
 def generate_samples_from_kde(low_dim_data, n_samples, bandwidth=0.1):
@@ -38,3 +39,32 @@ def generate_samples_from_knn(low_dim_data, n_samples, n_neighbors=5):
         new_samples.append(new_sample)
 
     return np.array(new_samples)
+
+def generate_samples_by_manifold_perturbation(reduced_data, n_samples=5000, noise_scale=0.05):
+    """
+    マニフォールド上で摂動を加えて新しいデータ点を生成する。
+    
+    Parameters:
+        reduced_data (numpy.ndarray): 低次元空間のデータ（N×2）
+        n_samples (int): 生成するサンプル数
+        noise_scale (float): 摂動の強さ（小さいほどオリジナルに近い）
+
+    Returns:
+        numpy.ndarray: 生成された新しい低次元データ（N×2）
+    """
+    # PCAで主成分を求める（方向を見つける）
+    pca = PCA(n_components=2)
+    pca.fit(reduced_data)
+    
+    # 主成分軸を取得
+    principal_axes = pca.components_
+
+    # 元のデータからランダムにサンプリング
+    sampled_indices = np.random.choice(len(reduced_data), n_samples, replace=True)
+    base_samples = reduced_data[sampled_indices]
+
+    # 摂動の計算: 主成分軸方向にランダムなノイズを加える
+    perturbations = np.random.randn(n_samples, 2) * noise_scale
+    new_samples = base_samples + np.dot(perturbations, principal_axes)
+
+    return new_samples

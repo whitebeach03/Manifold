@@ -138,14 +138,23 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        # print("Input iamge: ", x.shape)
         out = F.relu(self.bn1(self.conv1(x)))
+        # print(out.shape)
         out = self.layer1(out)
+        # print("layer #1:", out.shape)
         out = self.layer2(out)
+        # print("layer #2:", out.shape)
         out = self.layer3(out)
+        # print("layer #3:", out.shape)
         out = self.layer4(out)
+        # print("layer #4:", out.shape)
         out = F.avg_pool2d(out, out.size()[2])
+        # print("GAP layer: ", out.shape)
         out = out.view(out.size(0), -1)
+        # print("Flatten layer: ", out.shape)
         out = self.linear(out)
+        # print("Ouyput layer:", out.shape)
         return out
 
 
