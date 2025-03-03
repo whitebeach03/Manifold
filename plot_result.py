@@ -97,10 +97,10 @@ def plot_comparison_graph(model_type, augmentations):
     plt.grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'./result_plot/{model_type}/comparison_stl10_200_2.png')
+    plt.savefig(f'./result_plot/{model_type}/comparison_augmentations.png')
     plt.show()
 
 if __name__ == "__main__":
     model_type = 'resnet18'
-    augmentations = ['normal', 'mixup', 'mixup_hidden', 'ours']
+    augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
     plot_comparison_graph(model_type, augmentations)

@@ -44,7 +44,7 @@ def main():
     model_type = 'resnet18'
     data_type = 'stl10'
     epochs = 200
-    augmentations = ['normal', 'mixup', 'mixup_hidden', 'ours']
+    augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
@@ -62,6 +62,11 @@ def main():
         model.eval()
         top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
         print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
+        
+        pickle_file_path = f'./history/{model_type}/{augment}/stl10_200_test.pickle'
+        with open(pickle_file_path, 'rb') as f:
+            history = pickle.load(f)
+        print("{:.2f}".format(history["acc"]*100), "{:.2f}".format(history["loss"]))
 
 if __name__ == '__main__':
     main()
