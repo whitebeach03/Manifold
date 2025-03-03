@@ -20,7 +20,6 @@ def main():
     batch_size = 128
     data_type = "stl10"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ResNet18().to(device)
     base_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
     
     # データ拡張のリスト
@@ -51,6 +50,7 @@ def main():
         train_dataset = STL10(root="./data", split="train", download=True, transform=transform)
         train_loader  = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
         
+        model = ResNet18().to(device)
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters())
         score     = 0.0
