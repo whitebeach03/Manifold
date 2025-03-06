@@ -24,34 +24,34 @@ def main():
     
     # データ拡張のリスト
     augmentations = {
-        "Original": transforms.Compose([base_transform]),
-        "Flipping": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
-        ]),
-        "Cropping": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomResizedCrop(size=96, scale=(0.7, 1.0))], p=0.5)
-        ]),
-        "Rotation": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomRotation(degrees=30)], p=0.5)
-        ]),
-        "Translation": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomAffine(degrees=0, translate=(0.2, 0.2))], p=0.5)
-        ]),
-        "Noisy": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.Lambda(lambda x: x + 0.1 * torch.randn_like(x))], p=0.5)
-        ]),
-        "Blurring": transforms.Compose([
-            base_transform, 
-            transforms.RandomApply([transforms.GaussianBlur(kernel_size=5)], p=0.5)
-        ]),
+        # "Original": transforms.Compose([base_transform]),
+        # "Flipping": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
+        # ]),
+        # "Cropping": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.RandomResizedCrop(size=96, scale=(0.7, 1.0))], p=0.5)
+        # ]),
+        # "Rotation": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.RandomRotation(degrees=30)], p=0.5)
+        # ]),
+        # "Translation": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.RandomAffine(degrees=0, translate=(0.2, 0.2))], p=0.5)
+        # ]),
+        # "Noisy": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.Lambda(lambda x: x + 0.1 * torch.randn_like(x))], p=0.5)
+        # ]),
+        # "Blurring": transforms.Compose([
+        #     base_transform, 
+        #     transforms.RandomApply([transforms.GaussianBlur(kernel_size=5)], p=0.5)
+        # ]),
         "Random-Erasing": transforms.Compose([
             base_transform, 
-            transforms.RandomApply([transforms.RandomErasing(p=1.0, scale=(0.1, 0.3), ratio=(0.3, 3.3), value="random")], p=0.5)
+            transforms.RandomApply([transforms.RandomErasing(p=1.0, scale=(0.1, 0.3), ratio=(0.3, 3.3))], p=0.5)
         ])
     }
     

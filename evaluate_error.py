@@ -44,7 +44,8 @@ def main():
     model_type = 'resnet18'
     data_type = 'stl10'
     epochs = 200
-    augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
+    # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
+    augmentations = ["Random-Erasing"]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
