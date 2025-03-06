@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 from PIL import Image
+from torchvision.transforms import v2
 
 # # STL-10 データセットのダウンロードと読み込み
 # dataset = torchvision.datasets.STL10(root="./data", split="train", download=True)
@@ -145,6 +146,12 @@ augmentations = {
             transforms.RandomApply([transforms.RandomErasing(p=1.0, scale=(0.1, 0.3), ratio=(0.3, 3.3), value=0)], p=1.0),
         ])
     }
+augmentations2 = {
+    "CutMix": transforms.Compose([
+        base_transform,
+        v2.CutMix(alpha=1.0, num_classes=10)
+    ])
+}
 
 # **画像を表示する関数**
 def show_images(images, titles, cols=3):
@@ -162,7 +169,7 @@ def show_images(images, titles, cols=3):
         axes[j].axis("off")
 
     plt.tight_layout()
-    plt.savefig("aug_comparison2.png")
+    plt.savefig(".png")
 
 # **拡張後の画像を取得**
 images = []

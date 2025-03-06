@@ -8,6 +8,7 @@ import numpy as np
 import random
 import pickle
 import matplotlib.pyplot as plt
+from torchvision.transforms import v2
 from src.utils import *
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
@@ -16,42 +17,15 @@ from torch.utils.data import DataLoader, random_split
 from src.models.resnet import ResNet18
 
 def main():
-    epochs = 200
+    epochs = 1
     batch_size = 128
     data_type = "stl10"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     base_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
     
-    # データ拡張のリスト
     augmentations = {
-        "Original": transforms.Compose([base_transform]),
-        "Flipping": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
-        ]),
-        "Cropping": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomResizedCrop(size=96, scale=(0.7, 1.0))], p=0.5)
-        ]),
-        "Rotation": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomRotation(degrees=30)], p=0.5)
-        ]),
-        "Translation": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomAffine(degrees=0, translate=(0.2, 0.2))], p=0.5)
-        ]),
-        "Noisy": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.Lambda(lambda x: x + 0.1 * torch.randn_like(x))], p=0.5)
-        ]),
-        "Blurring": transforms.Compose([
-            base_transform, 
-            transforms.RandomApply([transforms.GaussianBlur(kernel_size=5)], p=0.5)
-        ]),
-        "Random-Erasing": transforms.Compose([
-            base_transform, 
-            transforms.RandomApply([transforms.RandomErasing(p=1.0, scale=(0.1, 0.3), ratio=(0.3, 3.3))], p=0.5)
+        "CutMix": transforms.Compose([
+            base_transform
         ])
     }
     
@@ -116,7 +90,12 @@ def train(model, train_loader, criterion, optimizer, device):
     train_loss = 0.0
     train_acc  = 0.0
     for images, labels in tqdm(train_loader, leave=False):
+        
+        cutmix = v2.CutMix(num_classes=10)
         images, labels = images.to(device), labels.to(device)
+        images, labels = cutmix(images, labels)
+        print(images.shape, labels.shape)
+        
 
         preds = model(images)
         loss  = criterion(preds, labels)
