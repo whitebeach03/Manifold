@@ -103,6 +103,7 @@ if __name__ == "__main__":
     for i in range(10):
         data = data_by_class[i]
         augmented_data = manifold_perturbation(data, k=10, noise_scale=10)
+        display_augmented_images(i, augmented_data)
         
         # データをリストに保存
         all_generated_high_dim_data.append(augmented_data)
