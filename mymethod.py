@@ -16,17 +16,6 @@ def organize_by_class(dataset):
     return class_data
 
 def manifold_perturbation(data, k=10, noise_scale=0.1):
-    """
-    データ全体に PCA を適用し、主成分方向に沿って摂動を加える。
-    
-    Args:
-        data (torch.Tensor or np.ndarray): (N, D) のデータ行列
-        k (int): 使用する主成分の数
-        noise_scale (float): 摂動のスケール
-    
-    Returns:
-        torch.Tensor: 摂動後のデータ (N, D)
-    """
     # PyTorch Tensor を NumPy に変換
     if isinstance(data, torch.Tensor):
         data_np = data.cpu().numpy()
@@ -56,14 +45,6 @@ def manifold_perturbation(data, k=10, noise_scale=0.1):
     return torch.tensor(augmented_data, dtype=torch.float32) if isinstance(data, torch.Tensor) else augmented_data
 
 def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
-    """
-    摂動後の画像を10x10グリッドで表示する。
-    
-    Parameters:
-        data (torch.Tensor or np.ndarray): (N, 9216) の拡張データ
-        num_images (int): 表示する画像の数（デフォルト100）
-        grid_size (tuple): グリッドのサイズ（デフォルト 10x10）
-    """
     if isinstance(data, torch.Tensor):
         data = data.numpy()  # PyTorch Tensor → NumPy
     

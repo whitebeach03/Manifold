@@ -16,17 +16,6 @@ def organize_by_class(dataset):
     return class_data
 
 def manifold_perturbation(data, k=10, noise_scale=0.1):
-    """
-    9216次元（96x96のフラット化画像）に対してマニフォールド摂動を適用する。
-    
-    Parameters:
-        data (numpy.ndarray or torch.Tensor): (N, 9216) のデータ行列
-        k (int): 近傍点の数（局所的なマニフォールドを求めるための近傍数）
-        noise_scale (float): 摂動の大きさ
-    
-    Returns:
-        torch.Tensor: 摂動後のデータ (N, 9216)
-    """
     if isinstance(data, torch.Tensor):
         data_np = data.numpy()  # PyTorch → NumPy
     else:
@@ -61,14 +50,6 @@ def manifold_perturbation(data, k=10, noise_scale=0.1):
     return torch.tensor(augmented_data, dtype=torch.float32)  # NumPy → PyTorchに戻す
 
 def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
-    """
-    摂動後の画像を10x10グリッドで表示する。
-    
-    Parameters:
-        data (torch.Tensor or np.ndarray): (N, 9216) の拡張データ
-        num_images (int): 表示する画像の数（デフォルト100）
-        grid_size (tuple): グリッドのサイズ（デフォルト 10x10）
-    """
     if isinstance(data, torch.Tensor):
         data = data.numpy()  # PyTorch Tensor → NumPy
     
@@ -85,7 +66,6 @@ def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
         ax.axis('off')
     plt.savefig(f"sample_{label}.png")
     plt.tight_layout()
-    plt.show()
 
 # 使用例
 if __name__ == "__main__":
@@ -101,8 +81,9 @@ if __name__ == "__main__":
     all_labels = []
     
     for i in range(10):
+        print("Label: ", i)
         data = data_by_class[i]
-        augmented_data = manifold_perturbation(data, k=10, noise_scale=10)
+        augmented_data = manifold_perturbation(data, k=10, noise_scale=5.0)
         display_augmented_images(i, augmented_data)
         
         # データをリストに保存
@@ -115,7 +96,6 @@ if __name__ == "__main__":
      # 全クラスのデータを結合
     all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
     N = all_generated_high_dim_data.shape[0] 
-    # all_generated_high_dim_data = all_generated_high_dim_data.reshape(5000, 1, 96, 96)
     all_generated_high_dim_data = all_generated_high_dim_data.reshape(N, 1, 96, 96)
     all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
 
