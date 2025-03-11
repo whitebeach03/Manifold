@@ -16,33 +16,30 @@ def organize_by_class(dataset):
     return class_data
 
 def manifold_perturbation(data, k=10, noise_scale=0.1):
-    # PyTorch Tensor を NumPy に変換
     if isinstance(data, torch.Tensor):
-        data_np = data.cpu().numpy()
+        data_np = data.numpy()  # PyTorch → NumPy
     else:
-        data_np = data.copy()
+        data_np = data
 
-    N, D = data_np.shape  # N: サンプル数, D: 特徴次元
-    augmented_data = np.copy(data_np)  # 元データのコピー
-
-    # **データ全体に対して PCA を適用**
-    pca = PCA(n_components=min(D, k))  # `k` 個の主成分を取得
+    N, D = data_np.shape  # (N, 9216)
+    augmented_data = np.copy(data_np)
+    
+    # PCAで局所的な主成分を取得
+    pca = PCA(n_components=300)
     pca.fit(data_np)
-    principal_components = pca.components_  # (k, D) の行列
-    print("Principal Components Shape:", principal_components.shape)  # 確認用
-
-    # **主成分に沿ったランダムノイズを追加**
-    noise = np.random.normal(scale=noise_scale, size=(N, k))  # (N, k) のノイズ
-    perturbation = np.dot(noise, principal_components)  # (N, k) × (k, D) → (N, D)
-
-    # **全データに摂動を適用**
+    principal_components = pca.components_  # 主成分方向
+    
+    # 主成分に沿ったランダムノイズを追加
+    noise = np.random.normal(scale=noise_scale, size=(300,))
+    perturbation = np.dot(principal_components.T, noise)
+    
+    # データ点を摂動
     augmented_data += perturbation
 
-    # **クリッピング（0-1 の範囲を維持）**
+    # クリッピング（0-1の範囲を維持）
     augmented_data = np.clip(augmented_data, 0, 1)
-
-    # **PyTorch Tensor に戻す**
-    return torch.tensor(augmented_data, dtype=torch.float32) if isinstance(data, torch.Tensor) else augmented_data
+    
+    return torch.tensor(augmented_data, dtype=torch.float32)  # NumPy → PyTorchに戻す
 
 def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
     if isinstance(data, torch.Tensor):
@@ -61,7 +58,6 @@ def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
         ax.axis('off')
     plt.savefig(f"sample_{label}.png")
     plt.tight_layout()
-    # plt.show()
 
 # 使用例
 if __name__ == "__main__":
@@ -79,7 +75,7 @@ if __name__ == "__main__":
     for i in range(10):
         print("Label: ", i)
         data = data_by_class[i]
-        augmented_data = manifold_perturbation(data, k=10, noise_scale=10)
+        augmented_data = manifold_perturbation(data, k=10, noise_scale=5.0)
         display_augmented_images(i, augmented_data)
         
         # データをリストに保存
@@ -90,11 +86,11 @@ if __name__ == "__main__":
         all_labels.extend(labels)
         
      # 全クラスのデータを結合
-    # all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
-    # N = all_generated_high_dim_data.shape[0] 
-    # all_generated_high_dim_data = all_generated_high_dim_data.reshape(N, 1, 96, 96)
-    # all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
+    all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
+    N = all_generated_high_dim_data.shape[0] 
+    all_generated_high_dim_data = all_generated_high_dim_data.reshape(N, 1, 96, 96)
+    all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
 
-    # # データとラベルを保存
-    # np.save(f'./our_dataset/images_sample.npy', all_generated_high_dim_data)
-    # np.save(f'./our_dataset/labels_sample.npy', all_labels)
+    # データとラベルを保存
+    np.save(f'./our_dataset/images_sample.npy', all_generated_high_dim_data)
+    np.save(f'./our_dataset/labels_sample.npy', all_labels)

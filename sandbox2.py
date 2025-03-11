@@ -23,6 +23,7 @@ def manifold_perturbation(data, k=10, noise_scale=0.1):
 
     N, D = data_np.shape  # (N, 9216)
     augmented_data = np.copy(data_np)
+    perturbation_arr = []
     
     # 最近傍探索
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='auto').fit(data_np)
@@ -40,6 +41,7 @@ def manifold_perturbation(data, k=10, noise_scale=0.1):
         # 主成分に沿ったランダムノイズを追加
         noise = np.random.normal(scale=noise_scale, size=(k,))
         perturbation = np.dot(principal_components.T, noise)
+        perturbation_arr.append(perturbation)
         
         # データ点を摂動
         augmented_data[i] += perturbation
@@ -47,9 +49,9 @@ def manifold_perturbation(data, k=10, noise_scale=0.1):
     # クリッピング（0-1の範囲を維持）
     augmented_data = np.clip(augmented_data, 0, 1)
     
-    return torch.tensor(augmented_data, dtype=torch.float32)  # NumPy → PyTorchに戻す
+    return torch.tensor(augmented_data, dtype=torch.float32), torch.tensor(perturbation_arr, dtype=torch.float32)  # NumPy → PyTorchに戻す
 
-def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
+def display_augmented_images(label, data, name, num_images=100, grid_size=(10, 10)):
     if isinstance(data, torch.Tensor):
         data = data.numpy()  # PyTorch Tensor → NumPy
     
@@ -64,7 +66,7 @@ def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
         img = data[i].reshape(img_size)  # 9216次元 → 96x96画像
         ax.imshow(img, cmap='gray')
         ax.axis('off')
-    plt.savefig(f"sample_{label}.png")
+    plt.savefig(f"{name}_{label}.png")
     plt.tight_layout()
 
 # 使用例
@@ -83,8 +85,9 @@ if __name__ == "__main__":
     for i in range(10):
         print("Label: ", i)
         data = data_by_class[i]
-        augmented_data = manifold_perturbation(data, k=10, noise_scale=5.0)
-        display_augmented_images(i, augmented_data)
+        augmented_data, perturbation = manifold_perturbation(data, k=10, noise_scale=5.0)
+        display_augmented_images(i, augmented_data, name="sample")
+        display_augmented_images(i, perturbation, name="perturbation")
         
         # データをリストに保存
         all_generated_high_dim_data.append(augmented_data)
