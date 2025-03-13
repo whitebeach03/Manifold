@@ -15,33 +15,36 @@ def organize_by_class(dataset):
         class_data[label] = np.array(class_data[label])
     return class_data
 
-def manifold_perturbation(data, k=10, noise_scale=0.1):
-    if isinstance(data, torch.Tensor):
-        data_np = data.numpy()  # PyTorch → NumPy
-    else:
-        data_np = data
+def class_pca_augmentation(data, num_components=100, noise_scale=0.2):
+    N, D = data.shape  # N: サンプル数, D: 特徴数（例: 9216）
 
-    N, D = data_np.shape  # (N, 9216)
-    augmented_data = np.copy(data_np)
-    
-    # PCAで局所的な主成分を取得
-    pca = PCA(n_components=300)
-    pca.fit(data_np)
-    principal_components = pca.components_  # 主成分方向
-    
-    # 主成分に沿ったランダムノイズを追加
-    noise = np.random.normal(scale=noise_scale, size=(300,))
-    perturbation = np.dot(principal_components.T, noise)
-    
-    # データ点を摂動
-    augmented_data += perturbation
+    # データを NumPy に変換
+    data_np = data.numpy() if isinstance(data, torch.Tensor) else data
 
-    # クリッピング（0-1の範囲を維持）
-    augmented_data = np.clip(augmented_data, 0, 1)
-    
-    return torch.tensor(augmented_data, dtype=torch.float32)  # NumPy → PyTorchに戻す
+    # 平均を計算し、センタリング
+    mean = np.mean(data_np, axis=0, keepdims=True)
+    data_centered = data_np - mean
 
-def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
+    # PCA の適用（クラス内で学習）
+    pca = PCA(n_components=min(num_components, N))  # 主成分数はデータ数以下
+    pca.fit(data_centered)
+    principal_components = pca.components_  # (k, D)
+
+    # 主成分空間に射影
+    projected_data = np.dot(data_centered, principal_components.T)  # (N, k)
+
+    # 主成分空間でノイズを加える
+    noise = noise_scale * np.random.randn(*projected_data.shape)  # (N, k)
+    projected_data_noisy = projected_data + noise
+
+    # 元のデータ空間に戻す
+    augmented_data = np.dot(projected_data_noisy, principal_components) + mean
+
+    # PyTorch Tensor に変換
+    return torch.tensor(augmented_data, dtype=torch.float32) if isinstance(data, torch.Tensor) else augmented_data
+
+
+def display_augmented_images(label, data, num_components, num_images=100, grid_size=(10, 10)):
     if isinstance(data, torch.Tensor):
         data = data.numpy()  # PyTorch Tensor → NumPy
     
@@ -56,8 +59,29 @@ def display_augmented_images(label, data, num_images=100, grid_size=(10, 10)):
         img = data[i].reshape(img_size)  # 9216次元 → 96x96画像
         ax.imshow(img, cmap='gray')
         ax.axis('off')
-    plt.savefig(f"sample_{label}.png")
+    plt.savefig(f"pca_aug/{num_components}/sample_{label}.png")
     plt.tight_layout()
+    
+def plot_explained_variance(data):
+    # NumPy に変換
+    data_np = data.numpy() if isinstance(data, torch.Tensor) else data
+
+    # PCA 適用（最大 D 次元）
+    pca = PCA()
+    pca.fit(data_np)
+
+    # 寄与率と累積寄与率
+    explained_variance_ratio = np.cumsum(pca.explained_variance_ratio_)
+
+    # プロット
+    plt.figure(figsize=(8, 5))
+    plt.plot(range(1, len(explained_variance_ratio) + 1), explained_variance_ratio, marker='o', markersize=1)
+    plt.xlabel("Number of Principal Components")
+    plt.ylabel("Cumulative Explained Variance")
+    plt.title("PCA: Cumulative Explained Variance")
+    plt.grid()
+    plt.savefig("variance.png")
+
 
 # 使用例
 if __name__ == "__main__":
@@ -69,28 +93,34 @@ if __name__ == "__main__":
     dataset = torchvision.datasets.STL10(root='./data', split='train', download=True, transform=transform)
     data_by_class = organize_by_class(dataset)
     
-    all_generated_high_dim_data = []
-    all_labels = []
+    # plot_explained_variance(data_by_class[0])
     
-    for i in range(10):
-        print("Label: ", i)
-        data = data_by_class[i]
-        augmented_data = manifold_perturbation(data, k=10, noise_scale=5.0)
-        display_augmented_images(i, augmented_data)
-        
-        # データをリストに保存
-        all_generated_high_dim_data.append(augmented_data)
-        
-        # ラベルをリストに保存
-        labels = [i] * augmented_data.shape[0]  # ラベル l をデータ数分作成
-        all_labels.extend(labels)
-        
-     # 全クラスのデータを結合
-    all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
-    N = all_generated_high_dim_data.shape[0] 
-    all_generated_high_dim_data = all_generated_high_dim_data.reshape(N, 1, 96, 96)
-    all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
+    num_components = [100, 200, 300, 400, 500]
+    
+    for num_component in num_components:
+        all_generated_high_dim_data = []
+        all_labels = []
+    
+        for i in range(10):
+            print("Label: ", i)
+            data = data_by_class[i]
+            # augmented_data = manifold_perturbation(data, k=10, noise_scale=5.0)
+            augmented_data = class_pca_augmentation(data, num_components=num_component)
+            display_augmented_images(i, augmented_data, num_components=num_component)
+            
+            # データをリストに保存
+            all_generated_high_dim_data.append(augmented_data)
+            
+            # ラベルをリストに保存
+            labels = [i] * augmented_data.shape[0]  # ラベル l をデータ数分作成
+            all_labels.extend(labels)
+            
+        # 全クラスのデータを結合
+        all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
+        N = all_generated_high_dim_data.shape[0] 
+        all_generated_high_dim_data = all_generated_high_dim_data.reshape(N, 1, 96, 96)
+        all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
 
-    # データとラベルを保存
-    np.save(f'./our_dataset/images_sample.npy', all_generated_high_dim_data)
-    np.save(f'./our_dataset/labels_sample.npy', all_labels)
+        # データとラベルを保存
+        np.save(f'./our_dataset/images_sample_{num_component}.npy', all_generated_high_dim_data)
+        np.save(f'./our_dataset/labels_sample_{num_component}.npy', all_labels)

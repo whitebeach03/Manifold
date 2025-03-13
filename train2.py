@@ -38,7 +38,7 @@ def main():
     augment    = args.augment
     alpha      = args.alpha
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    num_components = 100
+    num_components = 500
 
     # Select Model 
     if augment == "mixup_hidden":
@@ -84,8 +84,8 @@ def main():
         train_dataset1 = STL10TensorWrapper(train_dataset1)# STL10 のデータセットをラップしてラベルを Tensor に統一
         # images = np.load('./our_dataset/images_umap.npy')  # Shape: (5000, 1, 96, 96)
         # labels = np.load('./our_dataset/labels_umap.npy')  # Shape: (5000,)
-        images = np.load('./our_dataset/images_sample.npy')
-        labels = np.load('./our_dataset/labels_sample.npy')
+        images = np.load(f'./our_dataset/images_sample_{num_components}.npy')
+        labels = np.load(f'./our_dataset/labels_sample_{num_components}.npy')
         data_tensor = torch.tensor(images, dtype=torch.float32)  # Float型のTensor
         labels_tensor = torch.tensor(labels, dtype=torch.long)  # Long型（整数）のTensor
         train_dataset2 = TensorDataset(data_tensor, labels_tensor)
@@ -128,7 +128,7 @@ def main():
         if score <= val_acc:
             print('Save model parameters...')
             score = val_acc
-            model_save_path = f'./logs/{model_type}/{augment}/{data_type}_{epochs}.pth'
+            model_save_path = f'./logs/{model_type}/{augment}/{num_components}/{data_type}_{epochs}.pth'
             torch.save(model.state_dict(), model_save_path)
 
         history['loss'].append(train_loss)
@@ -137,7 +137,7 @@ def main():
         history['val_accuracy'].append(val_acc)
         print(f'| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |')
 
-    with open(f'./history/{model_type}/{augment}/{data_type}_{epochs}.pickle', 'wb') as f:
+    with open(f'./history/{model_type}/{augment}/{num_components}/{data_type}_{epochs}.pickle', 'wb') as f:
         pickle.dump(history, f)
 
     # Test 
@@ -147,7 +147,7 @@ def main():
     print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')
 
     test_history = {'acc': test_acc, 'loss': test_loss}
-    with open(f'./history/{model_type}/{augment}/{data_type}_{epochs}_test.pickle', 'wb') as f:
+    with open(f'./history/{model_type}/{augment}/{num_components}/{data_type}_{epochs}_test.pickle', 'wb') as f:
         pickle.dump(test_history, f)
 
 

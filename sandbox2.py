@@ -85,23 +85,23 @@ if __name__ == "__main__":
     for i in range(10):
         print("Label: ", i)
         data = data_by_class[i]
-        augmented_data, perturbation = manifold_perturbation(data, k=10, noise_scale=5.0)
-        display_augmented_images(i, augmented_data, name="sample")
-        display_augmented_images(i, perturbation, name="perturbation")
+        # augmented_data, perturbation = manifold_perturbation(data, k=10, noise_scale=5.0)
+        display_augmented_images(i, data, name="sample")
+        # display_augmented_images(i, perturbation, name="perturbation")
         
         # データをリストに保存
-        all_generated_high_dim_data.append(augmented_data)
+    #     all_generated_high_dim_data.append(augmented_data)
         
-        # ラベルをリストに保存
-        labels = [i] * augmented_data.shape[0]  # ラベル l をデータ数分作成
-        all_labels.extend(labels)
+    #     # ラベルをリストに保存
+    #     labels = [i] * augmented_data.shape[0]  # ラベル l をデータ数分作成
+    #     all_labels.extend(labels)
         
-     # 全クラスのデータを結合
-    all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
-    N = all_generated_high_dim_data.shape[0] 
-    all_generated_high_dim_data = all_generated_high_dim_data.reshape(N, 1, 96, 96)
-    all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
+    #  # 全クラスのデータを結合
+    # all_generated_high_dim_data = np.vstack(all_generated_high_dim_data)
+    # N = all_generated_high_dim_data.shape[0] 
+    # all_generated_high_dim_data = all_generated_high_dim_data.reshape(N, 1, 96, 96)
+    # all_labels = np.array(all_labels)  # ラベルをNumPy配列に変換
 
-    # データとラベルを保存
-    np.save(f'./our_dataset/images_sample.npy', all_generated_high_dim_data)
-    np.save(f'./our_dataset/labels_sample.npy', all_labels)
+    # # データとラベルを保存
+    # np.save(f'./our_dataset/images_sample.npy', all_generated_high_dim_data)
+    # np.save(f'./our_dataset/labels_sample.npy', all_labels)

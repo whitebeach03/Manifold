@@ -45,7 +45,8 @@ def main():
     data_type = 'stl10'
     epochs = 200
     # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
-    augmentations = ["Random-Erasing"]
+    augmentations = ["ours"]
+    num_components = [100, 200, 300, 400, 500]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
@@ -58,16 +59,19 @@ def main():
             model = ResNet18_hidden().to(device)
         else:
             model = ResNet18().to(device)
-        model_save_path = f'./logs/{model_type}/{augment}/{data_type}_{epochs}.pth'
-        model.load_state_dict(torch.load(model_save_path))
-        model.eval()
-        top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
-        print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
         
-        pickle_file_path = f'./history/{model_type}/{augment}/stl10_200_test.pickle'
-        with open(pickle_file_path, 'rb') as f:
-            history = pickle.load(f)
-        print("{:.2f}".format(history["acc"]*100), "{:.2f}".format(history["loss"]))
+        for num_component in num_components:
+        
+            model_save_path = f'./logs/{model_type}/{augment}/{num_component}/{data_type}_{epochs}.pth'
+            model.load_state_dict(torch.load(model_save_path))
+            model.eval()
+            top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
+            print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
+            
+            pickle_file_path = f'./history/{model_type}/{augment}/{num_component}/stl10_200_test.pickle'
+            with open(pickle_file_path, 'rb') as f:
+                history = pickle.load(f)
+            print("{:.2f}".format(history["acc"]*100), "{:.2f}".format(history["loss"]))
 
 if __name__ == '__main__':
     main()
