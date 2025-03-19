@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from torch.autograd import Variable
+from sklearn.decomposition import PCA
+from sklearn.neighbors import NearestNeighbors
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -137,24 +140,20 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x):
-        # print("Input iamge: ", x.shape)
+    def forward(self, x, device, aug_ok=True):
         out = F.relu(self.bn1(self.conv1(x)))
-        # print(out.shape)
         out = self.layer1(out)
-        # print("layer #1:", out.shape)
         out = self.layer2(out)
-        # print("layer #2:", out.shape)
         out = self.layer3(out)
-        # print("layer #3:", out.shape)
         out = self.layer4(out)
-        # print("layer #4:", out.shape)
         out = F.avg_pool2d(out, out.size()[2])
-        # print("GAP layer: ", out.shape)
         out = out.view(out.size(0), -1)
-        # print("Flatten layer: ", out.shape)
-        out = self.linear(out)
-        # print("Ouyput layer:", out.shape)
+        if aug_ok:
+            features = out
+            augmented_data = manifold_perturbation(features, device)
+            out = self.linear(augmented_data)
+        else:
+            out = self.linear(out)
         return out
 
 
@@ -179,5 +178,39 @@ def test():
     net = ResNet18()
     y = net(Variable(torch.randn(1,1,96,96)))
     print(y.size())
+    
+# def manifold_perturbation(data, device, k=10, noise_scale=0.1):
+#     if isinstance(data, torch.Tensor):
+#         data_np = data.cpu().detach().numpy()  # PyTorch → NumPy
+#     else:
+#         data_np = data
+#     N, D = data_np.shape
+#     augmented_data = np.copy(data_np)
+#     k = min(k, N-1)
+#     # 最近傍探索
+#     nbrs = NearestNeighbors(n_neighbors=k, algorithm='auto').fit(data_np)
+#     distances, indices = nbrs.kneighbors(data_np)
+#     for i in range(N):
+#         # 近傍点を取得
+#         neighbors = data_np[indices[i]]
+#         # PCAで局所的な主成分を取得
+#         pca = PCA(n_components=min(D, k))
+#         pca.fit(neighbors)
+#         principal_components = pca.components_  # 主成分方向
+#         # 主成分に沿ったランダムノイズを追加
+#         noise = np.random.normal(scale=noise_scale, size=(k,))
+#         perturbation = np.dot(principal_components.T, noise)
+#         # データ点を摂動
+#         augmented_data[i] += perturbation
+#     # クリッピング（0-1の範囲を維持）
+#     augmented_data = np.clip(augmented_data, 0, 1)
+#     return torch.tensor(augmented_data, dtype=torch.float32).to(device)
 
-# test()
+
+def manifold_perturbation(features, device, epsilon=0.05):
+    """
+    微小な摂動を特徴空間に加える関数。
+    """
+    perturbation = torch.randn_like(features, device=device) * epsilon
+    perturbed_features = features + perturbation
+    return perturbed_features

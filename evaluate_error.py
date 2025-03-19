@@ -30,7 +30,7 @@ def evaluate_model(model, dataloader, device, augment):
             if augment == "mixup_hidden":
                 outputs = model(images, labels, mixup_hidden=False)
             else:
-                outputs = model(images)
+                outputs = model(images, device, aug_ok=False)
             _, top1_pred = outputs.topk(1, dim=1)
             _, top3_pred = outputs.topk(3, dim=1)
             top1_correct += (top1_pred.squeeze() == labels).sum().item()
@@ -46,7 +46,7 @@ def main():
     epochs = 200
     # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
     augmentations = ["ours"]
-    num_components = [100, 200, 300, 400, 500]
+    num_components = [500]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
