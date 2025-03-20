@@ -140,7 +140,7 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, device, aug_ok=True):
+    def forward(self, x, labels, device, aug_ok=True):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
@@ -150,7 +150,9 @@ class ResNet(nn.Module):
         out = out.view(out.size(0), -1)
         if aug_ok:
             features = out
-            augmented_data = manifold_perturbation(features, device)
+            # augmented_data = manifold_perturbation(features, device)
+            # augmented_data = local_pca_perturbation(features, device)
+            augmented_data = class_pca_perturbation(features, labels, device)
             out = self.linear(augmented_data)
         else:
             out = self.linear(out)
@@ -214,3 +216,78 @@ def manifold_perturbation(features, device, epsilon=0.05):
     perturbation = torch.randn_like(features, device=device) * epsilon
     perturbed_features = features + perturbation
     return perturbed_features
+
+def local_pca_perturbation(data, device, k=5, noise_scale=0.1):
+    """
+    局所PCAに基づく摂動をデータに適用する関数
+    :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
+    :param k: 近傍数
+    :param noise_scale: 摂動のスケール
+    :return: 摂動後のデータ
+    """
+    data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
+    N, D = data_np.shape
+    
+    # k近傍探索
+    nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
+    _, indices = nbrs.kneighbors(data_np)
+    
+    perturbed_data = np.copy(data_np)
+    
+    for i in range(N):
+        neighbors = data_np[indices[i]]  # 近傍点取得
+        
+        # PCAを実行
+        pca = PCA(n_components=min(D, k))
+        pca.fit(neighbors)
+        principal_components = pca.components_  # 主成分
+        variances = pca.explained_variance_  # 分散（固有値）
+        
+        # 主成分に沿った摂動を加える
+        noise = np.zeros(D)
+        for j in range(len(principal_components)):
+            noise += np.random.randn() * np.sqrt(variances[j]) * principal_components[j]
+        
+        # 摂動をデータに加える
+        perturbed_data[i] += noise_scale * noise
+    
+    return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
+
+def class_pca_perturbation(data, labels, device, noise_scale=0.1):
+    """
+    同じクラスのサンプルを用いた局所PCAに基づく摂動をデータに適用する関数
+    :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
+    :param labels: (N,) 次元のクラスラベルのテンソル
+    :param noise_scale: 摂動のスケール
+    :return: 摂動後のデータ
+    """
+    data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
+    labels_np = labels.cpu().detach().numpy() if isinstance(labels, torch.Tensor) else labels
+    N, D = data_np.shape
+    
+    perturbed_data = np.copy(data_np)
+    unique_labels = np.unique(labels_np)
+    
+    for label in unique_labels:
+        class_indices = np.where(labels_np == label)[0]
+        class_data = data_np[class_indices]
+        
+        if len(class_data) < 2:
+            continue  # 十分なサンプルがない場合はスキップ
+        
+        # PCAを実行
+        pca = PCA(n_components=min(D, len(class_data)))
+        pca.fit(class_data)
+        principal_components = pca.components_  # 主成分
+        variances = pca.explained_variance_  # 分散（固有値）
+        
+        for i in class_indices:
+            # 主成分に沿った摂動を加える
+            noise = np.zeros(D)
+            for j in range(len(principal_components)):
+                noise += np.random.randn() * np.sqrt(variances[j]) * principal_components[j]
+            
+            # 摂動をデータに加える
+            perturbed_data[i] += noise_scale * noise
+    
+    return torch.tensor(perturbed_data, dtype=torch.float32).to(device)

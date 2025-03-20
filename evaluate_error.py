@@ -46,7 +46,7 @@ def main():
     epochs = 200
     # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
     augmentations = ["ours"]
-    num_components = [500]
+    num_components = [400]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])

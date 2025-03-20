@@ -39,7 +39,7 @@ def main():
     augment    = args.augment
     alpha      = args.alpha
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    num_components = 500
+    num_components = 300
 
     # Select Model 
     if augment == "mixup_hidden":
@@ -137,7 +137,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
 
-        preds = model(images, device)
+        preds = model(images, labels, device)
         loss  = criterion(preds, labels)
 
         optimizer.zero_grad()
@@ -158,7 +158,7 @@ def val(model, val_loader, criterion, device):
     with torch.no_grad():
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
-            preds = model(images, device, aug_ok=False)
+            preds = model(images, labels, device, aug_ok=False)
             loss  = criterion(preds, labels)
 
             val_loss += loss.item()
@@ -175,7 +175,7 @@ def test(model, test_loader, criterion, device):
     with torch.no_grad():
         for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
-            preds = model(images, device, aug_ok=False)
+            preds = model(images, labels, device, aug_ok=False)
             loss  = criterion(preds, labels)
 
             test_loss += loss.item()
