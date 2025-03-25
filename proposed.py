@@ -39,7 +39,7 @@ def main():
     augment    = args.augment
     alpha      = args.alpha
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    num_components = 300
+    num_components = 100
 
     # Select Model 
     if augment == "mixup_hidden":
@@ -136,6 +136,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
     train_acc  = 0.0
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
+        images = image_perturbation(images, device)
 
         preds = model(images, labels, device)
         loss  = criterion(preds, labels)
@@ -184,6 +185,19 @@ def test(model, test_loader, criterion, device):
     test_loss /= len(test_loader)
     test_acc  /= len(test_loader)
     return test_loss, test_acc
+
+def image_perturbation(images, device, epsilon=0.05):
+    """
+    微小な摂動を画像空間に加える関数。
+    
+    images: Tensor of shape (B, 1, 96, 96)
+    """
+    # ノイズを加える場合
+    noise = torch.randn_like(images, device=device) * epsilon
+    perturbed_images = images + noise
+    # 画素値を [0, 1] にクリップ（重要）
+    perturbed_images = torch.clamp(perturbed_images, 0.0, 1.0)
+    return perturbed_images
 
 if __name__ == '__main__':
     main()

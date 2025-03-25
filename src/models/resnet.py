@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import random
 from torch.autograd import Variable
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
@@ -152,7 +153,8 @@ class ResNet(nn.Module):
             features = out
             # augmented_data = manifold_perturbation(features, device)
             # augmented_data = local_pca_perturbation(features, device)
-            augmented_data = class_pca_perturbation(features, labels, device)
+            # augmented_data = class_pca_perturbation(features, labels, device)
+            augmented_data = manifold_perturbation_random(features, device)
             out = self.linear(augmented_data)
         else:
             out = self.linear(out)
@@ -216,6 +218,19 @@ def manifold_perturbation(features, device, epsilon=0.05):
     perturbation = torch.randn_like(features, device=device) * epsilon
     perturbed_features = features + perturbation
     return perturbed_features
+
+def manifold_perturbation_random(features, device, epsilon=0.05):
+    """
+    微小な摂動を特徴空間に加える関数。
+    50%の確率で摂動を加える。
+    """
+    if random.random() < 0.9:
+        # ノイズを加える場合
+        perturbation = torch.randn_like(features, device=device) * epsilon
+        return features + perturbation
+    else:
+        # そのまま返す
+        return features
 
 def local_pca_perturbation(data, device, k=5, noise_scale=0.1):
     """
