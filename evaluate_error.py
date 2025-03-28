@@ -30,7 +30,7 @@ def evaluate_model(model, dataloader, device, augment):
             if augment == "mixup_hidden":
                 outputs = model(images, labels, mixup_hidden=False)
             else:
-                outputs = model(images, labels, device, aug_ok=False)
+                outputs = model(images, labels, device, augment, aug_ok=False)
             _, top1_pred = outputs.topk(1, dim=1)
             _, top3_pred = outputs.topk(3, dim=1)
             top1_correct += (top1_pred.squeeze() == labels).sum().item()
@@ -43,15 +43,14 @@ def evaluate_model(model, dataloader, device, augment):
 def main():
     model_type = 'resnet18'
     data_type = 'stl10'
-    epochs = 200
+    epochs = 20
     # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
-    augmentations = ["ours"]
-    num_components = [100]
+    augmentations = ["perturb", "pca"]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-    test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
-    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+    test_dataset = torchvision.datasets.STL10(root='./data', split='train',  transform=transform, download=True)
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
     
     for augment in augmentations:
         print(f" Test {augment} method now.")
@@ -60,18 +59,16 @@ def main():
         else:
             model = ResNet18().to(device)
         
-        for num_component in num_components:
+        model_save_path = f'./logs/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}.pth'
+        model.load_state_dict(torch.load(model_save_path, weights_only=True))
+        model.eval()
+        top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
+        print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
         
-            model_save_path = f'./logs/{model_type}/{augment}/{num_component}/{data_type}_{epochs}.pth'
-            model.load_state_dict(torch.load(model_save_path))
-            model.eval()
-            top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
-            print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
-            
-            pickle_file_path = f'./history/{model_type}/{augment}/{num_component}/stl10_200_test.pickle'
-            with open(pickle_file_path, 'rb') as f:
-                history = pickle.load(f)
-            print("{:.2f}".format(history["acc"]*100), "{:.2f}".format(history["loss"]))
+        pickle_file_path = f'./history/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}_test.pickle'
+        with open(pickle_file_path, 'rb') as f:
+            history = pickle.load(f)
+        print("{:.2f}".format(history["acc"]*100), "{:.2f}".format(history["loss"]))
 
 if __name__ == '__main__':
     main()

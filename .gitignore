@@ -6,3 +6,4 @@ umap_results.npy
 mnist.pkl
 all_generated_high_dim_data.npy
 all_labels.npy
+data_split_indices.pkl

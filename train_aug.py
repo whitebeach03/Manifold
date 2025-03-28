@@ -14,10 +14,11 @@ from tqdm import tqdm
 from torchvision.datasets import STL10
 from torch.utils.data import DataLoader, random_split
 from src.models.resnet import ResNet18
+from tuning import fine_tune
 
 def main():
-    epochs = 200
-    batch_size = 128
+    epochs = 150
+    batch_size = 64
     data_type = "stl10"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     base_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
@@ -25,51 +26,53 @@ def main():
     # データ拡張のリスト
     augmentations = {
         "Original": transforms.Compose([base_transform]),
-        "Flipping": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
-        ]),
-        "Cropping": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomResizedCrop(size=96, scale=(0.7, 1.0))], p=0.5)
-        ]),
-        "Rotation": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomRotation(degrees=30)], p=0.5)
-        ]),
-        "Translation": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.RandomAffine(degrees=0, translate=(0.2, 0.2))], p=0.5)
-        ]),
-        "Noisy": transforms.Compose([
-            base_transform,
-            transforms.RandomApply([transforms.Lambda(lambda x: x + 0.1 * torch.randn_like(x))], p=0.5)
-        ]),
-        "Blurring": transforms.Compose([
-            base_transform, 
-            transforms.RandomApply([transforms.GaussianBlur(kernel_size=5)], p=0.5)
-        ]),
-        "Random-Erasing": transforms.Compose([
-            base_transform, 
-            transforms.RandomApply([transforms.RandomErasing(p=1.0, scale=(0.1, 0.3), ratio=(0.3, 3.3))], p=0.5)
-        ])
+        # "Flipping": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
+        # ]),
+        # "Cropping": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.RandomResizedCrop(size=96, scale=(0.7, 1.0))], p=0.5)
+        # ]),
+        # "Rotation": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.RandomRotation(degrees=30)], p=0.5)
+        # ]),
+        # "Translation": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.RandomAffine(degrees=0, translate=(0.2, 0.2))], p=0.5)
+        # ]),
+        # "Noisy": transforms.Compose([
+        #     base_transform,
+        #     transforms.RandomApply([transforms.Lambda(lambda x: x + 0.1 * torch.randn_like(x))], p=0.5)
+        # ]),
+        # "Blurring": transforms.Compose([
+        #     base_transform, 
+        #     transforms.RandomApply([transforms.GaussianBlur(kernel_size=5)], p=0.5)
+        # ]),
+        # "Random-Erasing": transforms.Compose([
+        #     base_transform, 
+        #     transforms.RandomApply([transforms.RandomErasing(p=1.0, scale=(0.1, 0.3), ratio=(0.3, 3.3))], p=0.5)
+        # ])
     }
     
     # テストデータ / 検証データ（共通の変換を適用）
-    test_dataset = STL10(root="./data", split="test", download=True, transform=base_transform)
-    n_samples = len(test_dataset)
-    n_val     = int(n_samples * 0.125) # validation data: 1,000 pattern
-    n_test    = n_samples - n_val      # test data:       7,000 pattern
-    test_dataset, val_dataset = random_split(test_dataset, [n_test, n_val])
-    val_loader   = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_loader  = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=2)
+    train_dataset = STL10(root="./data", split="test", download=True, transform=base_transform)
+    # n_samples = len(train_dataset)
+    # n_val     = int(n_samples * 0.375) # validation data: 3,000 pattern
+    # n_train   = n_samples - n_val     # train data:       5,000 pattern
+    # train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
+    # val_loader   = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    # train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
+    
+    train_loader, val_loader = create_loaders(train_dataset, split_path='data_split_indices.pkl', batch_size=batch_size)
     
     for name, transform in augmentations.items():
         print(f"\n==> Training with {name} data augmentation...")
         
         # 学習データ
-        train_dataset = STL10(root="./data", split="train", download=True, transform=transform)
-        train_loader  = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+        test_dataset = STL10(root="./data", split="train", download=True, transform=transform)
+        test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
         
         model = ResNet18().to(device)
         criterion = nn.CrossEntropyLoss()
@@ -82,8 +85,8 @@ def main():
         
         # Train 
         for epoch in range(epochs):
-            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
-            val_loss, val_acc     = val(model, val_loader, criterion, device)
+            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, name, aug_ok=False)
+            val_loss, val_acc     = val(model, val_loader, criterion, device, name, aug_ok=False)
 
             if score <= val_acc:
                 print('Save model parameters...')
@@ -103,22 +106,24 @@ def main():
         # Test 
         model.load_state_dict(torch.load(model_save_path))
         model.eval()
-        test_loss, test_acc = test(model, test_loader, criterion, device)
+        test_loss, test_acc = test(model, test_loader, criterion, device, name, aug_ok=False)
         print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')
 
         test_history = {'acc': test_acc, 'loss': test_loss}
         with open(f'./history/resnet18/{name}/{data_type}_{epochs}_test.pickle', 'wb') as f:
             pickle.dump(test_history, f)
         
+        # fine_tune(model, train_loader, val_loader, test_loader, model_type="resnet18", augment="perturb", device=device)
+        
 
-def train(model, train_loader, criterion, optimizer, device):
+def train(model, train_loader, criterion, optimizer, device, augment, aug_ok):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
 
-        preds = model(images)
+        preds = model(images, labels, device, augment, aug_ok)
         loss  = criterion(preds, labels)
 
         optimizer.zero_grad()
@@ -132,7 +137,7 @@ def train(model, train_loader, criterion, optimizer, device):
     train_acc  /= len(train_loader)
     return train_loss, train_acc
 
-def val(model, val_loader, criterion, device):
+def val(model, val_loader, criterion, device, augment, aug_ok):
     model.eval()
     val_loss = 0.0
     val_acc  = 0.0
@@ -140,7 +145,7 @@ def val(model, val_loader, criterion, device):
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
             
-            preds = model(images)
+            preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
 
             val_loss += loss.item()
@@ -150,7 +155,7 @@ def val(model, val_loader, criterion, device):
     val_acc  /= len(val_loader)
     return val_loss, val_acc
 
-def test(model, test_loader, criterion, device):
+def test(model, test_loader, criterion, device, augment, aug_ok):
     model.eval()
     test_loss = 0.0
     test_acc  = 0.0
@@ -158,7 +163,7 @@ def test(model, test_loader, criterion, device):
         for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
             
-            preds = model(images)
+            preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
 
             test_loss += loss.item()

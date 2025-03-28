@@ -141,7 +141,7 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, aug_ok=True):
+    def forward(self, x, labels, device, augment, aug_ok=True):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
@@ -151,10 +151,13 @@ class ResNet(nn.Module):
         out = out.view(out.size(0), -1)
         if aug_ok:
             features = out
-            # augmented_data = manifold_perturbation(features, device)
-            # augmented_data = local_pca_perturbation(features, device)
-            # augmented_data = class_pca_perturbation(features, labels, device)
-            augmented_data = manifold_perturbation_random(features, device)
+            if augment == "normal":
+                augmented_data = features
+            elif augment == "perturb":
+                augmented_data = manifold_perturbation(features, device)
+            elif augment == "pca":
+                augmented_data = local_pca_perturbation(features, device)
+
             out = self.linear(augmented_data)
         else:
             out = self.linear(out)
@@ -219,12 +222,12 @@ def manifold_perturbation(features, device, epsilon=0.05):
     perturbed_features = features + perturbation
     return perturbed_features
 
-def manifold_perturbation_random(features, device, epsilon=0.05):
+def manifold_perturbation_random(features, device, random_rate, epsilon=0.05):
     """
     微小な摂動を特徴空間に加える関数。
     50%の確率で摂動を加える。
     """
-    if random.random() < 0.9:
+    if random.random() < random_rate:
         # ノイズを加える場合
         perturbation = torch.randn_like(features, device=device) * epsilon
         return features + perturbation
@@ -232,7 +235,7 @@ def manifold_perturbation_random(features, device, epsilon=0.05):
         # そのまま返す
         return features
 
-def local_pca_perturbation(data, device, k=5, noise_scale=0.1):
+def local_pca_perturbation(data, device, k=10, noise_scale=0.05):
     """
     局所PCAに基づく摂動をデータに適用する関数
     :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
@@ -242,6 +245,8 @@ def local_pca_perturbation(data, device, k=5, noise_scale=0.1):
     """
     data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
     N, D = data_np.shape
+    if N < k:
+        k = N
     
     # k近傍探索
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
