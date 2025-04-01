@@ -21,17 +21,19 @@ from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
 
 def main():
-    epochs     = 20
-    batch_size = 64
+    epochs     = 100
     data_type  = "stl10"
     model_type = "resnet18"
-    augment    = "perturb"
+    augment    = "pca"
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     # Select Model
     if model_type == 'resnet18':
         model = ResNet18().to(device)
-        checkpoint_path = "./logs/resnet18/Original/stl10_200.pth"
+        if data_type == "cifar10":
+            checkpoint_path = "./logs/resnet18/Original/cifar10_200.pth"
+        elif data_type == "stl10":
+            checkpoint_path = "./logs/resnet18/Original/stl10_150.pth"
         model.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=True))
     elif model_type == 'resnet34':
         model = ResNet34().to(device)
@@ -54,10 +56,12 @@ def main():
         train_dataset = torchvision.datasets.MNIST(root='./data', train=True,  transform=transform, download=True)
         test_dataset  = torchvision.datasets.MNIST(root='./data', train=False, transform=transform, download=True)
     elif data_type == 'cifar10':
+        batch_size    = 128
         transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,  transform=transform, download=True)
         test_dataset  = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
     elif data_type == 'stl10':
+        batch_size    = 64
         transform     = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
         train_dataset = torchvision.datasets.STL10(root='./data', split='test', transform=transform, download=True)
         test_dataset  = torchvision.datasets.STL10(root='./data', split='train',  transform=transform, download=True)

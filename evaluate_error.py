@@ -43,14 +43,21 @@ def evaluate_model(model, dataloader, device, augment):
 def main():
     model_type = 'resnet18'
     data_type = 'stl10'
-    epochs = 20
+    epochs = 100
     # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
     augmentations = ["perturb", "pca"]
+    # augmentations = ["Original"]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-    test_dataset = torchvision.datasets.STL10(root='./data', split='train',  transform=transform, download=True)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+    
+    if data_type == "stl10":
+        transform    = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+        test_dataset = torchvision.datasets.STL10(root='./data', split='train',  transform=transform, download=True)
+        test_loader  = DataLoader(test_dataset, batch_size=64, shuffle=False)
+    elif data_type == "cifar10":
+        transform    = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
+        test_loader  = DataLoader(dataset=test_dataset, batch_size=128, shuffle=False)
     
     for augment in augmentations:
         print(f" Test {augment} method now.")
@@ -60,15 +67,17 @@ def main():
             model = ResNet18().to(device)
         
         model_save_path = f'./logs/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}.pth'
+        # model_save_path = f"logs/resnet18/Original/{data_type}_{epochs}.pth"
         model.load_state_dict(torch.load(model_save_path, weights_only=True))
         model.eval()
         top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
         print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
         
         pickle_file_path = f'./history/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}_test.pickle'
+        # pickle_file_path = f"history/resnet18/Original/{data_type}_{epochs}_test.pickle"
         with open(pickle_file_path, 'rb') as f:
             history = pickle.load(f)
-        print("{:.2f}".format(history["acc"]*100), "{:.2f}".format(history["loss"]))
+        print("{:.2f}".format(history["acc"]*100), "{:.3f}".format(history["loss"]))
 
 if __name__ == '__main__':
     main()

@@ -11,21 +11,26 @@ import matplotlib.pyplot as plt
 from src.utils import *
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
-from torchvision.datasets import STL10
+from torchvision.datasets import STL10, CIFAR10
 from torch.utils.data import DataLoader, random_split
 from src.models.resnet import ResNet18
 from tuning import fine_tune
 
 def main():
-    epochs = 150
-    batch_size = 64
-    data_type = "stl10"
+    epochs = 200
+    data_type = "cifar10"
+    if data_type == "stl10":
+        batch_size = 64
+    elif data_type == "cifar10":
+        batch_size = 128
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    base_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+    # base_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+    base_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
     
     # データ拡張のリスト
     augmentations = {
-        "Original": transforms.Compose([base_transform]),
+        # "Original": transforms.Compose([base_transform]),
+        "Original": transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         # "Flipping": transforms.Compose([
         #     base_transform,
         #     transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
@@ -57,7 +62,10 @@ def main():
     }
     
     # テストデータ / 検証データ（共通の変換を適用）
-    train_dataset = STL10(root="./data", split="test", download=True, transform=base_transform)
+    if data_type == "stl10":
+        train_dataset = STL10(root="./data", split="test", download=True, transform=base_transform)
+    elif data_type == "cifar10":
+        train_dataset = CIFAR10(root='./data', train=True,  transform=base_transform, download=True)
     # n_samples = len(train_dataset)
     # n_val     = int(n_samples * 0.375) # validation data: 3,000 pattern
     # n_train   = n_samples - n_val     # train data:       5,000 pattern
@@ -65,14 +73,18 @@ def main():
     # val_loader   = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     # train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
     
-    train_loader, val_loader = create_loaders(train_dataset, split_path='data_split_indices.pkl', batch_size=batch_size)
+    train_loader, val_loader = create_loaders(train_dataset, split_path='data_split_indices_cifar.pkl', batch_size=batch_size)
     
     for name, transform in augmentations.items():
         print(f"\n==> Training with {name} data augmentation...")
         
         # 学習データ
-        test_dataset = STL10(root="./data", split="train", download=True, transform=transform)
-        test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+        if data_type == "stl10":
+            test_dataset = STL10(root="./data", split="train", download=True, transform=transform)
+            test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+        elif data_type == "cifar10":
+            test_dataset = CIFAR10(root='./data', train=False, transform=transform, download=True)
+            test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
         
         model = ResNet18().to(device)
         criterion = nn.CrossEntropyLoss()
@@ -104,7 +116,7 @@ def main():
             pickle.dump(history, f)
             
         # Test 
-        model.load_state_dict(torch.load(model_save_path))
+        model.load_state_dict(torch.load(model_save_path, weights_only=True))
         model.eval()
         test_loss, test_acc = test(model, test_loader, criterion, device, name, aug_ok=False)
         print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')

@@ -7,3 +7,4 @@ mnist.pkl
 all_generated_high_dim_data.npy
 all_labels.npy
 data_split_indices.pkl
+data_split_indices_cifar.pkl
