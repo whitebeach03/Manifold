@@ -22,11 +22,11 @@ from sklearn.decomposition import PCA
 def main():
     model_type = 'resnet18'
     data_type = 'cifar10'
-    epochs = 200
-    tuning = False
+    epochs = 100
+    tuning = True
     # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
     if tuning:
-        augmentations = ["perturb", "pca"]
+        augmentations = ["perturb", "pca", "pca_k_5", "pca_k_15"]
     else:
         augmentations = ["Original", "Mixup"]
     

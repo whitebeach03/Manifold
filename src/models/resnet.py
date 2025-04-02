@@ -141,7 +141,7 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, aug_ok=True):
+    def forward(self, x, labels, device, augment, k=10, aug_ok=False):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
@@ -156,7 +156,9 @@ class ResNet(nn.Module):
             elif augment == "perturb":
                 augmented_data = manifold_perturbation(features, device)
             elif augment == "pca":
-                augmented_data = local_pca_perturbation(features, device)
+                augmented_data = local_pca_perturbation(features, device, k)
+            else:
+                augmented_data = local_pca_perturbation(features, device, k)
 
             out = self.linear(augmented_data)
         else:
@@ -282,7 +284,7 @@ def manifold_perturbation_random(features, device, random_rate, epsilon=0.05):
     
 #     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
 
-def local_pca_perturbation(data, device, k=10, alpha=1.0):
+def local_pca_perturbation(data, device, k=5, alpha=1.0):
     """
     局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
     :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
@@ -291,6 +293,7 @@ def local_pca_perturbation(data, device, k=10, alpha=1.0):
     :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
     :return: 摂動後のテンソル（同shape）
     """
+    use_variance_scaling = False
     data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
     N, D = data_np.shape
     if N < k:
@@ -311,7 +314,10 @@ def local_pca_perturbation(data, device, k=10, alpha=1.0):
         # ノイズベクトル（各主成分方向に沿った合成）
         noise = np.zeros(D)
         for j in range(len(components)):
-            noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
+            if use_variance_scaling:
+                noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
+            else:
+                noise += np.random.randn() * components[j]
 
         # ノイズの方向はそのまま、長さをスケールする
         if np.linalg.norm(noise) > 0:
