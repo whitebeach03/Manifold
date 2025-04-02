@@ -125,7 +125,7 @@ class ResNet(nn.Module):
         self.in_planes = 64
 
         # self.conv1 = conv3x3(3,64)
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
@@ -163,6 +163,15 @@ class ResNet(nn.Module):
             out = self.linear(out)
         return out
 
+    def extract_features(self, x):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = F.avg_pool2d(out, out.size()[2])
+        out = out.view(out.size(0), -1)
+        return out  # ← 特徴ベクトル
 
 
 def ResNet18():

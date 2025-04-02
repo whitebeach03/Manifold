@@ -23,11 +23,11 @@ i = 0
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs",     type=int, default=200)
+    parser.add_argument("--epochs",     type=int, default=150)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--data_type",  type=str, default="stl10",    choices=["mnist", "cifar10", "stl10"])
     parser.add_argument("--model_type", type=str, default="resnet18", choices=["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"])
-    parser.add_argument("--augment",    type=str, default="ours",   choices=["normal", "mixup", "mixup_hidden", "ours"])
+    parser.add_argument("--augment",    type=str, default="mixup",   choices=["normal", "mixup", "mixup_hidden", "ours"])
     parser.add_argument("--alpha",      type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
     args = parser.parse_args() 
 
@@ -73,25 +73,24 @@ def main():
         transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,  transform=transform, download=True)
         test_dataset  = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
-    # elif data_type == 'stl10':
-    #     transform     = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-    #     train_dataset = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
-    #     # train_dataset = limit_dataset(train_dataset) # 訓練データセットの制限
-    #     test_dataset  = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
-    elif augment == 'ours':
-        transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-        train_dataset1 = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
-        train_dataset1 = STL10TensorWrapper(train_dataset1)# STL10 のデータセットをラップしてラベルを Tensor に統一
-        # images = np.load('./our_dataset/images_umap.npy')  # Shape: (5000, 1, 96, 96)
-        # labels = np.load('./our_dataset/labels_umap.npy')  # Shape: (5000,)
-        images = np.load(f'./our_dataset/images_sample_{num_components}.npy')
-        labels = np.load(f'./our_dataset/labels_sample_{num_components}.npy')
-        data_tensor = torch.tensor(images, dtype=torch.float32)  # Float型のTensor
-        labels_tensor = torch.tensor(labels, dtype=torch.long)  # Long型（整数）のTensor
-        train_dataset2 = TensorDataset(data_tensor, labels_tensor)
-        train_dataset = ConcatDataset([train_dataset1, train_dataset2])
-        test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
-        print(len(train_dataset), len(test_dataset))
+    elif data_type == 'stl10':
+        transform     = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+        train_dataset = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
+        test_dataset  = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
+    # elif augment == 'ours':
+    #     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+    #     train_dataset1 = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
+    #     train_dataset1 = STL10TensorWrapper(train_dataset1)# STL10 のデータセットをラップしてラベルを Tensor に統一
+    #     # images = np.load('./our_dataset/images_umap.npy')  # Shape: (5000, 1, 96, 96)
+    #     # labels = np.load('./our_dataset/labels_umap.npy')  # Shape: (5000,)
+    #     images = np.load(f'./our_dataset/images_sample_{num_components}.npy')
+    #     labels = np.load(f'./our_dataset/labels_sample_{num_components}.npy')
+    #     data_tensor = torch.tensor(images, dtype=torch.float32)  # Float型のTensor
+    #     labels_tensor = torch.tensor(labels, dtype=torch.long)  # Long型（整数）のTensor
+    #     train_dataset2 = TensorDataset(data_tensor, labels_tensor)
+    #     train_dataset = ConcatDataset([train_dataset1, train_dataset2])
+    #     test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
+    #     print(len(train_dataset), len(test_dataset))
 
     # n_samples = len(train_dataset)
     # n_train   = int(n_samples * 0.8)

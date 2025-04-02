@@ -14,23 +14,33 @@ from tqdm import tqdm
 from torchvision.datasets import STL10, CIFAR10
 from torch.utils.data import DataLoader, random_split
 from src.models.resnet import ResNet18
-from tuning import fine_tune
 
 def main():
-    epochs = 200
     data_type = "cifar10"
+    
     if data_type == "stl10":
+        epochs = 150
         batch_size = 64
+        base_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+        train_dataset = STL10(root="./data", split="test", download=True, transform=base_transform)
+        test_dataset = STL10(root="./data", split="train", download=True, transform=base_transform)
+        train_loader, val_loader = create_loaders(train_dataset, split_path='data_split_indices.pkl', batch_size=batch_size)
+        test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
     elif data_type == "cifar10":
+        epochs = 200
         batch_size = 128
+        base_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        train_dataset = CIFAR10(root='./data', train=True,  transform=base_transform, download=True)
+        test_dataset = CIFAR10(root='./data', train=False, transform=base_transform, download=True)
+        train_loader, val_loader = create_loaders(train_dataset, split_path='data_split_indices_cifar.pkl', batch_size=batch_size)
+        test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+        
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # base_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-    base_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
     
     # データ拡張のリスト
     augmentations = {
+        "Mixup": transforms.Compose([base_transform]),
         # "Original": transforms.Compose([base_transform]),
-        "Original": transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         # "Flipping": transforms.Compose([
         #     base_transform,
         #     transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
@@ -61,30 +71,8 @@ def main():
         # ])
     }
     
-    # テストデータ / 検証データ（共通の変換を適用）
-    if data_type == "stl10":
-        train_dataset = STL10(root="./data", split="test", download=True, transform=base_transform)
-    elif data_type == "cifar10":
-        train_dataset = CIFAR10(root='./data', train=True,  transform=base_transform, download=True)
-    # n_samples = len(train_dataset)
-    # n_val     = int(n_samples * 0.375) # validation data: 3,000 pattern
-    # n_train   = n_samples - n_val     # train data:       5,000 pattern
-    # train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
-    # val_loader   = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    # train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
-    
-    train_loader, val_loader = create_loaders(train_dataset, split_path='data_split_indices_cifar.pkl', batch_size=batch_size)
-    
     for name, transform in augmentations.items():
         print(f"\n==> Training with {name} data augmentation...")
-        
-        # 学習データ
-        if data_type == "stl10":
-            test_dataset = STL10(root="./data", split="train", download=True, transform=transform)
-            test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-        elif data_type == "cifar10":
-            test_dataset = CIFAR10(root='./data', train=False, transform=transform, download=True)
-            test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
         
         model = ResNet18().to(device)
         criterion = nn.CrossEntropyLoss()
@@ -125,8 +113,6 @@ def main():
         with open(f'./history/resnet18/{name}/{data_type}_{epochs}_test.pickle', 'wb') as f:
             pickle.dump(test_history, f)
         
-        # fine_tune(model, train_loader, val_loader, test_loader, model_type="resnet18", augment="perturb", device=device)
-        
 
 def train(model, train_loader, criterion, optimizer, device, augment, aug_ok):
     model.train()
@@ -135,15 +121,23 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok):
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
 
-        preds = model(images, labels, device, augment, aug_ok)
-        loss  = criterion(preds, labels)
+        if augment == "Mixup":
+            images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        else:  
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        train_acc  += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
+        if augment == "Mixup":
+            train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
+        else:
+            train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
         
     train_loss /= len(train_loader)
     train_acc  /= len(train_loader)
@@ -184,6 +178,24 @@ def test(model, test_loader, criterion, device, augment, aug_ok):
     test_loss /= len(test_loader)
     test_acc  /= len(test_loader)
     return test_loss, test_acc
+
+def mixup_data(x, y, alpha=1.0, use_cuda=True):
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+    batch_size = x.size()[0]
+    if use_cuda:
+        index = torch.randperm(batch_size).cuda()
+    else:
+        index = torch.randperm(batch_size)
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
+
+def mixup_criterion(criterion, pred, y_a, y_b, lam):
+    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
 
 if __name__ == "__main__":
     main()

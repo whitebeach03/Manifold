@@ -19,6 +19,51 @@ from src.utils import *
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 
+def main():
+    model_type = 'resnet18'
+    data_type = 'cifar10'
+    epochs = 200
+    tuning = False
+    # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
+    if tuning:
+        augmentations = ["perturb", "pca"]
+    else:
+        augmentations = ["Original", "Mixup"]
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    if data_type == "stl10":
+        transform    = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+        test_dataset = torchvision.datasets.STL10(root='./data', split='train',  transform=transform, download=True)
+        test_loader  = DataLoader(test_dataset, batch_size=64, shuffle=False)
+    elif data_type == "cifar10":
+        transform    = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
+        test_loader  = DataLoader(dataset=test_dataset, batch_size=128, shuffle=False)
+    
+    for augment in augmentations:
+        if tuning:
+            model_save_path  = f'./logs/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}.pth'
+            pickle_file_path = f'./history/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}_test.pickle'
+        else:
+            model_save_path  = f"logs/resnet18/{augment}/{data_type}_{epochs}.pth"
+            pickle_file_path = f"history/resnet18/{augment}/{data_type}_{epochs}_test.pickle"
+        
+        print(f"=====>Test {augment} method now.=====>")
+        if augment == "mixup_hidden":
+            model = ResNet18_hidden().to(device)
+        else:
+            model = ResNet18().to(device)
+        
+        # model.load_state_dict(torch.load(model_save_path, weights_only=True))
+        # model.eval()
+        # top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
+        # print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
+        
+        with open(pickle_file_path, 'rb') as f:
+            history = pickle.load(f)
+        print("Test Accuracy: {:.2f}%".format(history["acc"]*100), "|", "Test Loss: {:.3f}".format(history["loss"]))
+
 def evaluate_model(model, dataloader, device, augment):
     model.eval()
     top1_correct = 0
@@ -39,45 +84,6 @@ def evaluate_model(model, dataloader, device, augment):
     top1_error = 1 - (top1_correct / total)
     top3_error = 1 - (top3_correct / total)
     return top1_error, top3_error
-
-def main():
-    model_type = 'resnet18'
-    data_type = 'stl10'
-    epochs = 100
-    # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
-    augmentations = ["perturb", "pca"]
-    # augmentations = ["Original"]
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    if data_type == "stl10":
-        transform    = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-        test_dataset = torchvision.datasets.STL10(root='./data', split='train',  transform=transform, download=True)
-        test_loader  = DataLoader(test_dataset, batch_size=64, shuffle=False)
-    elif data_type == "cifar10":
-        transform    = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-        test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
-        test_loader  = DataLoader(dataset=test_dataset, batch_size=128, shuffle=False)
-    
-    for augment in augmentations:
-        print(f" Test {augment} method now.")
-        if augment == "mixup_hidden":
-            model = ResNet18_hidden().to(device)
-        else:
-            model = ResNet18().to(device)
-        
-        model_save_path = f'./logs/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}.pth'
-        # model_save_path = f"logs/resnet18/Original/{data_type}_{epochs}.pth"
-        model.load_state_dict(torch.load(model_save_path, weights_only=True))
-        model.eval()
-        top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
-        print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
-        
-        pickle_file_path = f'./history/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}_test.pickle'
-        # pickle_file_path = f"history/resnet18/Original/{data_type}_{epochs}_test.pickle"
-        with open(pickle_file_path, 'rb') as f:
-            history = pickle.load(f)
-        print("{:.2f}".format(history["acc"]*100), "{:.3f}".format(history["loss"]))
 
 if __name__ == '__main__':
     main()
