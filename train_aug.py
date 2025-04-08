@@ -44,8 +44,8 @@ def main():
     
     # データ拡張のリスト
     augmentations = {
-        # "Mixup": transforms.Compose([base_transform]),
-        "Original": transforms.Compose([base_transform]),
+        "Mixup": transforms.Compose([base_transform]),
+        # "Original": transforms.Compose([base_transform]),
         # "Flipping": transforms.Compose([
         #     base_transform,
         #     transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
