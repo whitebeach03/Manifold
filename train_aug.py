@@ -27,20 +27,25 @@ def main():
         train_loader, val_loader = create_loaders(train_dataset, split_path='data_split_indices.pkl', batch_size=batch_size)
         test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
     elif data_type == "cifar10":
+        N = 12500
+        N_train = int(N * 0.8)
+        N_train_per = int(N / 10)
+        # 1000=1250(batch_size=32), 5000=6250(batch_size=64), 10000=12500(batch_size=128)
         epochs = 200
         batch_size = 128
         base_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         train_dataset = CIFAR10(root='./data', train=True,  transform=base_transform, download=True)
+        train_dataset = create_balanced_subset(train_dataset, num_classes=10, samples_per_class=N_train_per)
         test_dataset = CIFAR10(root='./data', train=False, transform=base_transform, download=True)
-        train_loader, val_loader = create_loaders(train_dataset, split_path='data_split_indices_cifar.pkl', batch_size=batch_size)
+        train_loader, val_loader = create_loaders(train_dataset, split_path=f'data_split_indices_cifar_{N_train}.pkl', batch_size=batch_size)
         test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
         
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # データ拡張のリスト
     augmentations = {
-        "Mixup": transforms.Compose([base_transform]),
-        # "Original": transforms.Compose([base_transform]),
+        # "Mixup": transforms.Compose([base_transform]),
+        "Original": transforms.Compose([base_transform]),
         # "Flipping": transforms.Compose([
         #     base_transform,
         #     transforms.RandomApply([transforms.RandomHorizontalFlip(p=1.0)], p=0.5)
@@ -91,7 +96,7 @@ def main():
             if score <= val_acc:
                 print('Save model parameters...')
                 score = val_acc
-                model_save_path = f'./logs/resnet18/{name}/{data_type}_{epochs}.pth'
+                model_save_path = f'./logs/resnet18/{name}/{data_type}_{epochs}_{N_train}.pth'
                 torch.save(model.state_dict(), model_save_path)
 
             history['loss'].append(train_loss)
@@ -100,7 +105,7 @@ def main():
             history['val_accuracy'].append(val_acc)
             print(f'| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |')
 
-        with open(f'./history/resnet18/{name}/{data_type}_{epochs}.pickle', 'wb') as f:
+        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_{N_train}.pickle', 'wb') as f:
             pickle.dump(history, f)
             
         # Test 
@@ -110,7 +115,7 @@ def main():
         print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')
 
         test_history = {'acc': test_acc, 'loss': test_loss}
-        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_test.pickle', 'wb') as f:
+        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_{N_train}_test.pickle', 'wb') as f:
             pickle.dump(test_history, f)
         
 

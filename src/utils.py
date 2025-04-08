@@ -7,6 +7,17 @@ from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
 from torch.utils.data import random_split, Subset, DataLoader
 
+def create_balanced_subset(dataset, num_classes=10, samples_per_class=100):
+    from collections import defaultdict
+    class_indices = defaultdict(list)
+    for idx, (_, label) in enumerate(dataset):
+        class_indices[label].append(idx)
+    subset_indices = []
+    for label in range(num_classes):
+        subset_indices.extend(class_indices[label][:samples_per_class])
+    return Subset(dataset, subset_indices)
+
+
 def save_split_indices(dataset, val_ratio, split_path="data_split_indices.pkl", seed=42):
     """訓練・検証データの分割インデックスを生成・保存する（初回のみ使用）"""
     n_samples = len(dataset)
@@ -31,7 +42,7 @@ def load_split_datasets(dataset, split_path="data_split_indices.pkl"):
     return train_dataset, val_dataset
 
 
-def create_loaders(dataset, split_path="data_split_indices.pkl", batch_size=128, num_workers=2, save_if_missing=True, val_ratio=0.375, seed=42):
+def create_loaders(dataset, split_path="data_split_indices.pkl", batch_size=128, num_workers=2, save_if_missing=True, val_ratio=0.2, seed=42):
     """データセットから train/val ローダーを作成。インデックスが無ければ保存。"""
     import os
     if not os.path.exists(split_path):

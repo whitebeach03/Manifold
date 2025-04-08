@@ -196,34 +196,6 @@ def test():
     net = ResNet18()
     y = net(Variable(torch.randn(1,1,96,96)))
     print(y.size())
-    
-# def manifold_perturbation(data, device, k=10, noise_scale=0.1):
-#     if isinstance(data, torch.Tensor):
-#         data_np = data.cpu().detach().numpy()  # PyTorch → NumPy
-#     else:
-#         data_np = data
-#     N, D = data_np.shape
-#     augmented_data = np.copy(data_np)
-#     k = min(k, N-1)
-#     # 最近傍探索
-#     nbrs = NearestNeighbors(n_neighbors=k, algorithm='auto').fit(data_np)
-#     distances, indices = nbrs.kneighbors(data_np)
-#     for i in range(N):
-#         # 近傍点を取得
-#         neighbors = data_np[indices[i]]
-#         # PCAで局所的な主成分を取得
-#         pca = PCA(n_components=min(D, k))
-#         pca.fit(neighbors)
-#         principal_components = pca.components_  # 主成分方向
-#         # 主成分に沿ったランダムノイズを追加
-#         noise = np.random.normal(scale=noise_scale, size=(k,))
-#         perturbation = np.dot(principal_components.T, noise)
-#         # データ点を摂動
-#         augmented_data[i] += perturbation
-#     # クリッピング（0-1の範囲を維持）
-#     augmented_data = np.clip(augmented_data, 0, 1)
-#     return torch.tensor(augmented_data, dtype=torch.float32).to(device)
-
 
 def manifold_perturbation(features, device, epsilon=0.05):
     """
@@ -284,7 +256,7 @@ def manifold_perturbation_random(features, device, random_rate, epsilon=0.05):
     
 #     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
 
-def local_pca_perturbation(data, device, k=5, alpha=1.0):
+def local_pca_perturbation(data, device, k=10, alpha=1.0):
     """
     局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
     :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
@@ -293,7 +265,7 @@ def local_pca_perturbation(data, device, k=5, alpha=1.0):
     :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
     :return: 摂動後のテンソル（同shape）
     """
-    use_variance_scaling = False
+    use_variance_scaling = True
     data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
     N, D = data_np.shape
     if N < k:

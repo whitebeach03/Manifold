@@ -22,13 +22,15 @@ from sklearn.decomposition import PCA
 def main():
     model_type = 'resnet18'
     data_type = 'cifar10'
-    epochs = 100
     tuning = True
     # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
     if tuning:
-        augmentations = ["perturb", "pca", "pca_k_5", "pca_k_15"]
+        epochs = 100
+        augmentations = ["perturb", "pca"]
     else:
-        augmentations = ["Original", "Mixup"]
+        epochs = 200
+        augmentations = ["Original"]
+        N = [1000, 5000, 10000]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -42,6 +44,7 @@ def main():
         test_loader  = DataLoader(dataset=test_dataset, batch_size=128, shuffle=False)
     
     for augment in augmentations:
+        # for N_train in N:
         if tuning:
             model_save_path  = f'./logs/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}.pth'
             pickle_file_path = f'./history/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}_test.pickle'
