@@ -25,9 +25,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs",     type=int, default=200)
     parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--data_type",  type=str, default="stl10",    choices=["mnist", "cifar10", "stl10"])
+    parser.add_argument("--data_type",  type=str, default="cifar10",    choices=["mnist", "cifar10", "stl10"])
     parser.add_argument("--model_type", type=str, default="resnet18", choices=["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"])
-    parser.add_argument("--augment",    type=str, default="ours",   choices=["normal", "mixup", "mixup_hidden", "ours"])
+    parser.add_argument("--augment",    type=str, default="mixup_hidden",   choices=["normal", "mixup", "mixup_hidden", "ours"])
     parser.add_argument("--alpha",      type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
     args = parser.parse_args() 
 
@@ -73,37 +73,36 @@ def main():
         transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,  transform=transform, download=True)
         test_dataset  = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
-    # elif data_type == 'stl10':
-    #     transform     = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-    #     train_dataset = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
-    #     # train_dataset = limit_dataset(train_dataset) # 訓練データセットの制限
-    #     test_dataset  = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
-    elif augment == 'ours':
-        transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
-        train_dataset1 = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
-        train_dataset1 = STL10TensorWrapper(train_dataset1)# STL10 のデータセットをラップしてラベルを Tensor に統一
-        # images = np.load('./our_dataset/images_umap.npy')  # Shape: (5000, 1, 96, 96)
-        # labels = np.load('./our_dataset/labels_umap.npy')  # Shape: (5000,)
-        images = np.load('./our_dataset/images_sample.npy')
-        labels = np.load('./our_dataset/labels_sample.npy')
-        data_tensor = torch.tensor(images, dtype=torch.float32)  # Float型のTensor
-        labels_tensor = torch.tensor(labels, dtype=torch.long)  # Long型（整数）のTensor
-        train_dataset2 = TensorDataset(data_tensor, labels_tensor)
-        train_dataset = ConcatDataset([train_dataset1, train_dataset2])
-        test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
-        print(len(train_dataset), len(test_dataset))
+    elif data_type == 'stl10':
+        transform     = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+        train_dataset = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
+        test_dataset  = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
+    # elif augment == 'ours':
+    #     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1), transforms.ToTensor()])
+    #     train_dataset1 = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
+    #     train_dataset1 = STL10TensorWrapper(train_dataset1)# STL10 のデータセットをラップしてラベルを Tensor に統一
+    #     # images = np.load('./our_dataset/images_umap.npy')  # Shape: (5000, 1, 96, 96)
+    #     # labels = np.load('./our_dataset/labels_umap.npy')  # Shape: (5000,)
+    #     images = np.load('./our_dataset/images_sample.npy')
+    #     labels = np.load('./our_dataset/labels_sample.npy')
+    #     data_tensor = torch.tensor(images, dtype=torch.float32)  # Float型のTensor
+    #     labels_tensor = torch.tensor(labels, dtype=torch.long)  # Long型（整数）のTensor
+    #     train_dataset2 = TensorDataset(data_tensor, labels_tensor)
+    #     train_dataset = ConcatDataset([train_dataset1, train_dataset2])
+    #     test_dataset = torchvision.datasets.STL10(root='./data', split='test',  transform=transform, download=True)
+    #     print(len(train_dataset), len(test_dataset))
 
-    # n_samples = len(train_dataset)
-    # n_train   = int(n_samples * 0.8)
-    # n_val     = n_samples - n_train
+    n_samples = len(train_dataset)
+    n_train   = int(n_samples * 0.8)
+    n_val     = n_samples - n_train
 
-    n_samples = len(test_dataset)
-    n_val     = int(n_samples * 0.125) # validation data: 1,000 pattern
-    n_test    = n_samples - n_val      # test data:       7,000 pattern
+    # n_samples = len(test_dataset)
+    # n_val     = int(n_samples * 0.125) # validation data: 1,000 pattern
+    # n_test    = n_samples - n_val      # test data:       7,000 pattern
 
 
-    # train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
-    test_dataset, val_dataset = random_split(test_dataset, [n_test, n_val])
+    train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
+    # test_dataset, val_dataset = random_split(test_dataset, [n_test, n_val]) 
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
     val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
     test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
@@ -141,7 +140,7 @@ def main():
         pickle.dump(history, f)
 
     # Test 
-    model.load_state_dict(torch.load(model_save_path))
+    model.load_state_dict(torch.load(model_save_path, weights_only=True))
     model.eval()
     test_loss, test_acc = test(model, test_loader, criterion, device)
     print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')
@@ -158,17 +157,16 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
 
-        if augment == 'normal' or 'ours':
-            preds = model(images)
-            loss  = criterion(preds, labels)
-        elif augment == 'mixup':
-            images, y_a, y_b, lam = mixup_data(images, labels, alpha, device)
-            preds = model(images)
-            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        elif augment == 'mixup_hidden':
-            preds, y_a, y_b, lam = model(images, labels, mixup_hidden=True,  mixup_alpha=alpha)
-            lam = lam[0]
-            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        # if augment == 'normal' or 'ours':
+        #     preds = model(images)
+        #     loss  = criterion(preds, labels)
+        # elif augment == 'mixup':
+        #     images, y_a, y_b, lam = mixup_data(images, labels, alpha, device)
+        #     preds = model(images)
+        #     loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        # elif augment == 'mixup_hidden':
+        preds, y_a, y_b, lam = model(images, labels, mixup_hidden=True,  mixup_alpha=alpha)
+        loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
 
         optimizer.zero_grad()
         loss.backward()
@@ -177,9 +175,8 @@ def train(model, train_loader, criterion, optimizer, device, augment, alpha):
         train_loss += loss.item()
         if augment == 'normal' or 'ours':
             train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
-        elif augment == 'mixup':
-            train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu())
-                          + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
+        elif augment == 'mixup' or "mixup_hidden":
+            train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
         else:
             train_acc = 0
             
@@ -194,7 +191,7 @@ def val(model, val_loader, criterion, device):
     with torch.no_grad():
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
-            preds = model(images)
+            preds = model(images, labels, mixup_hidden=False)
             loss  = criterion(preds, labels)
 
             val_loss += loss.item()
@@ -211,7 +208,7 @@ def test(model, test_loader, criterion, device):
     with torch.no_grad():
         for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
-            preds = model(images)
+            preds = model(images, labels, mixup_hidden=False)
             loss  = criterion(preds, labels)
 
             test_loss += loss.item()

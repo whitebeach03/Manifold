@@ -35,16 +35,24 @@ def main():
         batch_size = 128
         base_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         train_dataset = CIFAR10(root='./data', train=True,  transform=base_transform, download=True)
-        train_dataset = create_balanced_subset(train_dataset, num_classes=10, samples_per_class=N_train_per)
+        # train_dataset = create_balanced_subset(train_dataset, num_classes=10, samples_per_class=N_train_per)
         test_dataset = CIFAR10(root='./data', train=False, transform=base_transform, download=True)
-        train_loader, val_loader = create_loaders(train_dataset, split_path=f'data_split_indices_cifar_{N_train}.pkl', batch_size=batch_size)
-        test_loader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+        # train_loader, val_loader = create_loaders(train_dataset, split_path=f'data_split_indices_cifar_{N_train}.pkl', batch_size=batch_size)
+        n_samples = len(train_dataset)
+        n_train   = int(n_samples * 0.8)
+        n_val     = n_samples - n_train
+        train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
+        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
+        test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
+        print(len(train_dataset), len(val_dataset))
         
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # データ拡張のリスト
     augmentations = {
-        "Mixup": transforms.Compose([base_transform]),
+        "Manifold-Mixup": transforms.Compose([base_transform]),
+        # "Mixup": transforms.Compose([base_transform]),
         # "Original": transforms.Compose([base_transform]),
         # "Flipping": transforms.Compose([
         #     base_transform,
@@ -90,13 +98,13 @@ def main():
         
         # Train 
         for epoch in range(epochs):
-            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, name, aug_ok=False)
+            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, name, aug_ok=False, epochs=epoch)
             val_loss, val_acc     = val(model, val_loader, criterion, device, name, aug_ok=False)
 
             if score <= val_acc:
                 print('Save model parameters...')
                 score = val_acc
-                model_save_path = f'./logs/resnet18/{name}/{data_type}_{epochs}_{N_train}.pth'
+                model_save_path = f'./logs/resnet18/{name}/{data_type}_{epochs}.pth'
                 torch.save(model.state_dict(), model_save_path)
 
             history['loss'].append(train_loss)
@@ -105,7 +113,7 @@ def main():
             history['val_accuracy'].append(val_acc)
             print(f'| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |')
 
-        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_{N_train}.pickle', 'wb') as f:
+        with open(f'./history/resnet18/{name}/{data_type}_{epochs}.pickle', 'wb') as f:
             pickle.dump(history, f)
             
         # Test 
@@ -115,34 +123,49 @@ def main():
         print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')
 
         test_history = {'acc': test_acc, 'loss': test_loss}
-        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_{N_train}_test.pickle', 'wb') as f:
+        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_test.pickle', 'wb') as f:
             pickle.dump(test_history, f)
         
 
-def train(model, train_loader, criterion, optimizer, device, augment, aug_ok):
+def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, epochs):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
 
-        if augment == "Mixup":
-            images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-            preds = model(images, labels, device, augment, aug_ok)
-            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        else:  
+        # if augment == "Mixup":
+        #     images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+        #     preds = model(images, labels, device, augment, aug_ok)
+        #     loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        # elif augment == "Manifold-Mixup":
+        #     preds, y_a, y_b, lam = model(images, labels, device, augment, mixup_hidden=True)
+        #     loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        # else:  
+        #     preds = model(images, labels, device, augment, aug_ok)
+        #     loss  = criterion(preds, labels)
+        
+        if epochs < 100:
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
+        else:
+            preds, y_a, y_b, lam = model(images, labels, device, augment, mixup_hidden=True)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        if augment == "Mixup":
-            train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
-        else:
+        # if augment == "Mixup" or "Manifold-Mixup":
+        #     train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
+        # else:
+        #     train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
+        
+        if epochs < 100:
             train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
+        else:
+            train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
         
     train_loss /= len(train_loader)
     train_acc  /= len(train_loader)
@@ -198,6 +221,8 @@ def mixup_data(x, y, alpha=1.0, use_cuda=True):
     mixed_x = lam * x + (1 - lam) * x[index, :]
     y_a, y_b = y, y[index]
     return mixed_x, y_a, y_b, lam
+
+
 
 def mixup_criterion(criterion, pred, y_a, y_b, lam):
     return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)

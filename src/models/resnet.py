@@ -141,29 +141,69 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, k=10, aug_ok=False):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        out = F.avg_pool2d(out, out.size()[2])
-        out = out.view(out.size(0), -1)
-        if aug_ok:
-            features = out
-            if augment == "normal":
-                augmented_data = features
-            elif augment == "perturb":
-                augmented_data = manifold_perturbation(features, device)
-            elif augment == "pca":
-                augmented_data = local_pca_perturbation(features, device, k)
-            else:
-                augmented_data = local_pca_perturbation(features, device, k)
+    def forward(self, x, labels, device, augment, k=10, aug_ok=False, mixup_hidden=False):
+        if mixup_hidden == False:
+            out = F.relu(self.bn1(self.conv1(x)))
+            out = self.layer1(out)
+            out = self.layer2(out)
+            out = self.layer3(out)
+            out = self.layer4(out)
+            out = F.avg_pool2d(out, out.size()[2])
+            out = out.view(out.size(0), -1)
+            if aug_ok:
+                features = out
+                if augment == "normal":
+                    augmented_data = features
+                elif augment == "perturb":
+                    augmented_data = manifold_perturbation(features, device)
+                elif augment == "pca":
+                    augmented_data = local_pca_perturbation(features, device, k)
+                else:
+                    augmented_data = local_pca_perturbation(features, device, k)
 
-            out = self.linear(augmented_data)
+                out = self.linear(augmented_data)
+            else:
+                out = self.linear(out)
+            return out
+
         else:
+            mixup_alpha = 1.0
+            layer_mix = random.randint(0,5)
+            out = x
+            
+            if layer_mix == 0:
+                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+            
+            out = F.relu(self.bn1(self.conv1(x)))
+            out = self.layer1(out)
+    
+            if layer_mix == 1:
+                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+
+            out = self.layer2(out)
+    
+            if layer_mix == 2:
+                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+
+            out = self.layer3(out)
+            
+            if layer_mix == 3:
+                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+
+            out = self.layer4(out)
+            
+            if layer_mix == 4:
+                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+
+            # out = F.avg_pool2d(out, 4)
+            out = F.avg_pool2d(out, out.size()[2])
+            out = out.view(out.size(0), -1)
             out = self.linear(out)
-        return out
+            
+            if layer_mix == 5:
+                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+
+            return out, y_a, y_b, lam
 
     def extract_features(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -302,3 +342,21 @@ def local_pca_perturbation(data, device, k=10, alpha=1.0):
         perturbed_data[i] += scaled_noise
 
     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
+
+
+def mixup_data_hidden(x, y, alpha=1.0, use_cuda=True):
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    batch_size = x.size()[0]
+    if use_cuda:
+        index = torch.randperm(batch_size).cuda()
+    else:
+        index = torch.randperm(batch_size)
+
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
