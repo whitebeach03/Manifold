@@ -30,7 +30,7 @@ def main():
         N = [1000, 5000, 10000]
     else:
         epochs = 200
-        augmentations = ["Mixup"]
+        augmentations = ["Original", "Manifold-Mixup", "Manifold-Mixup-Origin", "PCA"]
         N = [1000, 5000, 10000]
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -45,28 +45,28 @@ def main():
         test_loader  = DataLoader(dataset=test_dataset, batch_size=128, shuffle=False)
     
     for augment in augmentations:
-        for N_train in N:
-            if tuning:
-                model_save_path  = f'./logs/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}_{N_train}.pth'
-                pickle_file_path = f'./history/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}_{N_train}_test.pickle'
-            else:
-                model_save_path  = f"logs/resnet18/{augment}/{data_type}_{epochs}_{N_train}.pth"
-                pickle_file_path = f"history/resnet18/{augment}/{data_type}_{epochs}_{N_train}_test.pickle"
-            
-            print(f"=====>Test {augment} method now.=====>")
-            if augment == "mixup_hidden":
-                model = ResNet18_hidden().to(device)
-            else:
-                model = ResNet18().to(device)
-            
-            # model.load_state_dict(torch.load(model_save_path, weights_only=True))
-            # model.eval()
-            # top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
-            # print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
-            
-            with open(pickle_file_path, 'rb') as f:
-                history = pickle.load(f)
-            print("Test Accuracy: {:.2f}%".format(history["acc"]*100), "|", "Test Loss: {:.3f}".format(history["loss"]))
+        # for N_train in N:
+        if tuning:
+            model_save_path  = f'./logs/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}.pth'
+            pickle_file_path = f'./history/{model_type}/Fine-Tuning/{augment}/{data_type}_{epochs}_test.pickle'
+        else:
+            model_save_path  = f"logs/resnet18/{augment}/{data_type}_{epochs}.pth"
+            pickle_file_path = f"history/resnet18/{augment}/{data_type}_{epochs}_test.pickle"
+        
+        print(f"=====>Test {augment} method now.=====>")
+        if augment == "mixup_hidden":
+            model = ResNet18_hidden().to(device)
+        else:
+            model = ResNet18().to(device)
+        
+        # model.load_state_dict(torch.load(model_save_path, weights_only=True))
+        # model.eval()
+        # top1_error, top3_error = evaluate_model(model, test_loader, device, augment)
+        # print(f'{augment} -> Top-1 Error: {top1_error:.2%}, Top-3 Error: {top3_error:.2%}')
+        
+        with open(pickle_file_path, 'rb') as f:
+            history = pickle.load(f)
+        print("Test Accuracy: {:.2f}%".format(history["acc"]*100), "|", "Test Loss: {:.3f}".format(history["loss"]))
 
 def evaluate_model(model, dataloader, device, augment):
     model.eval()

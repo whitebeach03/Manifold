@@ -51,7 +51,8 @@ def main():
     
     # データ拡張のリスト
     augmentations = {
-        "Manifold-Mixup": transforms.Compose([base_transform]),
+        "PCA": transforms.Compose([base_transform]),
+        # "Manifold-Mixup-Origin": transforms.Compose([base_transform]),
         # "Mixup": transforms.Compose([base_transform]),
         # "Original": transforms.Compose([base_transform]),
         # "Flipping": transforms.Compose([
@@ -85,7 +86,7 @@ def main():
     }
     
     for name, transform in augmentations.items():
-        print(f"\n==> Training with {name} data augmentation...")
+        print(f"\n==> Training with {name} ...")
         
         model = ResNet18().to(device)
         criterion = nn.CrossEntropyLoss()
@@ -134,38 +135,52 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
 
-        # if augment == "Mixup":
-        #     images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-        #     preds = model(images, labels, device, augment, aug_ok)
-        #     loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        # elif augment == "Manifold-Mixup":
-        #     preds, y_a, y_b, lam = model(images, labels, device, augment, mixup_hidden=True)
-        #     loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        # else:  
-        #     preds = model(images, labels, device, augment, aug_ok)
-        #     loss  = criterion(preds, labels)
-        
-        if epochs < 100:
+        if augment == "Mixup":
+            images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
             preds = model(images, labels, device, augment, aug_ok)
-            loss  = criterion(preds, labels)
-        else:
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        elif augment == "Manifold-Mixup-Origin":
             preds, y_a, y_b, lam = model(images, labels, device, augment, mixup_hidden=True)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-
+        elif augment == "Manifold-Mixup":
+            if epochs < 100:
+                preds = model(images, labels, device, augment, aug_ok)
+                loss  = criterion(preds, labels)
+            else:
+                preds, y_a, y_b, lam = model(images, labels, device, augment, mixup_hidden=True)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        elif augment == "PCA":
+            if epochs < 100:
+                preds = model(images, labels, device, augment, aug_ok=False)
+                loss  = criterion(preds, labels)
+            else:
+                preds = model(images, labels, device, augment, aug_ok=True)
+                loss  = criterion(preds, labels)
+        elif augment == "PCA-2012":
+            if epochs < 100:
+                preds = model(images, labels, device, augment, aug_ok=False)
+                loss  = criterion(preds, labels)
+            else:
+                preds = model(images, labels, device, augment, aug_ok=True)
+                loss  = criterion(preds, labels)
+        else:  
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
+        
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        # if augment == "Mixup" or "Manifold-Mixup":
+        # if augment == "Mixup" or "Manifold-Mixup-Origin":
         #     train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
+        # elif augment == "Manifold-Mixup":
+        #     if epochs < 100:
+        #         train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
+        #     else:
+        #         train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
         # else:
-        #     train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
-        
-        if epochs < 100:
-            train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
-        else:
-            train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
+        train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
         
     train_loss /= len(train_loader)
     train_acc  /= len(train_loader)
