@@ -1,13 +1,13 @@
 import pickle
 import matplotlib.pyplot as plt
 
-def plot_comparison_graph(model_type, augmentations):
+def plot_comparison_graph(model_type, augmentations, data_type):
     plt.figure(figsize=(12, 5))
     
     # Accuracyグラフ
     plt.subplot(1, 2, 1)
     for augment in augmentations:
-        pickle_file_path = f'./history/{model_type}/{augment}/cifar10_200.pickle'
+        pickle_file_path = f'./history/{model_type}/{augment}/{data_type}_200.pickle'
         # pickle_file_path = f"./history/{model_type}/Fine-Tuning/{augment}/cifar10_100.pickle"
         with open(pickle_file_path, 'rb') as f:
             history = pickle.load(f)
@@ -27,7 +27,7 @@ def plot_comparison_graph(model_type, augmentations):
     # Lossグラフ
     plt.subplot(1, 2, 2)
     for augment in augmentations:
-        pickle_file_path = f'./history/{model_type}/{augment}/cifar10_200.pickle'
+        pickle_file_path = f'./history/{model_type}/{augment}/{data_type}_200.pickle'
         # pickle_file_path = f"./history/{model_type}/Fine-Tuning/{augment}/cifar10_100.pickle"
         with open(pickle_file_path, 'rb') as f:
             history = pickle.load(f)
@@ -45,10 +45,11 @@ def plot_comparison_graph(model_type, augmentations):
     plt.grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'./result_plot/{model_type}/comparison_manifold.png')
+    plt.savefig(f'./result_plot/{model_type}/{data_type}.png')
     plt.show()
 
 if __name__ == "__main__":
     model_type = 'resnet18'
-    augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA"]
-    plot_comparison_graph(model_type, augmentations)
+    data_type = "stl10"
+    augmentations = ["Original", "Mixup"]
+    plot_comparison_graph(model_type, augmentations, data_type)

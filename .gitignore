@@ -2,6 +2,7 @@ data/
 logs/
 history/
 our_dataset/
+never_correct_data/
 umap_results.npy
 mnist.pkl
 all_generated_high_dim_data.npy
