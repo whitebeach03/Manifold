@@ -170,7 +170,8 @@ class ResNet(nn.Module):
 
         else:
             mixup_alpha = 0.1
-            layer_mix = random.randint(0,5)
+            # layer_mix = random.randint(0,5)
+            layer_mix = 10
             out = x
             
             if layer_mix == 0:
@@ -200,6 +201,10 @@ class ResNet(nn.Module):
             # out = F.avg_pool2d(out, 4)
             out = F.avg_pool2d(out, out.size()[2])
             out = out.view(out.size(0), -1)
+
+            if layer_mix == 10:
+                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+
             out = self.linear(out)
             
             if layer_mix == 5:
