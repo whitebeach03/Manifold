@@ -51,5 +51,5 @@ def plot_comparison_graph(model_type, augmentations, data_type):
 if __name__ == "__main__":
     model_type = 'resnet18'
     data_type = "stl10"
-    augmentations = ["Original", "Mixup"]
+    augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA"]
     plot_comparison_graph(model_type, augmentations, data_type)
