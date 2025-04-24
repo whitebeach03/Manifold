@@ -9,12 +9,12 @@ from tqdm import tqdm
 
 features_list = []
 labels_list = []
-data_type = "stl10"
+data_type = "cifar10"
 training = True
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = ResNet18().to(device)
 N = [1000, 5000, 10000]
-augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA"]
+augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "Mixup-PCA"]
 
 for augment in augmentations:
     if data_type == "cifar10":
@@ -54,4 +54,4 @@ for augment in augmentations:
     plt.xlabel("Dim 1")
     plt.ylabel("Dim 2")
     plt.tight_layout()
-    plt.savefig(f"./tsne/{data_type}_{augment}")
+    plt.savefig(f"./tsne/{data_type}_{augment}.png")
