@@ -21,7 +21,7 @@ from sklearn.decomposition import PCA
 
 def main():
     model_type = 'resnet18'
-    data_type = 'cifar10'
+    data_type = 'stl10'
     tuning = False
     # augmentations = ["Original", "Flipping", "Cropping", "Rotation", "Translation", "Noisy", "Blurring", "Random-Erasing"]
     if tuning:
@@ -30,8 +30,8 @@ def main():
         N = [1000, 5000, 10000]
     else:
         epochs = 200
-        augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-sameclass"]
-        N = 10000
+        augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-notScaling"]
+        N = 40000
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     

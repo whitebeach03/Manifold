@@ -18,7 +18,7 @@ from src.models.resnet import ResNet18
 from sklearn.manifold import TSNE
 
 def main():
-    data_type = "cifar10"
+    data_type = "stl10"
     
     if data_type == "stl10":
         epochs = 200
@@ -74,7 +74,8 @@ def main():
         # "Mixup": transforms.Compose([base_transform]),
         # "Manifold-Mixup-Origin": transforms.Compose([base_transform]),
         # "PCA": transforms.Compose([base_transform]),
-        "Mixup-PCA-sameclass": transforms.Compose([base_transform]),
+        # "Mixup-PCA-notScaling": transforms.Compose([base_transform]),
+        "Mixup-PCA-alpha05": transforms.Compose([base_transform]),
 
         # "Flipping": transforms.Compose([
         #     base_transform,
@@ -127,7 +128,7 @@ def main():
             if score <= val_acc:
                 print('Save model parameters...')
                 score = val_acc
-                model_save_path = f'./logs/resnet18/{name}/{data_type}_{epochs}_{N_train}.pth'
+                model_save_path = f'./logs/resnet18/{name}/{data_type}_{epochs}.pth'
                 torch.save(model.state_dict(), model_save_path)
 
             history['loss'].append(train_loss)
@@ -136,7 +137,7 @@ def main():
             history['val_accuracy'].append(val_acc)
             print(f'| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |')
 
-        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_{N_train}.pickle', 'wb') as f:
+        with open(f'./history/resnet18/{name}/{data_type}_{epochs}.pickle', 'wb') as f:
             pickle.dump(history, f)
         
         # 一回も正解できなかったデータを取得
@@ -181,7 +182,7 @@ def main():
         print(f'Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}')
 
         test_history = {'acc': test_acc, 'loss': test_loss}
-        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_{N_train}_test.pickle', 'wb') as f:
+        with open(f'./history/resnet18/{name}/{data_type}_{epochs}_test.pickle', 'wb') as f:
             pickle.dump(test_history, f)
         
         # # t-SNE visualization
@@ -224,7 +225,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
             else:
                 preds = model(images, labels, device, augment, aug_ok=True)
                 loss  = criterion(preds, labels)
-        elif augment == "Mixup-PCA" or "Mixup-PCA-sameclass":
+        elif augment == "Mixup-PCA" or "Mixup-PCA-notScaling":
             if epochs < 100:
                 images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
                 preds = model(images, labels, device, augment, aug_ok)

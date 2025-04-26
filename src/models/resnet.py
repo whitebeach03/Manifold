@@ -262,67 +262,12 @@ def manifold_perturbation_random(features, device, random_rate, epsilon=0.05):
         # そのまま返す
         return features
 
-def local_pca_perturbation(data, labels, device, k=10, alpha=1.0):
-    """
-    局所PCAに基づく摂動をデータに加える（同クラスかつ近傍の散らばり内に収める）
-
-    :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
-    :param labels: (N,) 次元のラベルテンソル
-    :param device: 使用するデバイス（cuda or cpu）
-    :param k: k近傍の数
-    :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
-    :return: 摂動後のテンソル（同shape）
-    """
-    use_variance_scaling = True
-    data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
-    labels_np = labels.cpu().detach().numpy() if isinstance(labels, torch.Tensor) else labels
-    N, D = data_np.shape
-
-    perturbed_data = np.copy(data_np)
-
-    for i in range(N):
-        # 同じクラスのインデックスを取得
-        same_class_mask = labels_np == labels_np[i]
-        same_class_data = data_np[same_class_mask]
-
-        if len(same_class_data) <= 1:
-            continue  # 自分しかいない場合はスキップ
-
-        # k近傍探索（同クラス内で）
-        k_eff = min(k, len(same_class_data))
-        nbrs = NearestNeighbors(n_neighbors=k_eff, algorithm='ball_tree').fit(same_class_data)
-        _, indices = nbrs.kneighbors([data_np[i]])
-        neighbors = same_class_data[indices[0]]
-
-        # PCA実行
-        pca = PCA(n_components=min(D, k_eff))
-        pca.fit(neighbors)
-        components = pca.components_           # shape: (n_components, D)
-        variances = pca.explained_variance_    # shape: (n_components,)
-
-        # ノイズベクトル作成
-        noise = np.zeros(D)
-        for j in range(len(components)):
-            if use_variance_scaling:
-                noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
-            else:
-                noise += np.random.randn() * components[j]
-
-        # 正規化＆スケーリング
-        if np.linalg.norm(noise) > 0:
-            noise = noise / np.linalg.norm(noise)
-        max_std = np.sqrt(variances[0])
-        scaled_noise = alpha * max_std * noise
-
-        # 摂動適用
-        perturbed_data[i] += scaled_noise
-
-    return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
-
-# def local_pca_perturbation(data, device, k=10, alpha=1.0):
+# def local_pca_perturbation(data, labels, device, k=10, alpha=1.0):
 #     """
-#     局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
+#     局所PCAに基づく摂動をデータに加える（同クラスかつ近傍の散らばり内に収める）
+
 #     :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
+#     :param labels: (N,) 次元のラベルテンソル
 #     :param device: 使用するデバイス（cuda or cpu）
 #     :param k: k近傍の数
 #     :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
@@ -330,23 +275,32 @@ def local_pca_perturbation(data, labels, device, k=10, alpha=1.0):
 #     """
 #     use_variance_scaling = True
 #     data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
+#     labels_np = labels.cpu().detach().numpy() if isinstance(labels, torch.Tensor) else labels
 #     N, D = data_np.shape
-#     if N < k:
-#         k = N
-
-#     nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
-#     _, indices = nbrs.kneighbors(data_np)
 
 #     perturbed_data = np.copy(data_np)
 
 #     for i in range(N):
-#         neighbors = data_np[indices[i]]
-#         pca = PCA(n_components=min(D, k))
+#         # 同じクラスのインデックスを取得
+#         same_class_mask = labels_np == labels_np[i]
+#         same_class_data = data_np[same_class_mask]
+
+#         if len(same_class_data) <= 1:
+#             continue  # 自分しかいない場合はスキップ
+
+#         # k近傍探索（同クラス内で）
+#         k_eff = min(k, len(same_class_data))
+#         nbrs = NearestNeighbors(n_neighbors=k_eff, algorithm='ball_tree').fit(same_class_data)
+#         _, indices = nbrs.kneighbors([data_np[i]])
+#         neighbors = same_class_data[indices[0]]
+
+#         # PCA実行
+#         pca = PCA(n_components=min(D, k_eff))
 #         pca.fit(neighbors)
 #         components = pca.components_           # shape: (n_components, D)
 #         variances = pca.explained_variance_    # shape: (n_components,)
 
-#         # ノイズベクトル（各主成分方向に沿った合成）
+#         # ノイズベクトル作成
 #         noise = np.zeros(D)
 #         for j in range(len(components)):
 #             if use_variance_scaling:
@@ -354,17 +308,61 @@ def local_pca_perturbation(data, labels, device, k=10, alpha=1.0):
 #             else:
 #                 noise += np.random.randn() * components[j]
 
-#         # ノイズの方向はそのまま、長さをスケールする
+#         # 正規化＆スケーリング
 #         if np.linalg.norm(noise) > 0:
 #             noise = noise / np.linalg.norm(noise)
-
-#         # 局所の最大主成分の標準偏差に比例したスケール
-#         max_std = np.sqrt(variances[0])  # 最大分散方向
+#         max_std = np.sqrt(variances[0])
 #         scaled_noise = alpha * max_std * noise
 
+#         # 摂動適用
 #         perturbed_data[i] += scaled_noise
 
 #     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
+
+def local_pca_perturbation(data, device, k=10, alpha=0.5):
+    """
+    局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
+    :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
+    :param device: 使用するデバイス（cuda or cpu）
+    :param k: k近傍の数
+    :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
+    :return: 摂動後のテンソル（同shape）
+    """
+    data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
+    N, D = data_np.shape
+    if N < k:
+        k = N
+
+    nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
+    _, indices = nbrs.kneighbors(data_np)
+
+    perturbed_data = np.copy(data_np)
+
+    for i in range(N):
+        neighbors = data_np[indices[i]]
+        pca = PCA(n_components=min(D, k))
+        pca.fit(neighbors)
+        components = pca.components_           # shape: (n_components, D)
+        variances = pca.explained_variance_    # shape: (n_components,)
+
+        # ノイズベクトル（各主成分方向に沿った合成）
+        noise = np.zeros(D)
+        for j in range(len(components)):
+                noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
+
+        # ノイズの方向はそのまま、長さをスケールする
+        if np.linalg.norm(noise) > 0:
+            noise = noise / np.linalg.norm(noise)
+
+        # 局所の最大主成分の標準偏差に比例したスケール
+        max_std = np.sqrt(variances[0])  # 最大分散方向
+        scaled_noise = alpha * max_std * noise
+
+        scaled_noise = alpha * noise
+
+        perturbed_data[i] += scaled_noise
+
+    return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
 
 def pca_directional_perturbation_local(data, device, k=10, alpha=1.0):
     """

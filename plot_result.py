@@ -54,7 +54,12 @@ def plot_comparison_graph(model_type, augmentations, data_type, N_train):
 
 if __name__ == "__main__":
     model_type = 'resnet18'
-    data_type = "cifar10"
-    N_train = 10000
-    augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-sameclass"]
+    data_type = "stl10"
+
+    if data_type == "cifar10":
+        N_train = 10000
+    elif data_type == "stl10":
+        N_train = 40000
+        
+    augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-notScaling"]
     plot_comparison_graph(model_type, augmentations, data_type, N_train)
