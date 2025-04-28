@@ -75,7 +75,10 @@ def main():
         # "Manifold-Mixup-Origin": transforms.Compose([base_transform]),
         # "PCA": transforms.Compose([base_transform]),
         # "Mixup-PCA-notScaling": transforms.Compose([base_transform]),
-        "Mixup-PCA-alpha05": transforms.Compose([base_transform]),
+        # "Mixup-PCA-alpha05": transforms.Compose([base_transform]),
+        # "Mixup-PCA-alpha15": transforms.Compose([base_transform]),
+        # "Mixup-PCA-alpha20": transforms.Compose([base_transform]),
+        "Mixup-PCA-oneShot": transforms.Compose([base_transform]),
 
         # "Flipping": transforms.Compose([
         #     base_transform,
@@ -225,7 +228,8 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
             else:
                 preds = model(images, labels, device, augment, aug_ok=True)
                 loss  = criterion(preds, labels)
-        elif augment == "Mixup-PCA" or "Mixup-PCA-notScaling":
+        # elif augment == "Mixup-PCA" or  "Mixup-PCA-notScaling" or "Mixup-PCA-alpha05" or "Mixup-PCA-alpha15":
+        elif augment == "Mixup-PCA":
             if epochs < 100:
                 images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
                 preds = model(images, labels, device, augment, aug_ok)
@@ -243,6 +247,14 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
         elif augment == "Original":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
+        elif augment == "Mixup-PCA-oneShot":
+            if epochs == 100:
+                preds = model(images, labels, device, augment, aug_ok=True)
+                loss  = criterion(preds, labels)
+            else:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
         
         optimizer.zero_grad()
         loss.backward()

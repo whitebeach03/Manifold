@@ -30,7 +30,7 @@ def main():
         N = [1000, 5000, 10000]
     else:
         epochs = 200
-        augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-notScaling"]
+        augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-alpha05", "Mixup-PCA-alpha15", "Mixup-PCA-alpha20"]
         N = 40000
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

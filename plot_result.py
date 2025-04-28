@@ -60,6 +60,7 @@ if __name__ == "__main__":
         N_train = 10000
     elif data_type == "stl10":
         N_train = 40000
-        
-    augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-notScaling"]
+
+    augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-oneShot"]
+    # augmentations = ["Mixup-PCA", "Mixup-PCA-alpha05", "Mixup-PCA-alpha15", "Mixup-PCA-alpha20"]
     plot_comparison_graph(model_type, augmentations, data_type, N_train)

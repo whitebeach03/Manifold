@@ -319,7 +319,7 @@ def manifold_perturbation_random(features, device, random_rate, epsilon=0.05):
 
 #     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
 
-def local_pca_perturbation(data, device, k=10, alpha=0.5):
+def local_pca_perturbation(data, device, k=10, alpha=1.0):
     """
     局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
     :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
