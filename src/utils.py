@@ -1,3 +1,5 @@
+import os
+import random
 import numpy as np
 import torch
 import pickle
@@ -6,6 +8,15 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
 from torch.utils.data import random_split, Subset, DataLoader
+
+def seed_everything(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
 
 def create_balanced_subset(dataset, num_classes=10, samples_per_class=100):
     from collections import defaultdict

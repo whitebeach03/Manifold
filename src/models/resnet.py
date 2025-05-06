@@ -162,6 +162,8 @@ class ResNet(nn.Module):
                     augmented_data = pca_directional_perturbation_local(features, device, k)
                 elif augment == "Mixup-PCA-sameclass":
                     augmented_data = local_pca_perturbation(features, labels, device, k)
+                elif augment == "FOMA":
+                    augmented_data, _ = foma_augment_classification(features, labels)
                 else:
                     augmented_data = local_pca_perturbation(features, device, k)
 
@@ -397,6 +399,44 @@ def pca_directional_perturbation_local(data, device, k=10, alpha=1.0):
         perturbed_data.append(xi_aug)
 
     return torch.tensor(np.array(perturbed_data), dtype=torch.float32).to(device)
+
+def foma_augment_classification(Z_l, Y, lam=0.5, k=10):
+    """
+    画像分類版FOMA: 特徴とone-hotラベルを結合し、SVDによって特異値をスケーリングして新しいサンプルを生成する。
+    :param Z_l: 中間特徴ベクトル (B, D)
+    :param Y: one-hotラベル (B, C)
+    :param lam: λ ∈ [0, 1]（特異値スケーリング係数）
+    :param k: スケーリングせず保持する上位特異値の数
+    :return: Z_aug, Y_aug (どちらもB行のTensor)
+    """
+    assert Z_l.shape[0] == Y.shape[0], "バッチサイズが一致していない"
+    B, D = Z_l.shape
+    C = Y.shape[1]
+
+    A = torch.cat([Z_l, Y], dim=1)  # (B, D + C)
+
+    # SVD
+    U, S, Vt = torch.linalg.svd(A, full_matrices=False)  # A = U S V^T
+
+    # 特異値スケーリング
+    n = S.shape[0]
+    scale = torch.cat([
+        torch.ones(k, device=Z_l.device),
+        torch.full((n - k,), lam, device=Z_l.device)
+    ])
+    S_scaled = S * scale
+
+    # 再構成
+    A_aug = U @ torch.diag(S_scaled) @ Vt  # (B, D + C)
+
+    # 分割
+    Z_aug = A_aug[:, :D]
+    Y_aug = A_aug[:, D:]
+
+    # ラベルをsoftmaxで正規化（soft labelとして利用）
+    Y_aug = F.softmax(Y_aug, dim=1)
+
+    return Z_aug, Y_aug
 
 
 def mixup_data_hidden(x, y, alpha, use_cuda=True):

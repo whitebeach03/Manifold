@@ -3,6 +3,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import random
@@ -18,7 +19,7 @@ from src.models.resnet import ResNet18
 from sklearn.manifold import TSNE
 
 def main():
-    data_type = "stl10"
+    data_type = "cifar10"
     
     if data_type == "stl10":
         epochs = 200
@@ -35,10 +36,9 @@ def main():
         train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
         val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
         test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
-
         
     elif data_type == "cifar10":
-        N = 12500
+        N = 10000
         N_train = int(N * 0.8)
         N_train_per = int(N / 10)
         # 1000=1250(batch_size=32), 5000=6250(batch_size=64), 10000=12500(batch_size=128)
@@ -78,7 +78,10 @@ def main():
         # "Mixup-PCA-alpha05": transforms.Compose([base_transform]),
         # "Mixup-PCA-alpha15": transforms.Compose([base_transform]),
         # "Mixup-PCA-alpha20": transforms.Compose([base_transform]),
-        "Mixup-PCA-oneShot": transforms.Compose([base_transform]),
+        # "Mixup-PCA-oneShot": transforms.Compose([base_transform]),
+        "Mixup-Original": transforms.Compose([base_transform]),
+
+        # "FOMA": transforms.Compose([base_transform]),
 
         # "Flipping": transforms.Compose([
         #     base_transform,
@@ -86,7 +89,8 @@ def main():
         # ]),
         # "Cropping": transforms.Compose([
         #     base_transform,
-        #     transforms.RandomApply([transforms.RandomResizedCrop(size=96, scale=(0.7, 1.0))], p=0.5)
+        #     transforms.RandomApply([transforms.RandomResizedCr28_10():
+#     return Wide_op(size=96, scale=(0.7, 1.0))], p=0.5)
         # ]),
         # "Rotation": transforms.Compose([
         #     base_transform,
@@ -255,6 +259,18 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
                 images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
                 preds = model(images, labels, device, augment, aug_ok)
                 loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        elif augment == "FOMA":
+            images, labels = foma_inputspace_per_class(images, labels, num_classes=10)
+            preds          = model(images, labels, device, augment, aug_ok=False)
+            loss           = - (labels * F.log_softmax(preds, dim=1)).sum(dim=1).mean()
+        elif augment == "Mixup-Original":
+            if epochs < 100:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            else:
+                preds = model(images, labels, device, augment, aug_ok)
+                loss  = criterion(preds, labels)
         
         optimizer.zero_grad()
         loss.backward()
@@ -269,6 +285,8 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
         #     else:
         #         train_acc += (lam * accuracy_score(y_a.cpu(), preds.argmax(dim=-1).cpu()) + (1 - lam) * accuracy_score(y_b.cpu(), preds.argmax(dim=-1).cpu()))
         # else:
+
+        # labels = labels.argmax(dim=1)
         train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
         
     train_loss /= len(train_loader)
@@ -338,6 +356,41 @@ def mixup_data(x, y, alpha=1.0, use_cuda=True):
     mixed_x = lam * x + (1 - lam) * x[index, :]
     y_a, y_b = y, y[index]
     return mixed_x, y_a, y_b, lam
+
+def foma_inputspace_per_class(x_batch, y_batch, num_classes, lam=0.5, k=20):
+    B, C, H, W = x_batch.shape
+    D = C * H * W
+    x_flat = x_batch.view(B, -1)
+    y_onehot = F.one_hot(y_batch, num_classes).float()
+    x_aug_list, y_aug_list = [], []
+
+    for cls in range(num_classes):
+        mask = (y_batch == cls)
+        if mask.sum() < 2:
+            continue
+        X_cls = x_flat[mask]
+        Y_cls = y_onehot[mask]
+        A = torch.cat([X_cls, Y_cls], dim=1)
+        U, S, Vt = torch.linalg.svd(A, full_matrices=False)
+        n = S.shape[0]
+        k = min(k, n)
+        scale = torch.cat([
+            torch.ones(k, device=A.device),
+            torch.full((n - k,), lam, device=A.device)
+        ])
+        S_scaled = S * scale
+        A_aug = U @ torch.diag(S_scaled) @ Vt
+        X_aug = A_aug[:, :D].view(-1, C, H, W)
+        Y_aug = F.softmax(A_aug[:, D:], dim=1)
+        x_aug_list.append(X_aug)
+        y_aug_list.append(Y_aug)
+
+    if len(x_aug_list) == 0:
+        return None, None
+    x_aug_total = torch.cat(x_aug_list, dim=0)
+    y_aug_total = torch.cat(y_aug_list, dim=0)
+    return x_aug_total, y_aug_total
+
 
 def tsne_visualize_validation_features(
     model, val_loader, device,

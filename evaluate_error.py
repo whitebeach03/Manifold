@@ -30,7 +30,8 @@ def main():
         N = [1000, 5000, 10000]
     else:
         epochs = 200
-        augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "PCA", "Mixup-PCA", "Mixup-PCA-alpha05", "Mixup-PCA-alpha15", "Mixup-PCA-alpha20"]
+        # augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "Mixup-PCA", "Mixup-PCA-notScaling"]
+        augmentations = ["Original", "Mixup", "Mixup-Original", "Mixup-PCA"]
         N = 40000
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,7 +58,7 @@ def main():
                 model_save_path  = f"logs/resnet18/{augment}/{data_type}_{epochs}_{N}.pth"
                 pickle_file_path = f"history/resnet18/{augment}/{data_type}_{epochs}_{N}_test.pickle"
         
-        print(f"=====>Test {augment} method now.=====>")
+        print(f"=====> {augment} =====>")
         if augment == "mixup_hidden":
             model = ResNet18_hidden().to(device)
         else:
