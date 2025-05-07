@@ -21,7 +21,7 @@ from src.models.wide_resnet import Wide_ResNet
 from sklearn.manifold import TSNE
 
 def main():
-    for i in range(1):
+    for i in range(1, 3):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs", type=int, default=250)
         parser.add_argument("--data_type", type=str, default="cifar10", choices=["stl10", "cifar100", "cifar10"])

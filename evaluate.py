@@ -20,9 +20,9 @@ from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 
 def main():
-    iteration  = 3
+    iteration  = 1
+    data_type  = "cifar10"
     epochs     = 250
-    data_type  = "cifar100"
     model_type = "wide_resnet_28_10"
     augmentations = ["Original", "Mixup", "Mixup-Original", "Mixup-PCA"]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,10 +32,11 @@ def main():
         print(augment)
         pickle_file_path = f"history/{model_type}/{augment}/{data_type}_{epochs}"
         avg_acc  = load_acc(pickle_file_path, iteration)
+        best_acc = load_best_acc(pickle_file_path, iteration)
         avg_loss = load_loss(pickle_file_path, iteration)
         std_acc  = load_std(pickle_file_path, iteration)
 
-        print(f"| Test Accuracy: {avg_acc}% | Test Loss: {avg_loss} | std: {std_acc} |")
+        print(f"| Average Accuracy: {avg_acc}% | Best Accuracy: {best_acc}% | Test Loss: {avg_loss} | std: {std_acc} |")
         print()
 
 def load_acc(path, iteration):
@@ -52,6 +53,21 @@ def load_acc(path, iteration):
     avg_acc *= 100
     avg_acc = round(avg_acc, 2)
     return avg_acc
+
+def load_best_acc(path, iteration):
+    if iteration == 0:
+        return 0
+    dic = {}
+    for i in range(iteration):
+        with open(path + "_" + str(i) + "_test.pickle", mode="rb") as f:
+            dic[i] = pickle.load(f)
+    best_acc = 0
+    for i in range(iteration):
+        if dic[i]["acc"] >= best_acc:
+            best_acc = dic[i]["acc"]
+    best_acc *= 100
+    best_acc = round(best_acc, 2)
+    return best_acc
 
 def load_loss(path, iteration):
     if iteration == 0:
@@ -78,6 +94,7 @@ def load_std(path, iteration):
     for i in range(iteration):
         acc_list.append(dic[i]["acc"])
     std_acc = np.std(acc_list)
+    std_acc = round(std_acc, 5)
     return std_acc
 
 

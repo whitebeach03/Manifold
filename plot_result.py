@@ -57,9 +57,9 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     plt.savefig(f'./result_plot/{model_type}/{data_type}_{epoch}.png')
 
 if __name__ == "__main__":
-    iteration     = 3
+    iteration     = 1
+    data_type     = "cifar10"
     epochs        = 250
-    data_type     = "cifar100"
     model_type    = "wide_resnet_28_10"
     augmentations = ["Original", "Mixup", "Mixup-Original", "Mixup-PCA"]
     
