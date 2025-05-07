@@ -1,32 +1,19 @@
 import os
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import torchvision
-import torchvision.transforms as transforms
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
-import argparse
-from torch.utils.data import random_split, DataLoader, Dataset, TensorDataset, ConcatDataset
-from tqdm import tqdm
-from src.models.mlp import MLP
-from src.models.cnn import SimpleCNN
-from src.models.resnet import ResNet18, ResNet34, ResNet50, ResNet101, ResNet152
-from src.models.resnet_hidden import ResNet18_hidden, ResNet34_hidden, ResNet50_hidden, ResNet101_hidden, ResNet152_hidden
-from src.utils import *
-from sklearn.metrics import accuracy_score
-from sklearn.decomposition import PCA
 
 def main():
-    iteration  = 1
-    data_type  = "cifar10"
-    epochs     = 250
-    model_type = "wide_resnet_28_10"
+    iteration     = 1
+    data_type     = "cifar10"
+    epochs        = 250
+    model_type    = "wide_resnet_28_10"
     augmentations = ["Original", "Mixup", "Mixup-Original", "Mixup-PCA"]
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
+    ### Plot accuracy & loss ###
+    plot_comparison_graph(model_type, augmentations, data_type, epochs, iteration)
+    
+    ### Print experiments result ###
     print()
     for augment in augmentations:
         print(augment)
@@ -38,6 +25,60 @@ def main():
 
         print(f"| Average Accuracy: {avg_acc}% | Best Accuracy: {best_acc}% | Test Loss: {avg_loss} | std: {std_acc} |")
         print()
+
+def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration):
+    os.makedirs(f"./result_plot/{model_type}/", exist_ok=True)
+    plt.figure(figsize=(12, 5))
+    
+    # Accuracy
+    plt.subplot(1, 2, 1)
+    for augment in augmentations:
+        dic = {}
+        for i in range(iteration):
+            pickle_file_path = f'./history/{model_type}/{augment}/{data_type}_{epoch}_{i}.pickle'
+            with open(pickle_file_path, 'rb') as f:
+                dic[i] = pickle.load(f)
+                
+        val_acc = np.zeros(len(dic[i]['val_accuracy']))
+        for i in range(iteration):
+            val_acc += np.array(dic[i]['val_accuracy'])
+        val_acc = val_acc / iteration
+                
+        epochs = range(1, len(val_acc) + 1)
+        plt.plot(epochs, val_acc, linestyle='solid', linewidth=1, label=f'{augment}')
+        
+    plt.title('Validation Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.grid(True)
+    
+    # Loss
+    plt.subplot(1, 2, 2)
+    for augment in augmentations:
+        dic = {}
+        for i in range(iteration):
+            pickle_file_path = f'./history/{model_type}/{augment}/{data_type}_{epoch}_{i}.pickle'
+            with open(pickle_file_path, 'rb') as f:
+                dic[i] = pickle.load(f)
+        
+        val_loss = np.zeros(len(dic[i]['val_loss']))
+        for i in range(iteration):
+            val_loss += np.array(dic[i]['val_loss'])
+        val_loss = val_loss / iteration
+        
+        epochs = range(1, len(val_loss) + 1)
+        plt.plot(epochs, val_loss, linestyle='solid', linewidth=1, label=f'{augment}')
+        
+    plt.title('Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid(True)
+    
+    plt.tight_layout()
+    plt.savefig(f'./result_plot/{model_type}/{data_type}_{epoch}.png')
+    print("Save Result!")
 
 def load_acc(path, iteration):
     if iteration == 0:
@@ -97,6 +138,5 @@ def load_std(path, iteration):
     std_acc = round(std_acc, 5)
     return std_acc
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
