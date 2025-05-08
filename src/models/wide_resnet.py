@@ -156,7 +156,7 @@ def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
     perturbed_data = np.copy(data_np)
 
     for i in range(N):
-        if random.random() < perturb_prob
+        if random.random() < perturb_prob:
             neighbors = data_np[indices[i]]
             pca = PCA(n_components=min(D, k))
             pca.fit(neighbors)

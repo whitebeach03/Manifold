@@ -174,6 +174,15 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
             else:
                 preds = model(images, labels, device, augment, aug_ok=True)
                 loss  = criterion(preds, labels)
+        
+        elif augment == "Mixup-Original&PCA":
+            if epochs < 200:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            else:
+                preds = model(images, labels, device, augment, aug_ok=True)
+                loss  = criterion(preds, labels)
 
         elif augment == "FOMA":
             images, labels = foma_inputspace_per_class(images, labels, num_classes=10)
