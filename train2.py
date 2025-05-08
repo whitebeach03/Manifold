@@ -80,6 +80,7 @@ def main():
             "Mixup",
             # "Mixup-Original",
             # "Mixup-PCA",
+            # "Mixup-Original&PCA",
             
             # "Manifold-Mixup",
             # "PCA",

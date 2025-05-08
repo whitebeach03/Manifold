@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def main():
-    iteration     = 1
-    data_type     = "cifar10"
+    iteration     = 3
+    data_type     = "cifar100"
     epochs        = 250
     model_type    = "wide_resnet_28_10"
     augmentations = ["Original", "Mixup", "Mixup-Original", "Mixup-PCA"]

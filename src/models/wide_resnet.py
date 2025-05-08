@@ -82,10 +82,15 @@ class Wide_ResNet(nn.Module):
             out = F.avg_pool2d(out, 8)
             # out = F.avg_pool2d(out, out.size()[2])
             out = out.view(out.size(0), -1)
+            
             if aug_ok:
                 features = out
-                augmented_data = local_pca_perturbation(features, device, k)
+                if augment == "Mixup-Original&PCA":
+                    augmented_data = local_pca_perturbation(features, device, k, perturb_prob=0.5)
+                else:
+                    augmented_data = local_pca_perturbation(features, device, k, perturb_prob=1.0)
                 out = self.linear(augmented_data)
+                
             else:
                 out = self.linear(out)
 
@@ -131,7 +136,7 @@ class Wide_ResNet(nn.Module):
             return out, y_a, y_b, lam
 
 
-def local_pca_perturbation(data, device, k=10, alpha=1.0):
+def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
     """
     局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
     :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
@@ -151,27 +156,29 @@ def local_pca_perturbation(data, device, k=10, alpha=1.0):
     perturbed_data = np.copy(data_np)
 
     for i in range(N):
-        neighbors = data_np[indices[i]]
-        pca = PCA(n_components=min(D, k))
-        pca.fit(neighbors)
-        components = pca.components_           # shape: (n_components, D)
-        variances = pca.explained_variance_    # shape: (n_components,)
+        if random.random() < perturb_prob
+            neighbors = data_np[indices[i]]
+            pca = PCA(n_components=min(D, k))
+            pca.fit(neighbors)
+            components = pca.components_           # shape: (n_components, D)
+            variances = pca.explained_variance_    # shape: (n_components,)
 
-        # ノイズベクトル（各主成分方向に沿った合成）
-        noise = np.zeros(D)
-        for j in range(len(components)):
-                noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
+            # ノイズベクトル（各主成分方向に沿った合成）
+            noise = np.zeros(D)
+            for j in range(len(components)):
+                    noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
 
-        # ノイズの方向はそのまま、長さをスケールする
-        if np.linalg.norm(noise) > 0:
-            noise = noise / np.linalg.norm(noise)
+            # ノイズの方向はそのまま、長さをスケールする
+            if np.linalg.norm(noise) > 0:
+                noise = noise / np.linalg.norm(noise)
 
-        # 局所の最大主成分の標準偏差に比例したスケール
-        max_std = np.sqrt(variances[0])  # 最大分散方向
-        scaled_noise = alpha * max_std * noise
-
-        scaled_noise = alpha * noise
-
-        perturbed_data[i] += scaled_noise
+            # 局所の最大主成分の標準偏差に比例したスケール
+            max_std = np.sqrt(variances[0])  # 最大分散方向
+            scaled_noise = alpha * max_std * noise
+            scaled_noise = alpha * noise
+            perturbed_data[i] += scaled_noise
+        
+        else:
+            pass
 
     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
