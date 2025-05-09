@@ -175,7 +175,6 @@ def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
             # 局所の最大主成分の標準偏差に比例したスケール
             max_std = np.sqrt(variances[0])  # 最大分散方向
             scaled_noise = alpha * max_std * noise
-            scaled_noise = alpha * noise
             perturbed_data[i] += scaled_noise
         
         else:
