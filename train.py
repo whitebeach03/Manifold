@@ -21,10 +21,10 @@ from src.models.wide_resnet import Wide_ResNet
 from sklearn.manifold import TSNE
 
 def main():
-    for i in range(3):
+    for i in range(3, 5):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs", type=int, default=250)
-        parser.add_argument("--data_type", type=str, default="cifar100", choices=["stl10", "cifar100", "cifar10"])
+        parser.add_argument("--data_type", type=str, default="cifar10", choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
         parser.add_argument("--alpha", type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
         args = parser.parse_args() 
@@ -76,11 +76,12 @@ def main():
 
         # Augmentation List
         augmentations = {
-            # "Original",
+            "Original",
             # "Mixup",
             # "Mixup-Original",
             # "Mixup-PCA",
-            "Mixup-Original&PCA",
+            # "Mixup-Original&PCA",
+            # "Mixup-PCA-Comulative",
             
             # "Manifold-Mixup",
             # "PCA",
@@ -176,6 +177,15 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
                 loss  = criterion(preds, labels)
         
         elif augment == "Mixup-Original&PCA":
+            if epochs < 200:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            else:
+                preds = model(images, labels, device, augment, aug_ok=True)
+                loss  = criterion(preds, labels)
+        
+        elif augment == "Mixup-PCA-Comulative":
             if epochs < 200:
                 images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
                 preds = model(images, labels, device, augment, aug_ok)

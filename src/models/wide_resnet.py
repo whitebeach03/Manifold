@@ -82,7 +82,7 @@ class Wide_ResNet(nn.Module):
             out = F.avg_pool2d(out, 8)
             # out = F.avg_pool2d(out, out.size()[2])
             out = out.view(out.size(0), -1)
-            
+
             if aug_ok:
                 features = out
                 if augment == "Mixup-Original&PCA":
@@ -134,6 +134,16 @@ class Wide_ResNet(nn.Module):
 
             out = self.linear(out)
             return out, y_a, y_b, lam
+    
+    def extract_features(self, x):
+        out = self.conv1(x)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = F.relu(self.bn1(out))
+        out = F.avg_pool2d(out, 8)
+        out = out.view(out.size(0), -1)
+        return out
 
 
 def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
@@ -181,3 +191,53 @@ def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
             pass
 
     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
+
+# def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0, variance_threshold=0.9):
+#     """
+#     局所PCAに基づく摂動をデータに加える（高分散方向のみに制限）
+#     :param data: (N, D) 次元のテンソル
+#     :param device: cuda or cpu
+#     :param k: k近傍数
+#     :param alpha: ノイズスケール（最大主成分に対する係数）
+#     :param perturb_prob: ノイズ付加の確率
+#     :param variance_threshold: 寄与率の累積で使用するカットオフ（例：0.9）
+#     :return: 摂動後のテンソル（同shape）
+#     """
+#     data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
+#     N, D = data_np.shape
+#     if N < k:
+#         k = N
+
+#     nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
+#     _, indices = nbrs.kneighbors(data_np)
+#     perturbed_data = np.copy(data_np)
+
+#     for i in range(N):
+#         if random.random() < perturb_prob:
+#             neighbors = data_np[indices[i]]
+#             pca = PCA(n_components=min(D, k))
+#             pca.fit(neighbors)
+
+#             components = pca.components_
+#             variances = pca.explained_variance_
+#             explained_ratio = pca.explained_variance_ratio_
+
+#             # 累積寄与率に基づいて主成分を選ぶ
+#             cumulative = np.cumsum(explained_ratio)
+#             valid_indices = np.where(cumulative <= variance_threshold)[0]
+#             if len(valid_indices) == 0:
+#                 valid_indices = [0]  # 少なくとも1成分は使う
+
+#             # ノイズベクトル
+#             noise = np.zeros(D)
+#             for j in valid_indices:
+#                 noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
+
+#             if np.linalg.norm(noise) > 0:
+#                 noise = noise / np.linalg.norm(noise)
+
+#             max_std = np.sqrt(variances[0])
+#             scaled_noise = alpha * max_std * noise
+#             perturbed_data[i] += scaled_noise
+
+#     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)

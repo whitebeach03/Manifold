@@ -4,16 +4,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def main():
-    iteration     = 1
-    data_type     = "cifar100"
+    iteration     = 3
+    data_type     = "cifar10"
     epochs        = 250
     model_type    = "wide_resnet_28_10"
     augmentations = [
-        "Original", 
-        "Mixup", 
+        # "Original", 
+        # "Mixup", 
         "Mixup-Original", 
         "Mixup-PCA", 
-        "Mixup-Original&PCA"
+
+        "Mixup-Original&PCA",
+        # "Mixup-PCA-Comulative",
     ]
     
     ### Plot accuracy & loss ###
@@ -83,7 +85,8 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     plt.grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'./result_plot/{model_type}/{data_type}_{epoch}.png')
+    # plt.savefig(f'./result_plot/{model_type}/{data_type}_{epoch}.png')
+    plt.savefig(f'./result_plot/{model_type}/{data_type}_{epoch}_.png')
     print("Save Result!")
 
 def load_acc(path, iteration):

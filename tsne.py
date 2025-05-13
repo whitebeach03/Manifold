@@ -1,42 +1,65 @@
 import torch
 import torchvision
+import random
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from src.models.resnet import ResNet18
 from sklearn.manifold import TSNE
 from tqdm import tqdm
+from src.models.wide_resnet import Wide_ResNet
+from torchvision.datasets import STL10, CIFAR10, CIFAR100
+
+epochs     = 250
+data_type  = "cifar100"
+model_type = "wide_resnet_28_10"
+device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 features_list = []
 labels_list = []
-data_type = "cifar10"
-training = True
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = ResNet18().to(device)
-N = [1000, 5000, 10000]
-augmentations = ["Original", "Mixup", "Manifold-Mixup-Origin", "Mixup-PCA"]
+
+augmentations = ["Original", "Mixup"]
 
 for augment in augmentations:
-    if data_type == "cifar10":
-        # checkpoint_path = f"./logs/resnet18/Original/cifar10_200_{N_train}.pth"
-        checkpoint_path = f"./logs/resnet18/{augment}/cifar10_200.pth"
-        batch_size      = 128
-        transform       = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-        train_dataset   = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
-        dataloader      = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
-    elif data_type == "stl10":
-        checkpoint_path = f"./logs/resnet18/{augment}/stl10_200.pth"
-        batch_size      = 64
-        transform       = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-        train_dataset   = torchvision.datasets.STL10(root='./data', split='train', transform=transform, download=True)
-        dataloader      = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=False)
+    model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
 
-    if training:
-        model.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=True))
+    if data_type == "stl10":
+        num_classes = 10
+        batch_size  = 64
+    elif data_type == "cifar100":
+        num_classes = 100
+        batch_size  = 128
+    elif data_type == "cifar10":
+        num_classes = 10
+        batch_size  = 128
+    
+    if model_type == "resnet18":
+        model = ResNet18().to(device)
+    elif model_type == "wide_resnet_28_10":
+        model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
+    
+    if data_type == "stl10":
+        transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        test_dataset  = STL10(root="./data", split="train", download=True, transform=transform)
+    elif data_type == "cifar100":
+        transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        test_dataset  = CIFAR100(root="./data", train=False, transform=transform, download=True)
+    elif data_type == "cifar10":
+        transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        test_dataset  = CIFAR10(root="./data", train=False, transform=transform, download=True)
+    
+    # テストセットの1/10だけ使う
+    # total_len = len(test_dataset)
+    # subset_len = total_len // 10
+    # indices = random.sample(range(total_len), subset_len)
+    # test_dataset = Subset(test_dataset, indices)
+    
+    test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
 
+    model.load_state_dict(torch.load(model_save_path, weights_only=True))
     model.eval()
     with torch.no_grad():
-        for images, labels in tqdm(dataloader, leave=False):
+        for images, labels in tqdm(test_loader, leave=False):
             images = images.to(device)
             features = model.extract_features(images)
             features_list.append(features.cpu())
