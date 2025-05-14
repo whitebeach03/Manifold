@@ -4,17 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def main():
-    iteration     = 3
+    iteration     = 4
     data_type     = "cifar10"
     epochs        = 250
     model_type    = "wide_resnet_28_10"
     augmentations = [
-        # "Original", 
-        # "Mixup", 
+        "Original", 
+        "Mixup", 
         "Mixup-Original", 
         "Mixup-PCA", 
 
-        "Mixup-Original&PCA",
+        # "Mixup-Original&PCA",
         # "Mixup-PCA-Comulative",
     ]
     
