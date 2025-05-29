@@ -21,10 +21,10 @@ from src.models.wide_resnet import Wide_ResNet
 from sklearn.manifold import TSNE
 
 def main():
-    for i in range(3, 5):
+    for i in range(1):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs", type=int, default=250)
-        parser.add_argument("--data_type", type=str, default="cifar10", choices=["stl10", "cifar100", "cifar10"])
+        parser.add_argument("--data_type", type=str, default="cifar100", choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
         parser.add_argument("--alpha", type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
         args = parser.parse_args() 
@@ -77,7 +77,7 @@ def main():
         # Augmentation List
         augmentations = {
             # "Original",
-            "Mixup",
+            # "Mixup",
             # "Mixup-Original",
             # "Mixup-PCA",
             # "Mixup-Original&PCA",
@@ -85,6 +85,7 @@ def main():
             # "Manifold-Mixup",
             # "PCA",
             # "FOMA",
+            "FOMA_latent"
         }
 
         for augment in augmentations:
@@ -139,6 +140,15 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
         if augment == "Original":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
+        
+        elif augment == "FOMA":
+            images, labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
+        
+        elif augment == "FOMA_latent":
+            preds, labels = model(images, labels, device, augment, aug_ok=True, num_classes=100)
+            loss = criterion(preds, labels)
 
         elif augment == "Mixup":
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)

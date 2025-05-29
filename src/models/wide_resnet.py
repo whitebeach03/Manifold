@@ -7,6 +7,7 @@ import numpy as np
 import random
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
+from foma import foma
 import sys
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -72,7 +73,7 @@ class Wide_ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, k=10, aug_ok=False, mixup_hidden=False):
+    def forward(self, x, labels, device, augment, k=10, aug_ok=False, mixup_hidden=False, num_classes=10):
         if mixup_hidden == False:
             out = self.conv1(x)
             out = self.layer1(out)
@@ -85,16 +86,18 @@ class Wide_ResNet(nn.Module):
 
             if aug_ok:
                 features = out
-                if augment == "Mixup-Original&PCA":
-                    augmented_data = local_pca_perturbation(features, device, k, perturb_prob=0.5)
-                else:
-                    augmented_data = local_pca_perturbation(features, device, k, perturb_prob=1.0)
+                if augment == "FOMA_latent":
+                    augmented_data, augmented_labels = foma(features, labels, num_classes, alpha=1.0, rho=0.9)
+                # elif augment == "Mixup-Original&PCA":
+                #     augmented_data = local_pca_perturbation(features, device, k, perturb_prob=0.5)
+                # else:
+                #     augmented_data = local_pca_perturbation(features, device, k, perturb_prob=1.0)
                 out = self.linear(augmented_data)
+                return out, augmented_labels
                 
             else:
                 out = self.linear(out)
-
-            return out
+                return out
         
         else:
             mixup_alpha = 0.1
