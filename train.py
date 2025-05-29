@@ -19,12 +19,13 @@ from torch.utils.data import DataLoader, random_split
 from src.models.resnet import ResNet18
 from src.models.wide_resnet import Wide_ResNet
 from sklearn.manifold import TSNE
+from foma import foma
 
 def main():
-    for i in range(3, 5):
+    for i in range(1):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs", type=int, default=250)
-        parser.add_argument("--data_type", type=str, default="cifar10", choices=["stl10", "cifar100", "cifar10"])
+        parser.add_argument("--data_type", type=str, default="cifar100", choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
         parser.add_argument("--alpha", type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
         args = parser.parse_args() 
@@ -76,7 +77,7 @@ def main():
 
         # Augmentation List
         augmentations = {
-            "Original",
+            # "Original",
             # "Mixup",
             # "Mixup-Original",
             # "Mixup-PCA",
@@ -85,7 +86,7 @@ def main():
             
             # "Manifold-Mixup",
             # "PCA",
-            # "FOMA",
+            "FOMA",
         }
 
         for augment in augmentations:
@@ -101,7 +102,7 @@ def main():
 
             # TRAINING #
             for epoch in range(epochs):
-                train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, aug_ok=False, epochs=epoch)
+                train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok=False, epochs=epoch)
                 val_loss, val_acc     = val(model, val_loader, criterion, device, augment, aug_ok=False)
 
                 if score <= val_acc:
@@ -129,7 +130,7 @@ def main():
             with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
                 pickle.dump(test_history, f)
 
-def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, epochs):
+def train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok, epochs):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
@@ -137,7 +138,12 @@ def train(model, train_loader, criterion, optimizer, device, augment, aug_ok, ep
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
 
-        if augment == "Original":  
+        if augment == "FOMA":
+            images, labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
+
+        elif augment == "Original":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
 

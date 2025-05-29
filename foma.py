@@ -2,6 +2,65 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# 引数設定
+class Args:
+    num_classes = 10
+    alpha = 1.0
+    rho = 0.9
+    small_singular = True
+
+
+
+def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
+    """
+    FOMA for image classification tasks.
+    X: Input images, shape [B, C, H, W]
+    Y: Labels, shape [B] or [B, num_classes]
+    """
+    B = X.shape[0]
+    # Flatten image to [B, C*H*W]
+    X_flat = X.view(B, -1)
+
+    # Convert labels to one-hot if needed
+    if Y.ndim == 1:  # [B]
+        Y_onehot = F.one_hot(Y, num_classes=num_classes).float()
+    else:
+        Y_onehot = Y.float()
+
+    # Concatenate X and Y
+    Z = torch.cat([X_flat, Y_onehot], dim=1)
+
+    # SVD
+    U, s, Vt = torch.linalg.svd(Z, full_matrices=False)
+
+    # Lambda
+    if lam is None:
+        lam = torch.distributions.beta.Beta(alpha, alpha).sample().to(X.device)
+    if not torch.is_tensor(lam):
+        lam = torch.tensor(lam).to(X.device)
+
+    # Scale singular values (simplified: scaling small singular values)
+    cumperc = torch.cumsum(s, dim=0) / torch.sum(s)
+    condition = cumperc > rho if small_singular else cumperc < rho
+    lam_mult = torch.where(condition, lam, torch.tensor(1.0, device=s.device))
+    s_scaled = s * lam_mult
+
+    # Reconstruct Z
+    Z_scaled = (U @ torch.diag(s_scaled) @ Vt)
+
+    # Split back to X and Y
+    X_flat_scaled = Z_scaled[:, :X_flat.shape[1]]
+    Y_onehot_scaled = Z_scaled[:, X_flat.shape[1]:]
+
+    # Reshape X to original image shape
+    X_scaled = X_flat_scaled.view_as(X)
+
+    # Optionally: Convert one-hot back to class labels (argmax)
+    Y_scaled = torch.argmax(Y_onehot_scaled, dim=1)
+
+    return X_scaled, Y_scaled
+
+
 # ========= 簡易CNNモデル（特徴抽出部分を定義） =========
 
 class SimpleCNN(nn.Module):
@@ -73,6 +132,7 @@ def step3(A, feature_dim, num_classes):
 # ========= テストコード =========
 
 if __name__ == "__main__":
+
     # 仮データの準備
     batch_size = 128
     num_classes = 10
@@ -82,18 +142,23 @@ if __name__ == "__main__":
     x_dummy = torch.randn(batch_size, 3, 32, 32)
     y_dummy = torch.randint(0, num_classes, (batch_size,))
 
-    # モデルのインスタンス化
-    model = SimpleCNN(feature_dim=feature_dim)
+    X_scaled, Y_scaled = foma( x_dummy, y_dummy)
+    print(X_scaled.shape, Y_scaled.shape)
 
-    # ステップ1の実行
-    A = step1(model, x_dummy, y_dummy, num_classes)
 
-    # ステップ2の実行
-    lam = torch.Tensor([0.5]) 
-    k = 20
-    A = step2(A, k, lam)
 
-    # ステップ3の実行
-    Z_l_aug, Y_soft = step3(A, feature_dim, num_classes)
-    print(Z_l_aug.shape)
-    print(Y_soft)
+    # # モデルのインスタンス化
+    # model = SimpleCNN(feature_dim=feature_dim)
+
+    # # ステップ1の実行
+    # A = step1(model, x_dummy, y_dummy, num_classes)
+
+    # # ステップ2の実行
+    # lam = torch.Tensor([0.5]) 
+    # k = 20
+    # A = step2(A, k, lam)
+
+    # # ステップ3の実行
+    # Z_l_aug, Y_soft = step3(A, feature_dim, num_classes)
+    # print(Z_l_aug.shape)
+    # print(Y_soft)
