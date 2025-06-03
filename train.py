@@ -19,7 +19,33 @@ from torch.utils.data import DataLoader, random_split
 from src.models.resnet import ResNet18
 from src.models.wide_resnet import Wide_ResNet
 from sklearn.manifold import TSNE
-from foma import foma
+from foma import foma, foma_hard
+from torch.utils.data import Sampler
+
+class ClassBalancedBatchSampler(Sampler):
+    def __init__(self, dataset, batch_size, num_classes):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.num_classes = num_classes
+        self.class_indices = {i: [] for i in range(num_classes)}
+        
+        for idx, (_, label) in enumerate(dataset):
+            self.class_indices[label].append(idx)
+
+    def __iter__(self):
+        batches = []
+        for class_id, indices in self.class_indices.items():
+            np.random.shuffle(indices)
+            for i in range(0, len(indices), self.batch_size):
+                batch = indices[i:i+self.batch_size]
+                if len(batch) > 0:
+                    batches.append(batch)
+        np.random.shuffle(batches)  # バッチ単位でシャッフル（バッチ内は同じクラス）
+        for batch in batches:
+            yield batch
+
+    def __len__(self):
+        return sum(len(indices) for indices in self.class_indices.values()) // self.batch_size
 
 def main():
     for i in range(1):
@@ -47,12 +73,6 @@ def main():
             num_classes = 10
             batch_size  = 128
         
-        # Select Model
-        if model_type == "resnet18":
-            model = ResNet18().to(device)
-        elif model_type == "wide_resnet_28_10":
-            model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
-        
         # Loading Dataset
         if data_type == "stl10":
             transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
@@ -71,7 +91,7 @@ def main():
         n_train   = int(n_samples * 0.8)
         n_val     = n_samples - n_train
         train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
-        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+
         val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
         test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
 
@@ -82,17 +102,28 @@ def main():
             # "Mixup-Original",
             # "Mixup-PCA",
             # "Mixup-Original&PCA",
-            # "Mixup-PCA-Comulative",
-            
             # "Manifold-Mixup",
             # "PCA",
-            # "FOMA",
-            "FOMA_latent",
+
+            "FOMA",
+            # "FOMA_hard",
+            # "FOMA_latent",
+            # "FOMA_samebatch"
         }
 
         for augment in augmentations:
+            if augment == "FOMA_samebatch":
+                train_loader = DataLoader(dataset=train_dataset, batch_sampler=ClassBalancedBatchSampler(train_dataset, batch_size=batch_size, num_classes=num_classes))
+            else:
+                train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+
             print(f"\n==> Training with {augment} ...")
 
+            # Select Model
+            if model_type == "resnet18":
+                model = ResNet18().to(device)
+            elif model_type == "wide_resnet_28_10":
+                model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.Adam(model.parameters())
             score     = 0.0
@@ -138,19 +169,25 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
 
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
+        labels_true = labels
 
-        if augment == "FOMA":
-            images, labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+        if augment == "Original":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
         
+        elif augment == "FOMA":
+            images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+            preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+            loss  = criterion(preds, soft_labels)
+        
+        elif augment == "FOMA_hard":
+            images, hard_labels = foma_hard(images, labels, num_classes, alpha=1.0, rho=0.9)
+            preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+            loss  = criterion(preds, hard_labels)
+         
         elif augment == "FOMA_latent":
-            preds, labels = model(images, labels, device, augment, aug_ok=True)
+            preds, labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
             loss = criterion(preds, labels)
-
-        elif augment == "Original":  
-            preds = model(images, labels, device, augment, aug_ok)
-            loss  = criterion(preds, labels)
 
         elif augment == "Mixup":
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
@@ -195,28 +232,15 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             else:
                 preds = model(images, labels, device, augment, aug_ok=True)
                 loss  = criterion(preds, labels)
-        
-        elif augment == "Mixup-PCA-Comulative":
-            if epochs < 200:
-                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-                preds = model(images, labels, device, augment, aug_ok)
-                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-            else:
-                preds = model(images, labels, device, augment, aug_ok=True)
-                loss  = criterion(preds, labels)
 
-        elif augment == "FOMA":
-            images, labels = foma_inputspace_per_class(images, labels, num_classes=10)
-            preds          = model(images, labels, device, augment, aug_ok=False)
-            loss           = - (labels * F.log_softmax(preds, dim=1)).sum(dim=1).mean()
-        
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
-        
+        # train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
+        train_acc += accuracy_score(labels_true.cpu().detach().numpy(), preds.argmax(dim=-1).cpu().numpy())
+
     train_loss /= len(train_loader)
     train_acc  /= len(train_loader)
     return train_loss, train_acc

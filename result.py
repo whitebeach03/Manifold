@@ -11,14 +11,16 @@ def main():
     augmentations = [
         "Original", 
         "Mixup", 
+
         # "Mixup-Original", 
         # "Mixup-PCA", 
-
         # "Original-PCA"
-
         # "Mixup-Original&PCA",
         # "Mixup-PCA-Comulative",
-        "FOMA"
+
+        "FOMA",
+        "FOMA_hard",
+        # "FOMA_latent"
     ]
     
     ### Plot accuracy & loss ###
@@ -41,7 +43,7 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     os.makedirs(f"./result_plot/{model_type}/", exist_ok=True)
     plt.figure(figsize=(12, 5))
     
-    # Accuracy
+    ### Accuracy ###
     plt.subplot(1, 2, 1)
     for augment in augmentations:
         dic = {}
@@ -56,6 +58,9 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
         val_acc = val_acc / iteration
                 
         epochs = range(1, len(val_acc) + 1)
+
+        if augment == "FOMA":
+            augment = "FOMA_soft"
         plt.plot(epochs, val_acc, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Validation Accuracy')
@@ -64,7 +69,7 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     plt.legend()
     plt.grid(True)
     
-    # Loss
+    ### Loss ###
     plt.subplot(1, 2, 2)
     for augment in augmentations:
         dic = {}
@@ -79,6 +84,9 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
         val_loss = val_loss / iteration
         
         epochs = range(1, len(val_loss) + 1)
+
+        if augment == "FOMA":
+            augment = "FOMA_soft"
         plt.plot(epochs, val_loss, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Validation Loss')
