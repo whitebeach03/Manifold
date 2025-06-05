@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 def main():
     iteration     = 1
-    data_type     = "cifar10"
+    data_type     = "cifar100"
     epochs        = 250
     model_type    = "wide_resnet_28_10"
     augmentations = [
@@ -19,8 +19,11 @@ def main():
         # "Mixup-PCA-Comulative",
 
         "FOMA",
-        "FOMA_hard",
-        # "FOMA_latent"
+        # "FOMA_hard",
+        "FOMA_latent",
+        "FOMA_curriculum",
+
+        # "FOMA_latent_random"
     ]
     
     ### Plot accuracy & loss ###
@@ -60,7 +63,7 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
         epochs = range(1, len(val_acc) + 1)
 
         if augment == "FOMA":
-            augment = "FOMA_soft"
+            augment = "FOMA_input"
         plt.plot(epochs, val_acc, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Validation Accuracy')
@@ -86,7 +89,7 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
         epochs = range(1, len(val_loss) + 1)
 
         if augment == "FOMA":
-            augment = "FOMA_soft"
+            augment = "FOMA_input"
         plt.plot(epochs, val_loss, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Validation Loss')

@@ -10,6 +10,61 @@ from sklearn.neighbors import NearestNeighbors
 from foma import foma
 import sys
 
+class FOMALayer(nn.Module):
+    def __init__(self, feature_dim, num_classes, alpha=1.0, rho=0.9, small_singular=True):
+        super(FOMALayer, self).__init__()
+        self.feature_dim = feature_dim
+        self.num_classes = num_classes
+        self.alpha = alpha
+        self.rho = rho
+        self.small_singular = small_singular
+
+    def forward(self, X, Y, apply_foma=True):
+        """
+        X: 中間特徴 [B, D] （flattenされた中間表現）
+        Y: ラベル [B] または [B, num_classes]
+        apply_foma: FOMA適用フラグ
+        """
+        if not apply_foma:
+            return X, Y
+
+        B = X.shape[0]
+
+        # one-hot変換
+        if Y.ndim == 1:
+            Y_onehot = F.one_hot(Y, num_classes=self.num_classes).float()
+        else:
+            Y_onehot = Y.float()
+
+        # Z = [X | Y]
+        Z = torch.cat([X, Y_onehot], dim=1)
+
+        # SVD
+        U, s, Vt = torch.linalg.svd(Z, full_matrices=False)
+
+        # ラムダ決定
+        lam = torch.distributions.beta.Beta(self.alpha, self.alpha).sample().to(X.device)
+        cumperc = torch.cumsum(s, dim=0) / torch.sum(s)
+        condition = cumperc > self.rho if self.small_singular else cumperc < self.rho
+        lam_mult = torch.where(condition, lam, torch.tensor(1.0, device=s.device))
+        s_scaled = s * lam_mult
+
+        # 再構成
+        Z_scaled = (U @ torch.diag(s_scaled) @ Vt)
+        X_scaled = Z_scaled[:, :X.shape[1]]
+        Y_scaled = Z_scaled[:, X.shape[1]:]
+
+        # ラベルをソフトに正規化
+        Y_scaled = torch.clamp(Y_scaled, min=0)
+        sum_per_sample = Y_scaled.sum(dim=1, keepdim=True)
+        normalized_labels = torch.where(
+            sum_per_sample == 0,
+            torch.ones_like(Y_scaled) / self.num_classes,
+            Y_scaled / sum_per_sample
+        )
+
+        return X_scaled, normalized_labels
+
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
 
@@ -56,6 +111,8 @@ class Wide_ResNet(nn.Module):
         print('| Wide-Resnet %dx%d' %(depth, k))
         nStages = [16, 16*k, 32*k, 64*k]
 
+        self.foma_layer = FOMALayer(feature_dim=512, num_classes=num_classes)
+
         self.conv1 = conv3x3(3,nStages[0])
         self.layer1 = self._wide_layer(wide_basic, nStages[1], n, dropout_rate, stride=1)
         self.layer2 = self._wide_layer(wide_basic, nStages[2], n, dropout_rate, stride=2)
@@ -73,31 +130,73 @@ class Wide_ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, k=10, aug_ok=False, mixup_hidden=False, num_classes=10):
+    def forward(self, x, labels, device, augment, k=10, aug_ok=False, mixup_hidden=False, num_classes=100):
         if mixup_hidden == False:
-            out = self.conv1(x)
-            out = self.layer1(out)
-            out = self.layer2(out)
-            out = self.layer3(out)
-            out = F.relu(self.bn1(out))
-            out = F.avg_pool2d(out, 8)
-            # out = F.avg_pool2d(out, out.size()[2])
-            out = out.view(out.size(0), -1)
-
             if aug_ok:
-                features = out
-                if augment == "FOMA_latent":
-                    augmented_data, augmented_labels = foma(features, labels, num_classes, alpha=1.0, rho=0.9)
-                # elif augment == "Mixup-Original&PCA":
-                #     augmented_data = local_pca_perturbation(features, device, k, perturb_prob=0.5)
-                # else:
-                #     augmented_data = local_pca_perturbation(features, device, k, perturb_prob=1.0)
-                out = self.linear(augmented_data)
-                return out, augmented_labels
-                
+                # layer_foma = random.randint(0, 4)
+                # out = x
+
+                # if layer_foma == 0:
+                #     out, y_soft = foma(out, labels, num_classes, alpha=1.0, rho=0.9)
+
+                # # conv1 → layer1 → (maybe foma) → layer2 → (maybe foma) → layer3 → ... 
+                # out = self.conv1(out)
+                # out = self.layer1(out)   # ← You must pass through layer1 here.
+                # if layer_foma == 1:
+                #     out, y_soft = foma(out, labels, num_classes, alpha=1.0, rho=0.9)
+
+                # out = self.layer2(out)
+                # if layer_foma == 2:
+                #     out, y_soft = foma(out, labels, num_classes, alpha=1.0, rho=0.9)
+
+                # out = self.layer3(out)
+                # if layer_foma == 3:
+                #     out, y_soft = foma(out, labels, num_classes, alpha=1.0, rho=0.9)
+
+                # out = F.relu(self.bn1(out))
+                # out = F.avg_pool2d(out, 8)
+                # out = out.view(out.size(0), -1)
+                # if layer_foma == 4:
+                #     out, y_soft = foma(out, labels, num_classes, alpha=1.0, rho=0.9)
+
+                # out = self.linear(out)
+                # return out, y_soft
+
+                out = self.conv1(x)
+                out = self.layer1(out)
+                out = self.layer2(out)
+                out = self.layer3(out)
+                out = F.relu(self.bn1(out))
+                out = F.avg_pool2d(out, 8)
+                out = out.view(out.size(0), -1)
+                if aug_ok:
+                    if augment == "FOMA_latent" or augment == "FOMA_curriculum":
+                        out, y_soft = foma(out, labels, num_classes, alpha=1.0, rho=0.9)
+                    out = self.linear(out)
+                    return out, y_soft
+
+                else:
+                    out = self.linear(out)
+                    return out
+
+
             else:
-                out = self.linear(out)
-                return out
+                out = self.conv1(x)
+                out = self.layer1(out)
+                out = self.layer2(out)
+                out = self.layer3(out)
+                out = F.relu(self.bn1(out))
+                out = F.avg_pool2d(out, 8)
+                out = out.view(out.size(0), -1)
+                if aug_ok:
+                    if augment == "FOMA_latent":
+                        out, y_soft = foma(out, labels, num_classes, alpha=1.0, rho=0.9)
+                    out = self.linear(out)
+                    return out, y_soft
+
+                else:
+                    out = self.linear(out)
+                    return out
         
         else:
             mixup_alpha = 0.1

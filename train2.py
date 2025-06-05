@@ -106,8 +106,11 @@ def main():
             # "PCA",
 
             # "FOMA",
-            "FOMA_hard",
+            # "FOMA_hard",
             # "FOMA_latent",
+            # "FOMA_latent_random",
+            "FOMA_curriculum"
+
             # "FOMA_samebatch"
         }
 
@@ -175,6 +178,15 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
         
+        elif augment == "FOMA_curriculum":
+            if epochs < 100:
+                images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+                preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+                loss  = criterion(preds, soft_labels)
+            else:
+                preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
+                loss = criterion(preds, soft_labels)
+        
         elif augment == "FOMA":
             images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
             preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
@@ -185,9 +197,9 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
             loss  = criterion(preds, hard_labels)
          
-        elif augment == "FOMA_latent":
-            preds, labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
-            loss = criterion(preds, labels)
+        elif augment == "FOMA_latent" or augment == "FOMA_latent_random":
+            preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
+            loss = criterion(preds, soft_labels)
 
         elif augment == "Mixup":
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)

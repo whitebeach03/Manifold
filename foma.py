@@ -23,7 +23,6 @@ def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
 
     # SVD
     U, s, Vt = torch.linalg.svd(Z, full_matrices=False)
-    # U, s, Vt = torch.linalg.svd(X_flat, full_matrices=False)
 
     # Lambda
     if lam is None:
@@ -43,14 +42,11 @@ def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
     # Split back to X and Y
     X_flat_scaled = Z_scaled[:, :X_flat.shape[1]]
     Y_onehot_scaled = Z_scaled[:, X_flat.shape[1]:]
-    # X_flat_scaled = U @ torch.diag(s_scaled) @ Vt
 
     # Reshape X to original image shape
     X_scaled = X_flat_scaled.view_as(X)
 
     # Optionally: Convert one-hot back to class labels (argmax)
-    # Y_scaled = torch.argmax(Y_onehot_scaled, dim=1)
-    
     Y_onehot_scaled = torch.clamp(Y_onehot_scaled, min=0)
     
     # 各サンプルごとに合計を計算
