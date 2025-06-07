@@ -9,8 +9,8 @@ def main():
     epochs        = 250
     model_type    = "wide_resnet_28_10"
     augmentations = [
-        "Original", 
-        "Mixup", 
+        # "Original", 
+        # "Mixup", 
 
         # "Mixup-Original", 
         # "Mixup-PCA", 
@@ -21,9 +21,10 @@ def main():
         "FOMA",
         # "FOMA_hard",
         "FOMA_latent",
-        "FOMA_curriculum",
+        # "FOMA_curriculum",
+        "FOMA_knn",
 
-        # "FOMA_latent_random"
+        "FOMA_latent_random"
     ]
     
     ### Plot accuracy & loss ###

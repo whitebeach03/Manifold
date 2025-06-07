@@ -3,11 +3,168 @@ import random
 import numpy as np
 import torch
 import pickle
+from tqdm import tqdm
+from foma import foma, foma_hard
 from torchvision import datasets, transforms
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
 from torch.utils.data import random_split, Subset, DataLoader
+from sklearn.metrics import accuracy_score
+
+def train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok, epochs):
+    model.train()
+    train_loss = 0.0
+    train_acc  = 0.0
+
+    for images, labels in tqdm(train_loader, leave=False):
+        images, labels = images.to(device), labels.to(device)
+        labels_true = labels
+
+        # unique, counts = torch.unique(labels, return_counts=True)
+        # print(f"[Batch Label Distribution] {dict(zip(unique.cpu().tolist(), counts.cpu().tolist()))}")
+
+        if augment == "Original":  
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
+        
+        elif augment == "FOMA_curriculum":
+            if epochs < 100:
+                images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+                preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+                loss  = criterion(preds, soft_labels)
+            else:
+                preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
+                loss = criterion(preds, soft_labels)
+        
+        elif augment == "FOMA" or augment == "FOMA_knn":
+            images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+            preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+            loss  = criterion(preds, soft_labels)
+        
+        elif augment == "FOMA_hard":
+            images, hard_labels = foma_hard(images, labels, num_classes, alpha=1.0, rho=0.9)
+            preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+            loss  = criterion(preds, hard_labels)
+         
+        elif augment == "FOMA_latent" or augment == "FOMA_latent_random":
+            preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
+            loss = criterion(preds, soft_labels)
+
+        elif augment == "Mixup":
+            images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        elif augment == "Manifold-Mixup":
+            preds, y_a, y_b, lam = model(images, labels, device, augment, mixup_hidden=True)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        
+        elif augment == "Mixup-Original":
+            if epochs < 200:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            else:
+                preds = model(images, labels, device, augment, aug_ok)
+                loss  = criterion(preds, labels)
+
+        elif augment == "PCA":
+            if epochs < 100:
+                preds = model(images, labels, device, augment, aug_ok=False)
+                loss  = criterion(preds, labels)
+            else:
+                preds = model(images, labels, device, augment, aug_ok=True)
+                loss  = criterion(preds, labels)
+
+        elif augment == "Mixup-PCA":
+            if epochs < 200:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            else:
+                preds = model(images, labels, device, augment, aug_ok=True)
+                loss  = criterion(preds, labels)
+        
+        elif augment == "Mixup-Original&PCA":
+            if epochs < 200:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            else:
+                preds = model(images, labels, device, augment, aug_ok=True)
+                loss  = criterion(preds, labels)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+        # train_acc += accuracy_score(labels.cpu(), preds.argmax(dim=-1).cpu())
+        train_acc += accuracy_score(labels_true.cpu().detach().numpy(), preds.argmax(dim=-1).cpu().numpy())
+
+    train_loss /= len(train_loader)
+    train_acc  /= len(train_loader)
+    return train_loss, train_acc
+
+def val(model, val_loader, criterion, device, augment, aug_ok):
+    model.eval()
+    val_loss = 0.0
+    val_acc  = 0.0
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images, labels = images.to(device), labels.to(device)
+            
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
+
+            val_loss += loss.item()
+            val_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+
+    val_loss /= len(val_loader)
+    val_acc  /= len(val_loader)
+    return val_loss, val_acc
+
+def test(model, test_loader, criterion, device, augment, aug_ok):
+    model.eval()
+    test_loss = 0.0
+    test_acc  = 0.0
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)
+            
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
+
+            test_loss += loss.item()
+            test_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+
+    test_loss /= len(test_loader)
+    test_acc  /= len(test_loader)
+    return test_loss, test_acc
+
+def mixup_data(x, y, alpha=1.0, use_cuda=True):
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+    batch_size = x.size()[0]
+    if use_cuda:
+        index = torch.randperm(batch_size).cuda()
+    else:
+        index = torch.randperm(batch_size)
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
+
+def mixup_criterion(criterion, pred, y_a, y_b, lam):
+    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
+
+
+
+
+
 
 def seed_everything(seed):
     random.seed(seed)
