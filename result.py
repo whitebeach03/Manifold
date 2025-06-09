@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 def main():
     iteration     = 1
     data_type     = "cifar100"
-    epochs        = 250
+    epochs        = 400
     model_type    = "wide_resnet_28_10"
     augmentations = [
-        # "Original", 
-        # "Mixup", 
+        "Original", 
+        "Mixup", 
 
         # "Mixup-Original", 
         # "Mixup-PCA", 
@@ -20,9 +20,9 @@ def main():
 
         "FOMA",
         # "FOMA_hard",
-        "FOMA_latent",
+        # "FOMA_latent",
         # "FOMA_curriculum",
-        "FOMA_knn",
+        # "FOMA_knn",
 
         "FOMA_latent_random"
     ]

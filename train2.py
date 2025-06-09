@@ -124,20 +124,20 @@ def main():
         
         # Augmentation List
         augmentations = {
-            # "Original",
-            # "Mixup",
+            "Original",
+            "Mixup",
+            "Manifold-Mixup",
+            "FOMA",
+            "FOMA_latent_random",
+
             # "Mixup-Original",
             # "Mixup-PCA",
             # "Mixup-Original&PCA",
-            # "Manifold-Mixup",
             # "PCA",
 
             # "FOMA_hard",
             # "FOMA_latent",
-            # "FOMA",
-            "FOMA_latent_random",
             # "FOMA_curriculum"
-
             # "FOMA_samebatch"
             # "FOMA_knn"
         }
