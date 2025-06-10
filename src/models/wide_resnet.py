@@ -8,62 +8,8 @@ import random
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
 from foma import foma
+from src.utils import mixup_data
 import sys
-
-class FOMALayer(nn.Module):
-    def __init__(self, feature_dim, num_classes, alpha=1.0, rho=0.9, small_singular=True):
-        super(FOMALayer, self).__init__()
-        self.feature_dim = feature_dim
-        self.num_classes = num_classes
-        self.alpha = alpha
-        self.rho = rho
-        self.small_singular = small_singular
-
-    def forward(self, X, Y, apply_foma=True):
-        """
-        X: 中間特徴 [B, D] （flattenされた中間表現）
-        Y: ラベル [B] または [B, num_classes]
-        apply_foma: FOMA適用フラグ
-        """
-        if not apply_foma:
-            return X, Y
-
-        B = X.shape[0]
-
-        # one-hot変換
-        if Y.ndim == 1:
-            Y_onehot = F.one_hot(Y, num_classes=self.num_classes).float()
-        else:
-            Y_onehot = Y.float()
-
-        # Z = [X | Y]
-        Z = torch.cat([X, Y_onehot], dim=1)
-
-        # SVD
-        U, s, Vt = torch.linalg.svd(Z, full_matrices=False)
-
-        # ラムダ決定
-        lam = torch.distributions.beta.Beta(self.alpha, self.alpha).sample().to(X.device)
-        cumperc = torch.cumsum(s, dim=0) / torch.sum(s)
-        condition = cumperc > self.rho if self.small_singular else cumperc < self.rho
-        lam_mult = torch.where(condition, lam, torch.tensor(1.0, device=s.device))
-        s_scaled = s * lam_mult
-
-        # 再構成
-        Z_scaled = (U @ torch.diag(s_scaled) @ Vt)
-        X_scaled = Z_scaled[:, :X.shape[1]]
-        Y_scaled = Z_scaled[:, X.shape[1]:]
-
-        # ラベルをソフトに正規化
-        Y_scaled = torch.clamp(Y_scaled, min=0)
-        sum_per_sample = Y_scaled.sum(dim=1, keepdim=True)
-        normalized_labels = torch.where(
-            sum_per_sample == 0,
-            torch.ones_like(Y_scaled) / self.num_classes,
-            Y_scaled / sum_per_sample
-        )
-
-        return X_scaled, normalized_labels
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
@@ -111,8 +57,6 @@ class Wide_ResNet(nn.Module):
         print('| Wide-Resnet %dx%d' %(depth, k))
         nStages = [16, 16*k, 32*k, 64*k]
 
-        self.foma_layer = FOMALayer(feature_dim=512, num_classes=num_classes)
-
         self.conv1 = conv3x3(3,nStages[0])
         self.layer1 = self._wide_layer(wide_basic, nStages[1], n, dropout_rate, stride=1)
         self.layer2 = self._wide_layer(wide_basic, nStages[2], n, dropout_rate, stride=2)
@@ -130,7 +74,7 @@ class Wide_ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, k=10, aug_ok=False, mixup_hidden=False, num_classes=100):
+    def forward(self, x, labels, device, augment, k=10, aug_ok=False, num_classes=100):
         if augment == "FOMA_latent_random":
             if aug_ok:
                 layer_foma = random.randint(0, 4)
@@ -178,26 +122,26 @@ class Wide_ResNet(nn.Module):
                 out = x
                 
                 if layer_mix == 0:
-                    out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+                    out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
                 
                 out = self.conv1(out)
                 out = self.layer1(out)
                 if layer_mix == 1:
-                    out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+                    out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
 
                 out = self.layer2(out)
                 if layer_mix == 2:
-                    out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+                    out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
 
                 out = self.layer3(out)
                 if layer_mix == 3:
-                    out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+                    out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
                 
                 out = F.relu(self.bn1(out))
                 out = F.avg_pool2d(out, 8)
                 out = out.view(out.size(0), -1)
                 if layer_mix == 4:
-                    out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
+                    out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
 
                 out = self.linear(out)
                 return out, y_a, y_b, lam
@@ -268,53 +212,3 @@ def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
             pass
 
     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
-
-# def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0, variance_threshold=0.9):
-#     """
-#     局所PCAに基づく摂動をデータに加える（高分散方向のみに制限）
-#     :param data: (N, D) 次元のテンソル
-#     :param device: cuda or cpu
-#     :param k: k近傍数
-#     :param alpha: ノイズスケール（最大主成分に対する係数）
-#     :param perturb_prob: ノイズ付加の確率
-#     :param variance_threshold: 寄与率の累積で使用するカットオフ（例：0.9）
-#     :return: 摂動後のテンソル（同shape）
-#     """
-#     data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
-#     N, D = data_np.shape
-#     if N < k:
-#         k = N
-
-#     nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
-#     _, indices = nbrs.kneighbors(data_np)
-#     perturbed_data = np.copy(data_np)
-
-#     for i in range(N):
-#         if random.random() < perturb_prob:
-#             neighbors = data_np[indices[i]]
-#             pca = PCA(n_components=min(D, k))
-#             pca.fit(neighbors)
-
-#             components = pca.components_
-#             variances = pca.explained_variance_
-#             explained_ratio = pca.explained_variance_ratio_
-
-#             # 累積寄与率に基づいて主成分を選ぶ
-#             cumulative = np.cumsum(explained_ratio)
-#             valid_indices = np.where(cumulative <= variance_threshold)[0]
-#             if len(valid_indices) == 0:
-#                 valid_indices = [0]  # 少なくとも1成分は使う
-
-#             # ノイズベクトル
-#             noise = np.zeros(D)
-#             for j in valid_indices:
-#                 noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
-
-#             if np.linalg.norm(noise) > 0:
-#                 noise = noise / np.linalg.norm(noise)
-
-#             max_std = np.sqrt(variances[0])
-#             scaled_noise = alpha * max_std * noise
-#             perturbed_data[i] += scaled_noise
-
-#     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)

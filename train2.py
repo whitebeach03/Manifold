@@ -29,7 +29,7 @@ from sklearn.neighbors import NearestNeighbors
 def main():
     for i in range(1):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--epochs", type=int, default=250)
+        parser.add_argument("--epochs", type=int, default=400)
         parser.add_argument("--data_type", type=str, default="cifar100", choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
         parser.add_argument("--alpha", type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
@@ -124,11 +124,11 @@ def main():
         
         # Augmentation List
         augmentations = {
-            "Original",
-            "Mixup",
+            # "Original",
+            # "Mixup",
             "Manifold-Mixup",
-            "FOMA",
-            "FOMA_latent_random",
+            # "FOMA",
+            # "FOMA_latent_random",
 
             # "Mixup-Original",
             # "Mixup-PCA",

@@ -2,29 +2,38 @@ import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
 def main():
-    iteration     = 1
-    data_type     = "cifar100"
-    epochs        = 400
-    model_type    = "wide_resnet_28_10"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--iteration", type=int, default=1)
+    parser.add_argument("--epochs", type=int, default=400)
+    parser.add_argument("--data_type", type=str, default="cifar100", choices=["stl10", "cifar100", "cifar10"])
+    parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
+    args = parser.parse_args()
+
+    iteration  = args.iteration
+    epochs     = args.epochs
+    data_type  = args.data_type
+    model_type = args.model_type
+    
     augmentations = [
-        "Original", 
-        "Mixup", 
-
-        # "Mixup-Original", 
-        # "Mixup-PCA", 
-        # "Original-PCA"
-        # "Mixup-Original&PCA",
-        # "Mixup-PCA-Comulative",
-
+        "Original",
+        "Mixup",
+        # "Manifold-Mixup",
         "FOMA",
+        "FOMA_latent_random",
+
+        # "Mixup-Original",
+        # "Mixup-PCA",
+        # "Mixup-Original&PCA",
+        # "PCA",
+
         # "FOMA_hard",
         # "FOMA_latent",
-        # "FOMA_curriculum",
-        # "FOMA_knn",
-
-        "FOMA_latent_random"
+        # "FOMA_curriculum"
+        # "FOMA_samebatch"
+        # "FOMA_knn"
     ]
     
     ### Plot accuracy & loss ###

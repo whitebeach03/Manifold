@@ -57,7 +57,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
 
         elif augment == "Manifold-Mixup":
-            preds, y_a, y_b, lam = model(images, labels, device, augment, mixup_hidden=True)
+            preds, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
         
         elif augment == "Mixup-Original":
@@ -320,24 +320,6 @@ def organize_by_class(dataset):
     for label in class_data:
         class_data[label] = np.array(class_data[label])
     return class_data
-
-def mixup_data_hidden(x, y, alpha=1.0, use_cuda=True):
-    '''Returns mixed inputs, pairs of targets, and lambda'''
-    if alpha > 0:
-        lam = np.random.beta(alpha, alpha)
-    else:
-        lam = 1
-
-    batch_size = x.size()[0]
-    if use_cuda:
-        index = torch.randperm(batch_size).cuda()
-    else:
-        index = torch.randperm(batch_size)
-
-    mixed_x = lam * x + (1 - lam) * x[index, :]
-    y_a, y_b = y, y[index]
-    return mixed_x, y_a, y_b, lam
-
 
 def to_one_hot(inp,num_classes):
     y_onehot = torch.FloatTensor(inp.size(0), num_classes)
