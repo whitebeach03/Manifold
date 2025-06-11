@@ -1,15 +1,14 @@
+import sys
+import numpy as np
+import random
 import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-from torch.autograd import Variable
-import numpy as np
-import random
-from sklearn.decomposition import PCA
-from sklearn.neighbors import NearestNeighbors
 from foma import foma
 from src.utils import mixup_data
-import sys
+from sklearn.decomposition import PCA
+from sklearn.neighbors import NearestNeighbors
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)

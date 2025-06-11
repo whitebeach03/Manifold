@@ -1,8 +1,8 @@
+import argparse
 import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-import argparse
 
 def main():
     parser = argparse.ArgumentParser()
@@ -40,7 +40,7 @@ def main():
     plot_comparison_graph(model_type, augmentations, data_type, epochs, iteration)
     
     ### Print experiments result ###
-    print()
+    print("----------------------------------------------------------------------------------------")
     for augment in augmentations:
         print(augment)
         pickle_file_path = f"history/{model_type}/{augment}/{data_type}_{epochs}"
@@ -50,13 +50,13 @@ def main():
         std_acc  = load_std(pickle_file_path, iteration)
 
         print(f"| Average Accuracy: {avg_acc}% | Best Accuracy: {best_acc}% | Test Loss: {avg_loss} | std: {std_acc} |")
-        print()
+        print("----------------------------------------------------------------------------------------")
 
 def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration):
     os.makedirs(f"./result_plot/{model_type}/", exist_ok=True)
     plt.figure(figsize=(12, 5))
     
-    ### Accuracy ###
+    ### ACCURACY ###
     plt.subplot(1, 2, 1)
     for augment in augmentations:
         dic = {}
@@ -74,6 +74,8 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
 
         if augment == "FOMA":
             augment = "FOMA_input"
+        elif augment == "FOMA_latent_random":
+            augment = "FOMA_latent"
         plt.plot(epochs, val_acc, linestyle='solid', linewidth=0.8, label=f'{augment}')
         
     plt.title('Validation Accuracy')
@@ -82,9 +84,8 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     plt.legend()
     plt.grid(True)
     plt.ylim(bottom=0.3, top=0.7)
-
     
-    ### Loss ###
+    ### LOSS ###
     plt.subplot(1, 2, 2)
     for augment in augmentations:
         dic = {}
@@ -102,6 +103,8 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
 
         if augment == "FOMA":
             augment = "FOMA_input"
+        elif augment == "FOMA_latent_random":
+            augment = "FOMA_latent"
         plt.plot(epochs, val_loss, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Validation Loss')
@@ -111,7 +114,6 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     plt.grid(True)
     
     plt.tight_layout()
-    # plt.savefig(f'./result_plot/{model_type}/{data_type}_{epoch}.png')
     plt.savefig(f'./result_plot/{model_type}/{data_type}_{epoch}.png')
     print("Save Result!")
 
