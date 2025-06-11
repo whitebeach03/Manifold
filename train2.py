@@ -22,7 +22,7 @@ from src.models.wide_resnet import Wide_ResNet
 from sklearn.manifold import TSNE
 from foma import foma, foma_hard
 from torch.utils.data import Sampler
-from src.utils import train, val, test, mixup_data, mixup_criterion
+from src.utils import train, val, test, mixup_data, mixup_criterion, Cutout
 from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFOMABatchSampler
 from sklearn.neighbors import NearestNeighbors
 
@@ -52,18 +52,27 @@ def main():
             num_classes = 10
             batch_size  = 128
         
+        default_transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.Pad(4),
+            transforms.RandomCrop(32),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            Cutout(n_holes=1, length=16),
+        ])
+                
         # Loading Dataset
         if data_type == "stl10":
             transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-            train_dataset = STL10(root="./data", split="test",  download=True, transform=transform)
+            train_dataset = STL10(root="./data", split="test",  download=True, transform=default_transform)
             test_dataset  = STL10(root="./data", split="train", download=True, transform=transform)
         elif data_type == "cifar100":
             transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-            train_dataset = CIFAR100(root="./data", train=True,  transform=transform, download=True)
+            train_dataset = CIFAR100(root="./data", train=True,  transform=default_transform, download=True)
             test_dataset  = CIFAR100(root="./data", train=False, transform=transform, download=True)
         elif data_type == "cifar10":
             transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-            train_dataset = CIFAR10(root="./data", train=True,  transform=transform, download=True)
+            train_dataset = CIFAR10(root="./data", train=True,  transform=default_transform, download=True)
             test_dataset  = CIFAR10(root="./data", train=False, transform=transform, download=True)
         
         n_samples = len(train_dataset)
@@ -123,12 +132,12 @@ def main():
         ###########################################################################################################################
         
         # Augmentation List
-        augmentations = {
-            # "Original",
-            # "Mixup",
+        augmentations = [
+            "Default",
+            "Mixup",
             "Manifold-Mixup",
             # "FOMA",
-            # "FOMA_latent_random",
+            "FOMA_latent_random",
 
             # "Mixup-Original",
             # "Mixup-PCA",
@@ -140,7 +149,7 @@ def main():
             # "FOMA_curriculum"
             # "FOMA_samebatch"
             # "FOMA_knn"
-        }
+        ]
 
         for augment in augmentations:
             train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)

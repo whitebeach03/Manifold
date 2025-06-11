@@ -12,6 +12,46 @@ from torch.autograd import Variable
 from torch.utils.data import random_split, Subset, DataLoader
 from sklearn.metrics import accuracy_score
 
+class Cutout(object):
+    """
+    Randomly mask out one or more square patches from an image tensor.
+    Args:
+        n_holes (int): Number of patches to cut out of each image.
+        length (int): The length (in pixels) of each square patch.
+    """
+    def __init__(self, n_holes, length):
+        self.n_holes = n_holes
+        self.length = length
+
+    def __call__(self, img):
+        """
+        Args:
+            img (Tensor): Tensor image of size (C, H, W).
+        Returns:
+            Tensor: Image with n_holes of dimension length x length cut out.
+        """
+        h = img.size(1)
+        w = img.size(2)
+
+        mask = np.ones((h, w), np.float32)
+
+        for _ in range(self.n_holes):
+            y = random.randint(0, h - 1)
+            x = random.randint(0, w - 1)
+
+            y1 = np.clip(y - self.length // 2, 0, h)
+            y2 = np.clip(y + self.length // 2, 0, h)
+            x1 = np.clip(x - self.length // 2, 0, w)
+            x2 = np.clip(x + self.length // 2, 0, w)
+
+            mask[y1: y2, x1: x2] = 0.
+
+        mask = torch.from_numpy(mask)
+        mask = mask.expand_as(img)
+        img = img * mask
+
+        return img
+
 def train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok, epochs):
     model.train()
     train_loss = 0.0
@@ -24,7 +64,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         # unique, counts = torch.unique(labels, return_counts=True)
         # print(f"[Batch Label Distribution] {dict(zip(unique.cpu().tolist(), counts.cpu().tolist()))}")
 
-        if augment == "Original":  
+        if augment == "Default":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
         

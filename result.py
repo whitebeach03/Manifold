@@ -18,11 +18,11 @@ def main():
     model_type = args.model_type
     
     augmentations = [
-        "Original",
+        "Default",
         "Mixup",
         # "Manifold-Mixup",
-        "FOMA",
-        "FOMA_latent_random",
+        # "FOMA",
+        # "FOMA_latent_random",
 
         # "Mixup-Original",
         # "Mixup-PCA",
@@ -74,13 +74,15 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
 
         if augment == "FOMA":
             augment = "FOMA_input"
-        plt.plot(epochs, val_acc, linestyle='solid', linewidth=1, label=f'{augment}')
+        plt.plot(epochs, val_acc, linestyle='solid', linewidth=0.8, label=f'{augment}')
         
     plt.title('Validation Accuracy')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True)
+    plt.ylim(bottom=0.3, top=0.7)
+
     
     ### Loss ###
     plt.subplot(1, 2, 2)
