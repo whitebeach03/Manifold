@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--iteration", type=int, default=1)
-    parser.add_argument("--epochs", type=int, default=400)
-    parser.add_argument("--data_type", type=str, default="cifar100", choices=["stl10", "cifar100", "cifar10"])
+    parser.add_argument("--iteration",  type=int, default=1)
+    parser.add_argument("--epochs",     type=int, default=400)
+    parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
     args = parser.parse_args()
 
@@ -23,17 +23,16 @@ def main():
         # "Manifold-Mixup",
         # "FOMA",
         # "FOMA_latent_random",
+        
+        # "FOMA_hard",
+        # "FOMA_curriculum"
+        # "FOMA_samebatch"
+        # "FOMA_knn"
 
         # "Mixup-Original",
         # "Mixup-PCA",
         # "Mixup-Original&PCA",
         # "PCA",
-
-        # "FOMA_hard",
-        # "FOMA_latent",
-        # "FOMA_curriculum"
-        # "FOMA_samebatch"
-        # "FOMA_knn"
     ]
     
     ### Plot accuracy & loss ###
@@ -83,7 +82,7 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True)
-    plt.ylim(bottom=0.3, top=0.7)
+    plt.ylim(bottom=0.3)
     
     ### LOSS ###
     plt.subplot(1, 2, 2)

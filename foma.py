@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):

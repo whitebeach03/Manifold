@@ -6,9 +6,7 @@ import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
 from foma import foma
-from src.utils import mixup_data
-from sklearn.decomposition import PCA
-from sklearn.neighbors import NearestNeighbors
+from src.utils import mixup_data, local_pca_perturbation
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
@@ -25,11 +23,11 @@ def conv_init(m):
 class wide_basic(nn.Module):
     def __init__(self, in_planes, planes, dropout_rate, stride=1):
         super(wide_basic, self).__init__()
-        self.bn1 = nn.BatchNorm2d(in_planes)
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, padding=1, bias=True)
+        self.bn1     = nn.BatchNorm2d(in_planes)
+        self.conv1   = nn.Conv2d(in_planes, planes, kernel_size=3, padding=1, bias=True)
         self.dropout = nn.Dropout(p=dropout_rate)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=True)
+        self.bn2     = nn.BatchNorm2d(planes)
+        self.conv2   = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=True)
 
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != planes:
@@ -38,8 +36,8 @@ class wide_basic(nn.Module):
             )
 
     def forward(self, x):
-        out = self.dropout(self.conv1(F.relu(self.bn1(x))))
-        out = self.conv2(F.relu(self.bn2(out)))
+        out  = self.dropout(self.conv1(F.relu(self.bn1(x))))
+        out  = self.conv2(F.relu(self.bn2(out)))
         out += self.shortcut(x)
 
         return out
@@ -56,11 +54,11 @@ class Wide_ResNet(nn.Module):
         print('| Wide-Resnet %dx%d' %(depth, k))
         nStages = [16, 16*k, 32*k, 64*k]
 
-        self.conv1 = conv3x3(3,nStages[0])
+        self.conv1  = conv3x3(3,nStages[0])
         self.layer1 = self._wide_layer(wide_basic, nStages[1], n, dropout_rate, stride=1)
         self.layer2 = self._wide_layer(wide_basic, nStages[2], n, dropout_rate, stride=2)
         self.layer3 = self._wide_layer(wide_basic, nStages[3], n, dropout_rate, stride=2)
-        self.bn1 = nn.BatchNorm2d(nStages[3], momentum=0.9)
+        self.bn1    = nn.BatchNorm2d(nStages[3], momentum=0.9)
         self.linear = nn.Linear(nStages[3], num_classes)
 
     def _wide_layer(self, block, planes, num_blocks, dropout_rate, stride):
@@ -175,50 +173,3 @@ class Wide_ResNet(nn.Module):
         out = F.avg_pool2d(out, 8)
         out = out.view(out.size(0), -1)
         return out
-
-
-def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
-    """
-    局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
-    :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
-    :param device: 使用するデバイス（cuda or cpu）
-    :param k: k近傍の数
-    :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
-    :return: 摂動後のテンソル（同shape）
-    """
-    data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
-    N, D = data_np.shape
-    if N < k:
-        k = N
-
-    nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
-    _, indices = nbrs.kneighbors(data_np)
-
-    perturbed_data = np.copy(data_np)
-
-    for i in range(N):
-        if random.random() < perturb_prob:
-            neighbors = data_np[indices[i]]
-            pca = PCA(n_components=min(D, k))
-            pca.fit(neighbors)
-            components = pca.components_           # shape: (n_components, D)
-            variances = pca.explained_variance_    # shape: (n_components,)
-
-            # ノイズベクトル（各主成分方向に沿った合成）
-            noise = np.zeros(D)
-            for j in range(len(components)):
-                    noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
-
-            # ノイズの方向はそのまま、長さをスケールする
-            if np.linalg.norm(noise) > 0:
-                noise = noise / np.linalg.norm(noise)
-
-            # 局所の最大主成分の標準偏差に比例したスケール
-            max_std = np.sqrt(variances[0])  # 最大分散方向
-            scaled_noise = alpha * max_std * noise
-            perturbed_data[i] += scaled_noise
-        
-        else:
-            pass
-
-    return torch.tensor(perturbed_data, dtype=torch.float32).to(device)

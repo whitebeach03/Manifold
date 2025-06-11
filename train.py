@@ -22,16 +22,14 @@ from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFO
 def main():
     for i in range(1):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--epochs", type=int, default=400)
-        parser.add_argument("--data_type", type=str, default="cifar100", choices=["stl10", "cifar100", "cifar10"])
+        parser.add_argument("--epochs",     type=int, default=400)
+        parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
-        parser.add_argument("--alpha", type=float, default=1.0, help="MixUp interpolation coefficient (default: 1.0)")
         args = parser.parse_args() 
 
         epochs     = args.epochs
         data_type  = args.data_type
         model_type = args.model_type
-        alpha      = args.alpha
         device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Number of Classes & Batch Size
@@ -84,17 +82,16 @@ def main():
             "Manifold-Mixup",
             # "FOMA",
             "FOMA_latent_random",
+            
+            # "FOMA_hard",
+            # "FOMA_curriculum"
+            # "FOMA_samebatch"
+            # "FOMA_knn"
 
             # "Mixup-Original",
             # "Mixup-PCA",
             # "Mixup-Original&PCA",
             # "PCA",
-
-            # "FOMA_hard",
-            # "FOMA_latent",
-            # "FOMA_curriculum"
-            # "FOMA_samebatch"
-            # "FOMA_knn"
         ]
 
         for augment in augmentations:

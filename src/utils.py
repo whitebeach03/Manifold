@@ -10,26 +10,16 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
 from torch.utils.data import random_split, Subset, DataLoader
+from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
+from sklearn.neighbors import NearestNeighbors
 
 class Cutout(object):
-    """
-    Randomly mask out one or more square patches from an image tensor.
-    Args:
-        n_holes (int): Number of patches to cut out of each image.
-        length (int): The length (in pixels) of each square patch.
-    """
     def __init__(self, n_holes, length):
         self.n_holes = n_holes
         self.length = length
 
     def __call__(self, img):
-        """
-        Args:
-            img (Tensor): Tensor image of size (C, H, W).
-        Returns:
-            Tensor: Image with n_holes of dimension length x length cut out.
-        """
         h = img.size(1)
         w = img.size(2)
 
@@ -65,29 +55,6 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
         
-        elif augment == "FOMA_curriculum":
-            if epochs < 100:
-                images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
-                preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
-                loss  = criterion(preds, soft_labels)
-            else:
-                preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
-                loss = criterion(preds, soft_labels)
-        
-        elif augment == "FOMA" or augment == "FOMA_knn":
-            images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
-            preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
-            loss  = criterion(preds, soft_labels)
-        
-        elif augment == "FOMA_hard":
-            images, hard_labels = foma_hard(images, labels, num_classes, alpha=1.0, rho=0.9)
-            preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
-            loss  = criterion(preds, hard_labels)
-         
-        elif augment == "FOMA_latent" or augment == "FOMA_latent_random":
-            preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
-            loss = criterion(preds, soft_labels)
-
         elif augment == "Mixup":
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
             preds = model(images, labels, device, augment, aug_ok)
@@ -96,6 +63,24 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         elif augment == "Manifold-Mixup":
             preds, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            
+        elif augment == "FOMA" or augment == "FOMA_knn":
+            images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+            preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+            loss  = criterion(preds, soft_labels)
+            
+        elif augment == "FOMA_latent_random":
+            preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
+            loss = criterion(preds, soft_labels)
+        
+        elif augment == "FOMA_curriculum":
+            if epochs < 100:
+                images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+                preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+                loss  = criterion(preds, soft_labels)
+            else:
+                preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
+                loss = criterion(preds, soft_labels) 
         
         elif augment == "Mixup-Original":
             if epochs < 200:
@@ -205,6 +190,52 @@ def seed_everything(seed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
+
+def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
+    """
+    局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
+    :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
+    :param device: 使用するデバイス（cuda or cpu）
+    :param k: k近傍の数
+    :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
+    :return: 摂動後のテンソル（同shape）
+    """
+    data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
+    N, D = data_np.shape
+    if N < k:
+        k = N
+
+    nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
+    _, indices = nbrs.kneighbors(data_np)
+
+    perturbed_data = np.copy(data_np)
+
+    for i in range(N):
+        if random.random() < perturb_prob:
+            neighbors = data_np[indices[i]]
+            pca = PCA(n_components=min(D, k))
+            pca.fit(neighbors)
+            components = pca.components_           # shape: (n_components, D)
+            variances = pca.explained_variance_    # shape: (n_components,)
+
+            # ノイズベクトル（各主成分方向に沿った合成）
+            noise = np.zeros(D)
+            for j in range(len(components)):
+                    noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
+
+            # ノイズの方向はそのまま、長さをスケールする
+            if np.linalg.norm(noise) > 0:
+                noise = noise / np.linalg.norm(noise)
+
+            # 局所の最大主成分の標準偏差に比例したスケール
+            max_std = np.sqrt(variances[0])  # 最大分散方向
+            scaled_noise = alpha * max_std * noise
+            perturbed_data[i] += scaled_noise
+        
+        else:
+            pass
+
+    return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
 
 def make_helix(n_samples):
     n_samples = 5000
