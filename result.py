@@ -20,9 +20,9 @@ def main():
     augmentations = [
         "Default",
         "Mixup",
-        # "Manifold-Mixup",
-        # "FOMA",
-        # "FOMA_latent_random",
+        "Manifold-Mixup",
+        "FOMA_latent_random",
+        "FOMA",
         
         # "FOMA_hard",
         # "FOMA_curriculum"
@@ -82,7 +82,7 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True)
-    plt.ylim(bottom=0.3)
+    plt.ylim(bottom=0.2)
     
     ### LOSS ###
     plt.subplot(1, 2, 2)

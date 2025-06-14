@@ -64,12 +64,12 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             preds, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
             
-        elif augment == "FOMA" or augment == "FOMA_knn":
+        elif augment == "FOMA" or augment == "FOMA_knn_input":
             images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
             preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
             loss  = criterion(preds, soft_labels)
             
-        elif augment == "FOMA_latent_random":
+        elif augment == "FOMA_latent_random" or "FOMA_knn_latent":
             preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
             loss = criterion(preds, soft_labels)
         
