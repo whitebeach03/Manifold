@@ -18,16 +18,17 @@ def main():
     model_type = args.model_type
     
     augmentations = [
-        "Default",
-        "Mixup",
-        "Manifold-Mixup",
-        "FOMA_latent_random",
+        # "Default",
+        # "Mixup",
+        # "Manifold-Mixup",
         "FOMA",
+        # "FOMA_latent_random",
         
+        "FOMA_knn_input",
+        # "FOMA_knn_latent",
         # "FOMA_hard",
         # "FOMA_curriculum"
         # "FOMA_samebatch"
-        # "FOMA_knn"
 
         # "Mixup-Original",
         # "Mixup-PCA",

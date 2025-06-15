@@ -8,17 +8,14 @@ import random
 import pickle
 import argparse
 from collections import defaultdict
-
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from torch.utils.data import DataLoader, random_split, Subset
-
 from src.models.resnet import ResNet18
 from src.models.wide_resnet import Wide_ResNet
 from foma import foma, foma_hard
 from src.utils import *
-
 from batch_sampler import HybridFOMABatchSampler
 from batch_sampler import extract_wrn_features  # assuming this function exists as before
 
@@ -113,7 +110,7 @@ def main():
 
         # Augmentation List
         augmentations = [
-            "FOMA_knn_input",
+            # "FOMA_knn_input",
             "FOMA_knn_latent"
         ]
 

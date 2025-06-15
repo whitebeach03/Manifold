@@ -72,7 +72,7 @@ class Wide_ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x, labels, device, augment, k=10, aug_ok=False, num_classes=100):
-        if augment == "FOMA_latent_random":
+        if augment == "FOMA_latent_random" or augment == "FOMA_knn_latent":
             if aug_ok:
                 layer_foma = random.randint(0, 4)
                 out = x
