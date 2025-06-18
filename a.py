@@ -14,76 +14,76 @@ import matplotlib.pyplot as plt
 from src.utils import *
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
-from torchvision.datasets import STL10, CIFAR10, CIFAR100
-from torch.utils.data import DataLoader, random_split
+from torchvision.datasets import CIFAR100
+from torch.utils.data import DataLoader
 from src.models.resnet import ResNet18
 from src.models.wide_resnet import Wide_ResNet
 from sklearn.manifold import TSNE
 from foma import foma, foma_hard
 from torch.utils.data import Sampler
 
-    
+# --- 変換定義 ---
 default_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.Pad(4),
     transforms.RandomCrop(32),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    Cutout(n_holes=1, length=16),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225]),
 ])
 
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-# dataset = STL10(root="./data", split="test",  download=True, transform=transform)
-dataset = CIFAR100(root="./data", train=True,  transform=default_transform, download=True)
-loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=False)
+# オリジナル画像用（ToTensor + Normalizeのみ）
+original_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225]),
+])
 
+# データセットの読み込み
+original_dataset = CIFAR100(root="./data", train=True, transform=original_transform, download=True)
+default_dataset = CIFAR100(root="./data", train=True, transform=default_transform, download=True)
+
+# DataLoader（シャッフルなしで同じ順に）
+original_loader = DataLoader(original_dataset, batch_size=128, shuffle=False)
+default_loader = DataLoader(default_dataset, batch_size=128, shuffle=False)
 
 # 最初のバッチを取得
-images, labels = next(iter(loader))
+original_images, labels = next(iter(original_loader))
+default_images, _ = next(iter(default_loader))  # ラベルは同じなので省略
+
+# 可視化対象クラス数
 num_classes = 10
-alpha = 1.0
-rho = 0.9
 
-# FOMA適用
-# X_scaled, soft_labels = foma(images, labels, num_classes, alpha, rho)
-
-# 逆正規化（CIFAR-10の場合）
+# CIFAR用の逆正規化関数
 def denormalize(img):
     mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
     std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
     return img * std + mean
 
-# 各クラスごとに最初の1枚を選択
+# 各クラスから最初の1枚ずつ選択
 class_indices = []
 for class_id in range(num_classes):
     indices = (labels == class_id).nonzero(as_tuple=True)[0]
     if len(indices) > 0:
         class_indices.append(indices[0])
 
+# 可視化：2行（上：Original、下：Default）
 plt.figure(figsize=(15, 6))
 for idx, i in enumerate(class_indices):
-    # 元画像
+    # オリジナル画像
     plt.subplot(2, num_classes, idx + 1)
-    img = denormalize(images[i].cpu())
+    img = denormalize(original_images[i].cpu())
     plt.imshow(img.permute(1, 2, 0).numpy())
     plt.axis('off')
     plt.title(f'Original\nLabel: {labels[i].item()}')
 
-    # FOMA画像
-    # plt.subplot(2, num_classes, num_classes + idx + 1)
-    # img_foma = denormalize(X_scaled[i].detach().cpu())
-    # plt.imshow(img_foma.permute(1, 2, 0).numpy())
-    # plt.axis('off')
-    # max_prob, pred_class = torch.max(soft_labels[i], dim=0)
-    # plt.title(f'FOMA\nLabel: {pred_class.item()}\n{max_prob.item():.3f}')
+    # 変換後画像（default_transform）
+    plt.subplot(2, num_classes, num_classes + idx + 1)
+    img_default = denormalize(default_images[i].cpu())
+    plt.imshow(img_default.permute(1, 2, 0).numpy())
+    plt.axis('off')
+    plt.title(f'Default\nLabel: {labels[i].item()}')
 
 plt.tight_layout()
-plt.savefig("./CIFAR100_default.png")
-
-# # ソフトラベル出力（丸め済み）
-# for idx, i in enumerate(class_indices):
-#     probs = soft_labels[i].detach().cpu().numpy()
-#     rounded_probs = [round(p, 3) for p in probs]
-#     print(f"Class {labels[i].item()} soft label (probabilities): {rounded_probs}")
-
-
+plt.savefig("./CIFAR100_comparison.png")
+plt.show()

@@ -13,6 +13,7 @@ from torch.utils.data import random_split, Subset, DataLoader
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import NearestNeighbors
+from torchvision.transforms import ToPILImage
 
 class Cutout(object):
     def __init__(self, n_holes, length):
@@ -46,6 +47,15 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
+    to_pil = ToPILImage()
+    default_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.Pad(4),
+        transforms.RandomCrop(32),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        # Cutout(n_holes=1, length=16),
+    ])
 
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
@@ -68,6 +78,12 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
             preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
             loss  = criterion(preds, soft_labels)
+        
+        elif augment == "FOMA_default":
+            images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
+            images = torch.stack([default_transform(to_pil(img.cpu())) for img in images]).to(device)     
+            preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
+            loss  = criterion(preds, soft_labels)    
             
         elif augment == "FOMA_latent_random" or "FOMA_knn_latent":
             preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)

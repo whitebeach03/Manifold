@@ -19,6 +19,26 @@ from torch.utils.data import DataLoader, random_split
 from foma import foma
 from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFOMABatchSampler
 
+augmentations = [
+    "FOMA_default",
+
+    # "Default",
+    # "Mixup",
+    # "Manifold-Mixup",
+    # "FOMA_latent_random",
+    # "FOMA",
+    
+    # "FOMA_hard",
+    # "FOMA_curriculum"
+    # "FOMA_samebatch"
+    # "FOMA_knn"
+
+    # "Mixup-Original",
+    # "Mixup-PCA",
+    # "Mixup-Original&PCA",
+    # "PCA",
+]
+
 def main():
     for i in range(1):
         parser = argparse.ArgumentParser()
@@ -49,7 +69,7 @@ def main():
             transforms.RandomCrop(32),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            Cutout(n_holes=1, length=16),
+            # Cutout(n_holes=1, length=16),
         ])
                 
         # Loading Dataset
@@ -59,12 +79,15 @@ def main():
             test_dataset  = STL10(root="./data", split="train", download=True, transform=transform)
         elif data_type == "cifar100":
             transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-            train_dataset = CIFAR100(root="./data", train=True,  transform=default_transform, download=True)
-            test_dataset  = CIFAR100(root="./data", train=False, transform=transform, download=True)
+            if augmentations[0] == "FOMA_fefault":
+                train_dataset = CIFAR100(root="./data", train=True,  transform=transform, download=True)
+            else:
+                train_dataset = CIFAR100(root="./data", train=True,  transform=default_transform, download=True)
+            test_dataset  = CIFAR100(root="./data", train=False, transform=transform,         download=True)
         elif data_type == "cifar10":
             transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
             train_dataset = CIFAR10(root="./data", train=True,  transform=default_transform, download=True)
-            test_dataset  = CIFAR10(root="./data", train=False, transform=transform, download=True)
+            test_dataset  = CIFAR10(root="./data", train=False, transform=transform,         download=True)
         
         n_samples = len(train_dataset)
         n_train   = int(n_samples * 0.8)
@@ -75,25 +98,6 @@ def main():
         test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
         train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
         
-        # Augmentation List
-        augmentations = [
-            # "Default",
-            # "Mixup",
-            # "Manifold-Mixup",
-            # "FOMA_latent_random",
-            # "FOMA",
-            
-            # "FOMA_hard",
-            # "FOMA_curriculum"
-            # "FOMA_samebatch"
-            # "FOMA_knn"
-
-            # "Mixup-Original",
-            # "Mixup-PCA",
-            # "Mixup-Original&PCA",
-            # "PCA",
-        ]
-
         for augment in augmentations:
             print(f"\n==> Training with {augment} ...")
 
