@@ -15,19 +15,22 @@ from sklearn.metrics import accuracy_score
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
 from foma import foma
 from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFOMABatchSampler
 
 augmentations = [
-    "FOMA_default",
-
     # "Default",
     # "Mixup",
     # "Manifold-Mixup",
-    # "FOMA_latent_random",
+
+    "Mixup-Curriculum"
+
     # "FOMA",
-    
+    # "FOMA_latent_random",
+
+    # "FOMA_default",
+    # "FOMA_knn_input",
     # "FOMA_hard",
     # "FOMA_curriculum"
     # "FOMA_samebatch"
@@ -42,7 +45,7 @@ augmentations = [
 def main():
     for i in range(1):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--epochs",     type=int, default=400)
+        parser.add_argument("--epochs",     type=int, default=1)
         parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
         args = parser.parse_args() 
@@ -69,34 +72,37 @@ def main():
             transforms.RandomCrop(32),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            # Cutout(n_holes=1, length=16),
+        ])
+
+        transform = transforms.Compose([
+            transforms.ToTensor(), 
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
                 
         # Loading Dataset
         if data_type == "stl10":
-            transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
             train_dataset = STL10(root="./data", split="test",  download=True, transform=default_transform)
             test_dataset  = STL10(root="./data", split="train", download=True, transform=transform)
         elif data_type == "cifar100":
-            transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-            if augmentations[0] == "FOMA_fefault":
-                train_dataset = CIFAR100(root="./data", train=True,  transform=transform, download=True)
-            else:
-                train_dataset = CIFAR100(root="./data", train=True,  transform=default_transform, download=True)
-            test_dataset  = CIFAR100(root="./data", train=False, transform=transform,         download=True)
+            full_train_aug   = CIFAR100(root="./data", train=True,  transform=default_transform, download=True)
+            full_train_plain = CIFAR100(root="./data", train=True,  transform=transform,         download=True)
+            test_dataset     = CIFAR100(root="./data", train=False, transform=transform,         download=True)
         elif data_type == "cifar10":
-            transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-            train_dataset = CIFAR10(root="./data", train=True,  transform=default_transform, download=True)
-            test_dataset  = CIFAR10(root="./data", train=False, transform=transform,         download=True)
+            full_train_aug   = CIFAR10(root="./data", train=True,  transform=default_transform, download=True)
+            full_train_plain = CIFAR10(root="./data", train=True,  transform=transform,         download=True)
+            test_dataset     = CIFAR10(root="./data", train=False, transform=transform,         download=True)
         
-        n_samples = len(train_dataset)
+        n_samples = len(full_train_aug)
         n_train   = int(n_samples * 0.8)
         n_val     = n_samples - n_train
-        train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
+        train_indices, val_indices = random_split(range(n_samples), [n_train, n_val])
 
-        val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)
-        test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
+        train_dataset = torch.utils.data.Subset(full_train_aug, train_indices)
+        val_dataset   = torch.utils.data.Subset(full_train_plain, val_indices)
+        
         train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)     
+        test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
         
         for augment in augmentations:
             print(f"\n==> Training with {augment} ...")

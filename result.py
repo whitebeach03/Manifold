@@ -22,10 +22,17 @@ def main():
         "Mixup",
         "Manifold-Mixup",
         # "FOMA",
-        "FOMA_latent_random",
+        # "FOMA_latent_random",
+
+        # "FOMA_fixed_input",
+        # "FOMA_fixed_latent",
+        
+        # "FOMA_default",
+        # "FOMA_Mixup",
         
         # "FOMA_knn_input",
         # "FOMA_knn_latent",
+        
         # "FOMA_hard",
         # "FOMA_curriculum"
         # "FOMA_samebatch"
@@ -38,9 +45,10 @@ def main():
     
     ### Plot accuracy & loss ###
     plot_comparison_graph(model_type, augmentations, data_type, epochs, iteration)
+    plot_comparison_graph_train(model_type, augmentations, data_type, epochs, iteration)
     
     ### Print experiments result ###
-    print("----------------------------------------------------------------------------------------")
+    print("========================================================================================")
     for augment in augmentations:
         print(augment)
         pickle_file_path = f"history/{model_type}/{augment}/{data_type}_{epochs}"
@@ -50,7 +58,72 @@ def main():
         std_acc  = load_std(pickle_file_path, iteration)
 
         print(f"| Average Accuracy: {avg_acc}% | Best Accuracy: {best_acc}% | Test Loss: {avg_loss} | std: {std_acc} |")
-        print("----------------------------------------------------------------------------------------")
+        print("========================================================================================")
+        
+def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, iteration):
+    os.makedirs(f"./result_plot/{model_type}/", exist_ok=True)
+    plt.figure(figsize=(12, 5))
+    
+    ### ACCURACY ###
+    plt.subplot(1, 2, 1)
+    for augment in augmentations:
+        dic = {}
+        for i in range(iteration):
+            pickle_file_path = f'./history/{model_type}/{augment}/{data_type}_{epoch}_{i}.pickle'
+            with open(pickle_file_path, 'rb') as f:
+                dic[i] = pickle.load(f)
+                
+        train_acc = np.zeros(len(dic[i]['accuracy']))
+        for i in range(iteration):
+            train_acc += np.array(dic[i]['accuracy'])
+        train_acc = train_acc / iteration
+                
+        epochs = range(1, len(train_acc) + 1)
+
+        if augment == "FOMA":
+            augment = "FOMA_input"
+        elif augment == "FOMA_latent_random":
+            augment = "FOMA_latent"
+        plt.plot(epochs, train_acc, linestyle='solid', linewidth=0.8, label=f'{augment}')
+        
+    plt.title('Train Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.grid(True)
+    plt.ylim(bottom=0.2)
+    
+    ### LOSS ###
+    plt.subplot(1, 2, 2)
+    for augment in augmentations:
+        dic = {}
+        for i in range(iteration):
+            pickle_file_path = f'./history/{model_type}/{augment}/{data_type}_{epoch}_{i}.pickle'
+            with open(pickle_file_path, 'rb') as f:
+                dic[i] = pickle.load(f)
+        
+        train_loss = np.zeros(len(dic[i]['loss']))
+        for i in range(iteration):
+            train_loss += np.array(dic[i]['loss'])
+        train_loss = train_loss / iteration
+        
+        epochs = range(1, len(train_loss) + 1)
+
+        if augment == "FOMA":
+            augment = "FOMA_input"
+        elif augment == "FOMA_latent_random":
+            augment = "FOMA_latent"
+        plt.plot(epochs, train_loss, linestyle='solid', linewidth=1, label=f'{augment}')
+        
+    plt.title('Train Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid(True)
+    
+    plt.tight_layout()
+    plt.savefig(f'./result_plot/{model_type}/{data_type}_{epoch}_train.png')
+    print("Save Result!")
 
 def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration):
     os.makedirs(f"./result_plot/{model_type}/", exist_ok=True)

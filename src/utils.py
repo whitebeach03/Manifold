@@ -9,11 +9,36 @@ from torchvision import datasets, transforms
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
-from torch.utils.data import random_split, Subset, DataLoader
+from torch.utils.data import random_split, Subset, DataLoader, Dataset
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import NearestNeighbors
 from torchvision.transforms import ToPILImage
+from torchvision.utils import make_grid
+import matplotlib.pyplot as plt
+from torchvision.transforms import RandomHorizontalFlip, Pad, RandomCrop
+import torchvision.transforms.functional as TF
+
+class FixedAugmentedDataset(Dataset):
+    def __init__(self, base_dataset, random_transform):
+        """
+        base_dataset:  元の PIL 画像＋ラベルの Dataset
+        random_transform: transforms.Compose([...Random...]) のインスタンス
+        """
+        self.labels = []
+        self.images = []
+        # ここで一度だけ全サンプルに変換を適用してキャッシュ
+        for img, lbl in base_dataset:
+            img_aug = random_transform(img)
+            self.images.append(img_aug)
+            self.labels.append(lbl)
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        # 常にキャッシュ済みの同じ img_aug を返す
+        return self.images[idx], self.labels[idx]
 
 class Cutout(object):
     def __init__(self, n_holes, length):
@@ -43,20 +68,51 @@ class Cutout(object):
 
         return img
 
+# ------------ 可視化用ユーティリティ ------------
+# 正規化を解除する関数
+def unnormalize(tensor):
+    mean = torch.tensor([0.485,0.456,0.406]).view(3,1,1)
+    std  = torch.tensor([0.229,0.224,0.225]).view(3,1,1)
+    return torch.clamp(tensor * std + mean, 0, 1)
+
+# バッチをグリッド表示する関数
+def visualize_batch(
+                    epochs: int,
+                    images: torch.Tensor,
+                    labels: torch.Tensor=None,
+                    augment: str=None, 
+                    classes: list=None,
+                    n: int = 8,
+                    title: str = None):
+    """
+    images:     Tensor[B, C, H, W], 正規化後の画像
+    labels:     Tensor[B]（あるいは list of int）
+    classes:    CIFAR-100 クラス名リスト
+    n:          表示する枚数（先頭 n 枚）
+    title:      画像上部に出したい文字列（デフォルトはラベル名をスペース区切りで）
+    """
+    images = images.detach().cpu()
+    # 先頭 n 枚をアンノーマライズして PIL に戻す
+    imgs = [unnormalize(img) for img in images[:n]]
+    grid = make_grid(imgs, nrow=n, padding=0)
+    
+    plt.figure(figsize=(n*1.5, 1.5))
+    npimg = grid.numpy().transpose(1,2,0)
+    plt.imshow(npimg)
+    plt.axis('off')
+    
+    if labels is not None and classes is not None:
+        labs = labels[:n].cpu().numpy()
+        lab_str = [classes[l] for l in labs]
+        plt.title(title or "  ".join(lab_str), fontsize=10)
+    plt.savefig(f"{augment}_{epochs}.png")
+
 def train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok, epochs):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
-    to_pil = ToPILImage()
-    default_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.Pad(4),
-        transforms.RandomCrop(32),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        # Cutout(n_holes=1, length=16),
-    ])
 
+    batch_idx = 0
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
         labels_true = labels
@@ -64,11 +120,29 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         if augment == "Default":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
+            # if batch_idx == 0:
+            #     visualize_batch(epochs, images, labels, augment, n=10)
+        
+        elif augment == "Mixup-Curriculum":
+            if epochs < 100:
+                alpha = 0.5
+            elif epochs >= 100 and epochs < 200:
+                alpha = 1.0
+            elif epochs >= 200 and epochs < 300:
+                alpha = 2.0
+            elif epochs >= 300 and epochs < 400:
+                alpha = 10
+
+            images, y_a, y_b, lam = mixup_data(images, labels, alpha, device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
         
         elif augment == "Mixup":
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
             preds = model(images, labels, device, augment, aug_ok)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            # if batch_idx == 0:
+            #     visualize_batch(images, labels, augment, n=10)
 
         elif augment == "Manifold-Mixup":
             preds, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
@@ -78,12 +152,17 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
             preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
             loss  = criterion(preds, soft_labels)
+            # if batch_idx == 0:
+            #     visualize_batch(images, labels, augment, n=10)
         
         elif augment == "FOMA_default":
             images, soft_labels = foma(images, labels, num_classes, alpha=1.0, rho=0.9)
-            images = torch.stack([default_transform(to_pil(img.cpu())) for img in images]).to(device)     
+            images = torch.stack([post_foma_transform(img) for img in images], dim=0).to(device)
+
             preds = model(images, labels, device, augment, aug_ok, num_classes=num_classes)
-            loss  = criterion(preds, soft_labels)    
+            loss  = criterion(preds, soft_labels)
+            # if batch_idx == 0:
+            #     visualize_batch(images, labels, augment, n=10)
             
         elif augment == "FOMA_latent_random" or "FOMA_knn_latent":
             preds, soft_labels = model(images, labels, device, augment, aug_ok=True, num_classes=num_classes)
@@ -133,6 +212,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
                 preds = model(images, labels, device, augment, aug_ok=True)
                 loss  = criterion(preds, labels)
 
+        batch_idx += 1
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -184,6 +264,7 @@ def mixup_data(x, y, alpha=1.0, use_cuda=True):
     '''Returns mixed inputs, pairs of targets, and lambda'''
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
+        print(lam)
     else:
         lam = 1
     batch_size = x.size()[0]
