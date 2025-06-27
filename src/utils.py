@@ -264,7 +264,6 @@ def mixup_data(x, y, alpha=1.0, use_cuda=True):
     '''Returns mixed inputs, pairs of targets, and lambda'''
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
-        print(lam)
     else:
         lam = 1
     batch_size = x.size()[0]
