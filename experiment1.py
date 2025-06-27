@@ -23,9 +23,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = Wide_ResNet(28, 10, 0.3, num_classes=100).to(device)
 
 # --- 5. Jacobian ノルム測定関数 ---
-def compute_jacobian_norm(model, x):
+def compute_jacobian_norm(model, x, labels, augment):
     x = x.requires_grad_(True)
-    y = model(x)
+    y = model(x, labels, device, augment)
     # クラスごとに sum outputs, compute grad w.r.t. input
     grads = []
     for i in range(y.size(1)):
@@ -62,8 +62,8 @@ if __name__ == '__main__':
         model.eval()
 
         # Jacobian ノルム測定
-        x_batch, _ = next(iter(test_loader))
-        jn = compute_jacobian_norm(model, x_batch.to(device))
+        x_batch, labels = next(iter(test_loader))
+        jn = compute_jacobian_norm(model, x_batch.to(device), labels.to(device), augment)
         print(f"Avg Jacobian norm ({augment}):", jn.mean().item())
 
     # 線形補間テスト例
