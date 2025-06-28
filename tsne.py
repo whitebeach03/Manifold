@@ -10,7 +10,7 @@ from tqdm import tqdm
 from src.models.wide_resnet import Wide_ResNet
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 
-epochs     = 250
+epochs     = 400
 data_type  = "cifar100"
 model_type = "wide_resnet_28_10"
 device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -18,7 +18,8 @@ device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 features_list = []
 labels_list = []
 
-augmentations = ["Original", "Mixup"]
+augmentations = ["Default", "Mixup", "Mixup-Curriculum"]
+# augmentations = ["Mixup-Curriculum"]
 
 for augment in augmentations:
     model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
@@ -71,7 +72,7 @@ for augment in augmentations:
     X_2d = tsne.fit_transform(X)
 
     plt.figure(figsize=(8, 6))
-    scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=10, alpha=0.7)
+    scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=6, alpha=0.7)
     plt.colorbar(scatter, label="Class label")
     plt.title("t-SNE of ResNet Feature Representations")
     plt.xlabel("Dim 1")
