@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,6 +6,7 @@ import torch.optim as optim
 import torchvision
 import numpy as np
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR100
 from src.models.wide_resnet import Wide_ResNet
@@ -43,19 +45,56 @@ def interpolation_test(model, x1, x2, lambdas):
     with torch.no_grad():
         for lam in lambdas:
             x_mix = lam * x1 + (1 - lam) * x2
-            out = F.softmax(model(x_mix), dim=1)
+            out = F.softmax(model(x_mix, labels=None, device=None, augment=None), dim=1)
             probs.append(out.cpu().numpy())
     return np.stack(probs)  # [len(lambdas), batch, num_classes]
 
+def plot(augmentations, lambdas, apple1, apple2, apple3, wolf1, wolf2, wolf3):
+    os.makedirs(f"./experiments/", exist_ok=True)
+    plt.figure(figsize=(12, 5))
+    
+    ### sample 1 ###
+    plt.subplot(1, 2, 1)
+    plt.plot(lambdas, apple1, linestyle='solid', linewidth=0.8, label="Default")
+    plt.plot(lambdas, apple2, linestyle='solid', linewidth=0.8, label="Mixup")
+    plt.plot(lambdas, apple3, linestyle='solid', linewidth=0.8, label="Manifold-Mixup")
+        
+    plt.title('Apple Probs.')
+    plt.xlabel('λ')
+    plt.ylabel('Probs.')
+    plt.legend()
+    plt.grid(True)
+    # plt.ylim(bottom=0.2)
+    
+    ### sample 2 ###
+    plt.subplot(1, 2, 2)
+    plt.plot(lambdas, wolf1, linestyle='solid', linewidth=0.8, label="Default")
+    plt.plot(lambdas, wolf2, linestyle='solid', linewidth=0.8, label="Mixup")
+    plt.plot(lambdas, wolf3, linestyle='solid', linewidth=0.8, label="Manifold-Mixup")
+        
+    plt.title('Wolf Probs.')
+    plt.xlabel('λ')
+    plt.ylabel('Probs.')
+    plt.legend()
+    plt.grid(True)
+    # plt.ylim(bottom=0.2)
+    
+    plt.tight_layout()
+    plt.savefig(f'./experiments/Default_Mixup.png')
+    print("Save Result!")
+
 # --- 7. 実験実行サンプル ---
 if __name__ == '__main__':
-
-    # 最適化器・損失定義
-    optimizer = optim.Adam(model.parameters())
-    criterion = nn.CrossEntropyLoss()
+    augmentations = ["Default", "Mixup", "Manifold-Mixup"]
+    default_apples = []
+    default_wolfs  = []
+    mixup_apples = []
+    mixup_wolfs  = []
+    manifold_mixup_apples = []
+    manifold_mixup_wolfs  = []
 
     # Baseline と Mixup で訓練
-    for augment in ["Default", "Mixup"]:
+    for augment in augmentations:
         print(f"== {augment} ==")
         model_save_path = f"./logs/wide_resnet_28_10/{augment}/cifar100_400_0.pth"
         model.load_state_dict(torch.load(model_save_path, weights_only=True))
@@ -66,15 +105,29 @@ if __name__ == '__main__':
         jn = compute_jacobian_norm(model, x_batch.to(device), labels.to(device), augment)
         print(f"Avg Jacobian norm ({augment}):", jn.mean().item())
 
-    # 線形補間テスト例
-    x_batch, y_batch = next(iter(test_loader))
-    # クラス0 とクラス1 の最初のサンプルを選択
-    idx0 = (y_batch == 0).nonzero()[0]
-    idx1 = (y_batch == 1).nonzero()[0]
-    x0 = x_batch[idx0:idx0+1].to(device)
-    x1 = x_batch[idx1:idx1+1].to(device)
-    lambdas = np.linspace(0, 1, 11)
-    probs_baseline = interpolation_test(model, x0, x1, lambdas)
-    print("Interpolation probs (Default):", probs_baseline[:,0,:2])
-    probs_mixup = interpolation_test(m, x0, x1, lambdas)
-    print("Interpolation probs (Mixup):", probs_mixup[:,0,:2])
+        # 線形補間テスト例
+        x_batch, y_batch = next(iter(test_loader))
+        # クラス0 とクラス1 の最初のサンプルを選択
+        idx0 = (y_batch == 21).nonzero()[0] # チンパンジー
+        idx1 = (y_batch == 97).nonzero()[0] # オオカミ
+        x0 = x_batch[idx0:idx0+1].to(device)
+        x1 = x_batch[idx1:idx1+1].to(device)
+        lambdas = np.linspace(0, 1, 101)
+        probs_baseline = interpolation_test(model, x0, x1, lambdas)
+        print(f"Interpolation probs ({augment}):")
+        
+        for i in range(101):
+            apple_prob = probs_baseline[i][0][21] 
+            wolf_prob  = probs_baseline[i][0][97]
+            if augment == "Default":
+                default_apples.append(apple_prob)
+                default_wolfs.append(wolf_prob)
+            elif augment == "Mixup":
+                mixup_apples.append(apple_prob)
+                mixup_wolfs.append(wolf_prob)
+            elif augment == "Manifold-Mixup":
+                manifold_mixup_apples.append(apple_prob)
+                manifold_mixup_wolfs.append(wolf_prob)
+            print(round(apple_prob, 3), round(wolf_prob, 3))
+
+    plot(augmentations, lambdas, default_apples, mixup_apples, manifold_mixup_apples, default_wolfs, mixup_wolfs, manifold_mixup_wolfs)

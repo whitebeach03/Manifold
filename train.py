@@ -24,7 +24,12 @@ augmentations = [
     # "Mixup",
     # "Manifold-Mixup",
 
-    "Mixup-Curriculum"
+    # "Mixup-Curriculum",
+
+    "Mixup(alpha=0.5)",
+    "Mixup(alpha=1.0)",
+    "Mixup(alpha=2.0)",
+    "Mixup(alpha=5.0)",
 
     # "FOMA",
     # "FOMA_latent_random",

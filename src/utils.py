@@ -123,6 +123,26 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             # if batch_idx == 0:
             #     visualize_batch(epochs, images, labels, augment, n=10)
         
+        elif augment == "Mixup(alpha=0.5)":
+            images, y_a, y_b, lam = mixup_data(images, labels, 0.5, device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        elif augment == "Mixup(alpha=1.0)":
+            images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        elif augment == "Mixup(alpha=2.0)":
+            images, y_a, y_b, lam = mixup_data(images, labels, 2.0, device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        elif augment == "Mixup(alpha=5.0)":
+            images, y_a, y_b, lam = mixup_data(images, labels, 5.0, device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        
         elif augment == "Mixup-Curriculum":
             if epochs < 100:
                 alpha = 0.5

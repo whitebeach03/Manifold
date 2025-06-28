@@ -20,7 +20,10 @@ def main():
     augmentations = [
         "Default",
         "Mixup",
-        "Manifold-Mixup",
+        # "Manifold-Mixup",
+
+        "Mixup-Curriculum",
+
         # "FOMA",
         # "FOMA_latent_random",
 
