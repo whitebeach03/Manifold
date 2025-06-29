@@ -21,6 +21,7 @@ def main():
         "Default",
         "Mixup",
         "Mixup(alpha=0.5)",
+        "Mixup(alpha=2.0)",
         "Manifold-Mixup",
 
         # "Mixup-Curriculum",
