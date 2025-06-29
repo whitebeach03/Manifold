@@ -114,7 +114,7 @@ class Wide_ResNet(nn.Module):
 
         elif augment == "Manifold-Mixup":
             if aug_ok:
-                mixup_alpha = 2.0
+                mixup_alpha = 1.0
                 layer_mix = random.randint(0,4)
                 out = x
                 

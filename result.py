@@ -20,9 +20,10 @@ def main():
     augmentations = [
         "Default",
         "Mixup",
-        # "Manifold-Mixup",
+        "Mixup(alpha=0.5)",
+        "Manifold-Mixup",
 
-        "Mixup-Curriculum",
+        # "Mixup-Curriculum",
 
         # "FOMA",
         # "FOMA_latent_random",
@@ -87,6 +88,8 @@ def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, ite
             augment = "FOMA_input"
         elif augment == "FOMA_latent_random":
             augment = "FOMA_latent"
+        elif augment == "Mixup":
+            augment = "Mixup(alpha=1.0)"
         plt.plot(epochs, train_acc, linestyle='solid', linewidth=0.8, label=f'{augment}')
         
     plt.title('Train Accuracy')
@@ -116,6 +119,8 @@ def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, ite
             augment = "FOMA_input"
         elif augment == "FOMA_latent_random":
             augment = "FOMA_latent"
+        elif augment == "Mixup":
+            augment = "Mixup(alpha=1.0)"
         plt.plot(epochs, train_loss, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Train Loss')
@@ -152,6 +157,8 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
             augment = "FOMA_input"
         elif augment == "FOMA_latent_random":
             augment = "FOMA_latent"
+        elif augment == "Mixup":
+            augment = "Mixup(alpha=1.0)"
         plt.plot(epochs, val_acc, linestyle='solid', linewidth=0.8, label=f'{augment}')
         
     plt.title('Validation Accuracy')
@@ -181,6 +188,8 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
             augment = "FOMA_input"
         elif augment == "FOMA_latent_random":
             augment = "FOMA_latent"
+        elif augment == "Mixup":
+            augment = "Mixup(alpha=1.0)"
         plt.plot(epochs, val_loss, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Validation Loss')
