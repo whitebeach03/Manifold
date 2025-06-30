@@ -112,9 +112,13 @@ class Wide_ResNet(nn.Module):
                 out = self.linear(out)
                 return out
 
-        elif augment == "Manifold-Mixup":
+        elif augment.startswith("Manifold-Mixup(alpha=") and augment.endswith(")"):
             if aug_ok:
-                mixup_alpha = 1.0
+                try:
+                    mixup_alpha = float(augment[len("Manifold-Mixup(alpha="):-1])
+                except ValueError:
+                    pass  
+                    
                 layer_mix = random.randint(0,4)
                 out = x
                 

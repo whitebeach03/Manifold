@@ -164,7 +164,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             # if batch_idx == 0:
             #     visualize_batch(images, labels, augment, n=10)
 
-        elif augment == "Manifold-Mixup":
+        elif augment.startswith("Manifold-Mixup"):
             preds, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
             
