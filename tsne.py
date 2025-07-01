@@ -18,7 +18,13 @@ device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 features_list = []
 labels_list = []
 
-augmentations = ["Default", "Mixup", "Mixup-Curriculum"]
+augmentations = [
+    "Default", 
+    "Mixup(alpha=0.5)", 
+    "Mixup",
+    "Mixup(alpha=2.0)",
+    "Mixup(alpha=5.0)",
+]
 # augmentations = ["Mixup-Curriculum"]
 
 for augment in augmentations:

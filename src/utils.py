@@ -18,6 +18,50 @@ from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 from torchvision.transforms import RandomHorizontalFlip, Pad, RandomCrop
 import torchvision.transforms.functional as TF
+import torch.nn.functional as F
+from torch.distributions import Beta
+import math
+
+def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
+    """
+    Mixup インターフェースに合わせて、
+    EntAugment による動的 α を使った mixup_data 相当を返す。
+
+    Returns:
+      mixed_x: [B, C, H, W]
+      y_a:      [B] 元ラベル
+      y_b:      [B] シャッフル後ラベル
+      lam:      [B] 各サンプルの mixup 比率
+    """
+    B = x.size(0)
+
+    # 1) 各サンプルのエントロピーに基づき α_i を計算
+    with torch.no_grad():
+        logits = model(x, labels=None, device=None, augment="Ent-Mixup")                 # [B, num_classes]
+        probs  = F.softmax(logits, dim=1)
+        ent    = -torch.sum(probs * torch.log(probs + eps), dim=1) / math.log(num_classes)
+        mag    = (1.0 - ent).clamp(min=eps)     # 低エントロピーほど大きく
+        alpha  = alpha_max * mag               # [B]
+        # print(alpha)
+
+    # 2) Beta(alpha_i, alpha_i) から λ_i をサンプル
+    lam = Beta(alpha, alpha).sample()         # [B]
+    lam = lam.to(x.device)
+
+    # 3) バッチをシャッフル
+    idx  = torch.randperm(B).to(x.device)
+    x2   = x[idx]
+    y2   = y[idx]
+
+    # 4) Mixup 入力生成
+    lam_x   = lam.view(B, 1, 1, 1)
+    mixed_x = lam_x * x + (1 - lam_x) * x2
+
+    # 5) ラベルペアとして返す
+    y_a = y
+    y_b = y2
+
+    return mixed_x, y_a, y_b, lam
 
 class FixedAugmentedDataset(Dataset):
     def __init__(self, base_dataset, random_transform):
@@ -122,6 +166,17 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss  = criterion(preds, labels)
             # if batch_idx == 0:
             #     visualize_batch(epochs, images, labels, augment, n=10)
+        
+        elif augment == "Ent-Mixup":
+            images, y_a, y_b, lam = ent_augment_mixup(
+                x=images,
+                y=labels,
+                model=model,
+                alpha_max=2.0,     # 例: 1.0
+                num_classes=num_classes
+            )
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = mixup_criterion(criterion, preds, y_a, y_b, lam)
         
         elif augment == "Mixup(alpha=0.5)":
             images, y_a, y_b, lam = mixup_data(images, labels, 0.5, device)
@@ -296,7 +351,10 @@ def mixup_data(x, y, alpha=1.0, use_cuda=True):
     return mixed_x, y_a, y_b, lam
 
 def mixup_criterion(criterion, pred, y_a, y_b, lam):
-    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
+    loss_a = criterion(pred, y_a)
+    loss_b = criterion(pred, y_b)
+    loss = lam * loss_a + (1 - lam) * loss_b
+    return loss.mean()  
 
 def seed_everything(seed):
     random.seed(seed)

@@ -21,11 +21,14 @@ from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFO
 
 augmentations = [
     # "Default",
+
+    "Ent-Mixup",
+
     # "Mixup",
     # "Manifold-Mixup",
-    "Manifold-Mixup(alpha=0.5)",
-    "Manifold-Mixup(alpha=1.0)",
-    "Manifold-Mixup(alpha=5.0)",
+    # "Manifold-Mixup(alpha=0.5)",
+    # "Manifold-Mixup(alpha=1.0)",
+    # "Manifold-Mixup(alpha=5.0)",
 
     # "Mixup-Curriculum",
 
