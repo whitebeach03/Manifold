@@ -61,7 +61,7 @@ def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
     y_a = y
     y_b = y2
 
-    return mixed_x, y_a, y_b, lam
+    return mixed_x, y_a, y_b, lam, alpha
 
 class FixedAugmentedDataset(Dataset):
     def __init__(self, base_dataset, random_transform):
@@ -155,6 +155,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
+    history = {"alpha": []}
 
     batch_idx = 0
     for images, labels in tqdm(train_loader, leave=False):
@@ -168,15 +169,16 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             #     visualize_batch(epochs, images, labels, augment, n=10)
         
         elif augment == "Ent-Mixup":
-            images, y_a, y_b, lam = ent_augment_mixup(
+            images, y_a, y_b, lam, alpha = ent_augment_mixup(
                 x=images,
                 y=labels,
                 model=model,
-                alpha_max=2.0,     # 例: 1.0
+                alpha_max=1.0,     # 例: 1.0
                 num_classes=num_classes
             )
             preds = model(images, labels, device, augment, aug_ok)
             loss  = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            history["alpha"].append(alpha)
         
         elif augment == "Mixup(alpha=0.5)":
             images, y_a, y_b, lam = mixup_data(images, labels, 0.5, device)
@@ -286,6 +288,9 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             else:
                 preds = model(images, labels, device, augment, aug_ok=True)
                 loss  = criterion(preds, labels)
+        
+        with open(f"./history/alpha_cifar100.pickle", "wb") as f:
+            pickle.dump(history, f)
 
         batch_idx += 1
         optimizer.zero_grad()

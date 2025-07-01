@@ -6,8 +6,10 @@ pickle_file_path = f'./history/wide_resnet_28_10/Mixup(alpha=0.5)/cifar100_400_0
 with open(pickle_file_path, 'rb') as f:
     dic = pickle.load(f)
 
-for i in range(400):
-    val_acc = dic["val_accuracy"][i]
-    val_loss = dic["val_loss"][i]
+for epoch in range(400):
+    train_acc = dic["accuracy"][epoch]
+    train_loss = dic["loss"][epoch]
+    val_acc = dic["val_accuracy"][epoch]
+    val_loss = dic["val_loss"][epoch]
 #    if val_acc >= 0.64:
-    print(i+1, ": ", val_acc, val_loss)
+    print(f"| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |")
