@@ -21,6 +21,56 @@ import torchvision.transforms.functional as TF
 import torch.nn.functional as F
 from torch.distributions import Beta
 import math
+from scipy.special import betaincinv
+
+def sk_mixup(x, y, model, tau_max=1.0, tau_std=0.25, device='cuda'):
+    """
+    Similarity Kernel Mixup (SK-Mixup) augmentation.
+    
+    Args:
+        x:       [B, C, H, W] バッチ画像テンソル
+        y:       [B] 正解ラベル（LongTensor）
+        model:   埋め込みを取り出せるように改造したモデル
+        tau_max: τ_max の初期値 (論文デフォルト: 1.0)
+        tau_std: τ_std の初期値 (論文デフォルト: 0.25)
+        device:  使用デバイス
+
+    Returns:
+        x_mix:       [B, C, H, W] ミックス済み画像
+        y_a, y_b:    [B] オリジナル・ペアラベル
+        lam:         [B] 各サンプルの補間係数 λ_i
+    """
+    B = x.size(0)
+
+    # 1) 埋め込みを計算 (分類ヘッド直前の特徴ベクトル h(x) を返すようモデルを準備する)
+    #    例: model.encoder(images) → [B, D]
+    with torch.no_grad():
+        embeddings = model.extract_features(x.to(device))  
+    embeddings = embeddings.view(B, -1)  # 平坦化
+
+    # 2) 対応ペアをランダムに選択
+    perm = torch.randperm(B, device=device)
+    x2 = x[perm]
+    y2 = y[perm]
+    emb2 = embeddings[perm]
+
+    # 3) バッチ内距離の計算と正規化
+    dist2 = (embeddings - emb2).pow(2).sum(dim=1)                    # ‖h(x_i)-h(x_j)‖²
+    mean_dist2 = dist2.mean()                                       # 平均距離
+    d_bar = dist2 / mean_dist2                                      # 式(5) :contentReference[oaicite:0]{index=0}
+
+    # 4) τ_i の算出 (Similarity Kernel)  
+    tau_i = tau_max * torch.exp(-(d_bar - 1) / (2 * tau_std**2))
+    tau_i = tau_i.clamp(min=1e-3)      # ← これで tau_i >= eps を保証
+    beta_dist = Beta(tau_i, tau_i)
+    lam = beta_dist.sample().view(B,1,1,1)
+
+    # 7) 画像とラベルの線形補間
+    x_mix = lam * x + (1 - lam) * x2
+    y_a, y_b = y, y2
+    lam = lam.view(B)  # mixup_criterion 用
+
+    return x_mix, y_a, y_b, lam
 
 def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
     """
@@ -168,6 +218,17 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             # if batch_idx == 0:
             #     visualize_batch(epochs, images, labels, augment, n=10)
         
+        elif augment == "SK-Mixup":
+            images, y_a, y_b, lam = sk_mixup(
+                x=images, y=labels,
+                model=model,
+                tau_max=1.0,       # 論文デフォルト: τ_max=1.0 :contentReference[oaicite:3]{index=3}
+                tau_std=0.25,       # 論文デフォルト: τ_std=0.25 :contentReference[oaicite:4]{index=4}
+                device=device
+            )
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        
         elif augment == "Ent-Mixup":
             images, y_a, y_b, lam, alpha = ent_augment_mixup(
                 x=images,
@@ -289,8 +350,8 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
                 preds = model(images, labels, device, augment, aug_ok=True)
                 loss  = criterion(preds, labels)
         
-        with open(f"./history/alpha_cifar100.pickle", "wb") as f:
-            pickle.dump(history, f)
+        # with open(f"./history/alpha_cifar100.pickle", "wb") as f:
+        #     pickle.dump(history, f)
 
         batch_idx += 1
         optimizer.zero_grad()
