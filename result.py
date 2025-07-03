@@ -19,7 +19,8 @@ def main():
     
     augmentations = [
         "Default",
-        "Ent-Mixup",
+        # "Ent-Mixup",
+        "SK-Mixup",
         # "Mixup(alpha=0.5)",
         "Mixup",
         # "Mixup(alpha=2.0)",
