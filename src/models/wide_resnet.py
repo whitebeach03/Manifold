@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
 from foma import foma
-from src.utils import mixup_data, local_pca_perturbation
+from src.utils import mixup_data, local_pca_perturbation, sk_mixup_feature
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
@@ -143,6 +143,46 @@ class Wide_ResNet(nn.Module):
                 out = out.view(out.size(0), -1)
                 if layer_mix == 4:
                     out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
+
+                out = self.linear(out)
+                return out, y_a, y_b, lam
+            else:
+                out = self.conv1(x)
+                out = self.layer1(out)
+                out = self.layer2(out)
+                out = self.layer3(out)
+                out = F.relu(self.bn1(out))
+                out = F.avg_pool2d(out, 8)
+                out = out.view(out.size(0), -1)
+                out = self.linear(out)
+                return out
+
+        elif augment == "Manifold-SK-Mixup":
+            if aug_ok:
+                layer_mix = random.randint(0,4)
+                out = x
+                
+                if layer_mix == 0:
+                    out, y_a, y_b, lam = sk_mixup_feature(f=out, y=labels, tau_max=1.0, tau_std=0.25, device=device)
+                
+                out = self.conv1(out)
+                out = self.layer1(out)
+                if layer_mix == 1:
+                    out, y_a, y_b, lam = sk_mixup_feature(f=out, y=labels, tau_max=1.0, tau_std=0.25, device=device)
+
+                out = self.layer2(out)
+                if layer_mix == 2:
+                    out, y_a, y_b, lam = sk_mixup_feature(f=out, y=labels, tau_max=1.0, tau_std=0.25, device=device)
+
+                out = self.layer3(out)
+                if layer_mix == 3:
+                    out, y_a, y_b, lam = sk_mixup_feature(f=out, y=labels, tau_max=1.0, tau_std=0.25, device=device)
+                
+                out = F.relu(self.bn1(out))
+                out = F.avg_pool2d(out, 8)
+                out = out.view(out.size(0), -1)
+                if layer_mix == 4:
+                    out, y_a, y_b, lam = sk_mixup_feature(f=out, y=labels, tau_max=1.0, tau_std=0.25, device=device)
 
                 out = self.linear(out)
                 return out, y_a, y_b, lam

@@ -23,6 +23,28 @@ from torch.distributions import Beta
 import math
 from scipy.special import betaincinv
 
+def sk_mixup_feature(f, y, tau_max=1.0, tau_std=0.25, device='cuda'):
+    B = f.size(0)
+    # 1) 平坦化
+    f_flat = f.view(B, -1)
+    # 2) ペア作成
+    perm = torch.randperm(B, device=device)
+    f2    = f_flat[perm]
+    y2    = y[perm]
+    # 3) 距離正規化
+    dist2 = (f_flat - f2).pow(2).sum(dim=1)
+    d_bar = dist2 / dist2.mean()
+    # 4) τ 計算
+    tau_i = tau_max * torch.exp(-(d_bar - 1) / (2 * tau_std**2))
+    tau_i = tau_i.clamp(min=1e-3)  # ゼロ回避
+    # 5) Warping via Beta.sample()
+    beta = Beta(tau_i, tau_i)
+    lam = beta.sample((1,)).view(B, *([1] * (f.dim()-1)))
+    # 6) Mixup
+    f2   = f[perm]
+    f_mix = lam * f + (1 - lam) * f2
+    return f_mix, y, y2, lam.view(B)
+
 def sk_mixup(x, y, model, tau_max=1.0, tau_std=0.25, device='cuda'):
     """
     Similarity Kernel Mixup (SK-Mixup) augmentation.
@@ -217,6 +239,10 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss  = criterion(preds, labels)
             # if batch_idx == 0:
             #     visualize_batch(epochs, images, labels, augment, n=10)
+        
+        elif augment == "Manifold-SK-Mixup":
+            preds, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
         
         elif augment == "SK-Mixup":
             images, y_a, y_b, lam = sk_mixup(
