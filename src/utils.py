@@ -24,26 +24,50 @@ import math
 from scipy.special import betaincinv
 
 def sk_mixup_feature(f, y, tau_max=1.0, tau_std=0.25, device='cuda'):
+    """
+    任意の次元（2D ベクトル or 4D マップ）に対応した SK-Mixup。
+
+    Args:
+        f:       torch.Tensor of shape [B, ...]  # e.g. [B, C, H, W] or [B, D]
+        y:       torch.LongTensor of shape [B]
+        tau_max: float
+        tau_std: float
+        device:  str
+
+    Returns:
+        f_mix: [B, ...]    # 元の f と同じ次元
+        y_a:   [B]
+        y_b:   [B]
+        lam:   [B]        # Mixup λ（1D）
+    """
     B = f.size(0)
-    # 1) 平坦化
-    f_flat = f.view(B, -1)
-    # 2) ペア作成
-    perm = torch.randperm(B, device=device)
-    f2    = f_flat[perm]
-    y2    = y[perm]
-    # 3) 距離正規化
-    dist2 = (f_flat - f2).pow(2).sum(dim=1)
-    d_bar = dist2 / dist2.mean()
-    # 4) τ 計算
-    tau_i = tau_max * torch.exp(-(d_bar - 1) / (2 * tau_std**2))
-    tau_i = tau_i.clamp(min=1e-3)  # ゼロ回避
-    # 5) Warping via Beta.sample()
-    beta = Beta(tau_i, tau_i)
-    lam = beta.sample((1,)).view(B, *([1] * (f.dim()-1)))
-    # 6) Mixup
-    f2   = f[perm]
+    # フラット化して距離計算用特徴ベクトルを作る
+    feats  = f.detach().view(B, -1)      # [B, D]
+    # ランダムペア
+    perm   = torch.randperm(B, device=device)
+    feats2 = feats[perm]                 # [B, D]
+    f2     = f[perm]                     # [B, ...] same shape as f
+    y2     = y[perm]
+
+    # 距離→正規化
+    dist2      = (feats - feats2).pow(2).sum(dim=1)  # [B]
+    mean_dist2 = dist2.mean()
+    d_bar      = dist2 / (mean_dist2 + 1e-8)         # [B]
+
+    # τ_i, β 分布 → λ_i サンプリング
+    tau_i    = tau_max * torch.exp(-(d_bar - 1) / (2 * tau_std**2))
+    tau_i    = tau_i.clamp(min=1e-3)
+    beta_dist = Beta(tau_i, tau_i)
+    lam_vals  = beta_dist.sample()                   # [B]
+
+    # λ_i を f の次元数に合わせて reshape
+    #    f.dim() が 2 なら形 [B,1], 4 なら [B,1,1,1], … を自動で作る
+    lam = lam_vals.view((B, ) + (1,)*(f.dim()-1))    # → [B, *([1]*(f.dim()-1))]
+
+    # Mixup 本体
     f_mix = lam * f + (1 - lam) * f2
-    return f_mix, y, y2, lam.view(B)
+
+    return f_mix, y, y2, lam_vals
 
 def sk_mixup(x, y, model, tau_max=1.0, tau_std=0.25, device='cuda'):
     """
