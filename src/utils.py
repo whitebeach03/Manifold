@@ -22,101 +22,8 @@ import torch.nn.functional as F
 from torch.distributions import Beta
 import math
 from scipy.special import betaincinv
+from src.methods.sk_mixup import KernelMixup
 
-def sk_mixup_feature(f, y, tau_max=1.0, tau_std=0.25, device='cuda'):
-    """
-    任意の次元（2D ベクトル or 4D マップ）に対応した SK-Mixup。
-
-    Args:
-        f:       torch.Tensor of shape [B, ...]  # e.g. [B, C, H, W] or [B, D]
-        y:       torch.LongTensor of shape [B]
-        tau_max: float
-        tau_std: float
-        device:  str
-
-    Returns:
-        f_mix: [B, ...]    # 元の f と同じ次元
-        y_a:   [B]
-        y_b:   [B]
-        lam:   [B]        # Mixup λ（1D）
-    """
-    B = f.size(0)
-    # フラット化して距離計算用特徴ベクトルを作る
-    feats  = f.detach().view(B, -1)      # [B, D]
-    # ランダムペア
-    perm   = torch.randperm(B, device=device)
-    feats2 = feats[perm]                 # [B, D]
-    f2     = f[perm]                     # [B, ...] same shape as f
-    y2     = y[perm]
-
-    # 距離→正規化
-    dist2      = (feats - feats2).pow(2).sum(dim=1)  # [B]
-    mean_dist2 = dist2.mean()
-    d_bar      = dist2 / (mean_dist2 + 1e-8)         # [B]
-
-    # τ_i, β 分布 → λ_i サンプリング
-    tau_i    = tau_max * torch.exp(-(d_bar - 1) / (2 * tau_std**2))
-    tau_i    = tau_i.clamp(min=1e-3)
-    beta_dist = Beta(tau_i, tau_i)
-    lam_vals  = beta_dist.sample()                   # [B]
-
-    # λ_i を f の次元数に合わせて reshape
-    #    f.dim() が 2 なら形 [B,1], 4 なら [B,1,1,1], … を自動で作る
-    lam = lam_vals.view((B, ) + (1,)*(f.dim()-1))    # → [B, *([1]*(f.dim()-1))]
-
-    # Mixup 本体
-    f_mix = lam * f + (1 - lam) * f2
-
-    return f_mix, y, y2, lam_vals
-
-def sk_mixup(x, y, model, tau_max=1.0, tau_std=0.25, device='cuda'):
-    """
-    Similarity Kernel Mixup (SK-Mixup) augmentation.
-    
-    Args:
-        x:       [B, C, H, W] バッチ画像テンソル
-        y:       [B] 正解ラベル（LongTensor）
-        model:   埋め込みを取り出せるように改造したモデル
-        tau_max: τ_max の初期値 (論文デフォルト: 1.0)
-        tau_std: τ_std の初期値 (論文デフォルト: 0.25)
-        device:  使用デバイス
-
-    Returns:
-        x_mix:       [B, C, H, W] ミックス済み画像
-        y_a, y_b:    [B] オリジナル・ペアラベル
-        lam:         [B] 各サンプルの補間係数 λ_i
-    """
-    B = x.size(0)
-
-    # 1) 埋め込みを計算 (分類ヘッド直前の特徴ベクトル h(x) を返すようモデルを準備する)
-    #    例: model.encoder(images) → [B, D]
-    with torch.no_grad():
-        embeddings = model.extract_features(x.to(device))  
-    embeddings = embeddings.view(B, -1)  # 平坦化
-
-    # 2) 対応ペアをランダムに選択
-    perm = torch.randperm(B, device=device)
-    x2 = x[perm]
-    y2 = y[perm]
-    emb2 = embeddings[perm]
-
-    # 3) バッチ内距離の計算と正規化
-    dist2 = (embeddings - emb2).pow(2).sum(dim=1)                    # ‖h(x_i)-h(x_j)‖²
-    mean_dist2 = dist2.mean()                                       # 平均距離
-    d_bar = dist2 / mean_dist2                                      # 式(5) :contentReference[oaicite:0]{index=0}
-
-    # 4) τ_i の算出 (Similarity Kernel)  
-    tau_i = tau_max * torch.exp(-(d_bar - 1) / (2 * tau_std**2))
-    tau_i = tau_i.clamp(min=1e-3)      # ← これで tau_i >= eps を保証
-    beta_dist = Beta(tau_i, tau_i)
-    lam = beta_dist.sample().view(B,1,1,1)
-
-    # 7) 画像とラベルの線形補間
-    x_mix = lam * x + (1 - lam) * x2
-    y_a, y_b = y, y2
-    lam = lam.view(B)  # mixup_criterion 用
-
-    return x_mix, y_a, y_b, lam
 
 def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
     """
@@ -253,6 +160,17 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     train_acc  = 0.0
     history = {"alpha": []}
 
+    if augment=="SK-Mixup":
+        skmixup = KernelMixup(
+            alpha=1.0,
+            mode="batch",
+            num_classes=num_classes,
+            warping="beta_cdf",  # or "inverse_beta_cdf"
+            tau_max=1.0,
+            tau_std=0.25,
+            lookup_size=4096
+        )
+
     batch_idx = 0
     for images, labels in tqdm(train_loader, leave=False):
         images, labels = images.to(device), labels.to(device)
@@ -264,20 +182,14 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             # if batch_idx == 0:
             #     visualize_batch(epochs, images, labels, augment, n=10)
         
-        elif augment == "Manifold-SK-Mixup":
-            preds, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
-            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        
-        elif augment == "SK-Mixup":
-            images, y_a, y_b, lam = sk_mixup(
-                x=images, y=labels,
-                model=model,
-                tau_max=1.0,       # 論文デフォルト: τ_max=1.0 :contentReference[oaicite:3]{index=3}
-                tau_std=0.25,       # 論文デフォルト: τ_std=0.25 :contentReference[oaicite:4]{index=4}
-                device=device
-            )
-            preds = model(images, labels, device, augment, aug_ok)
-            loss  = mixup_criterion(criterion, preds, y_a, y_b, lam)
+        elif augment=="SK-Mixup":
+            # 1) 特徴量抽出（分類ヘッド直前のベクトル）
+            feats = model.extract_features(images)  # → [B, D]
+            # 2) SK-Mixup 適用
+            mixed_x, mixed_y = skmixup(images, labels, feats)
+            # 3) 順伝播・損失
+            preds = model(mixed_x, labels=None, device=device, augment=augment)  # labels フラグは不要なら外す
+            loss  = criterion(preds, mixed_y)
         
         elif augment == "Ent-Mixup":
             images, y_a, y_b, lam, alpha = ent_augment_mixup(
