@@ -51,6 +51,19 @@ def test_and_collect_errors(model, loader, criterion, device):
     accuracy = total_correct / total_samples
     return avg_loss, accuracy, errors
 
+class_names = [
+    "airplane",
+    "bird",
+    "car",
+    "cat",
+    "deer",
+    "dog",
+    "horse",
+    "monkey",
+    "ship",
+    "truck",
+]
+
 # --- 準備 ---
 transform = transforms.Compose([
     transforms.ToTensor(), 
@@ -74,7 +87,10 @@ test_loss, test_acc, misclassified = test_and_collect_errors(model, test_loader,
 print(f"Loss={test_loss:.4f}  Acc={test_acc:.4f}  Errors={len(misclassified)} samples")
 # 最初の数件を表示
 for e in misclassified[:10]:
-    print(f"  idx={e['index']}  true={e['true_label']}  pred={e['pred_label']}")
+    # print(f"  idx={e['index']}  true={e['true_label']}  pred={e['pred_label']}")
+    true_name = class_names[e['true_label']]
+    pred_name = class_names[e['pred_label']]
+    print(f"idx={e['index']}  true={true_name}  pred={pred_name}")
 
 
 # 誤分類サンプルの先頭16件
@@ -86,7 +102,12 @@ for ax, s in zip(axes.flatten(), samples):
     img = img.numpy().transpose(1,2,0)
     img = np.clip(img * np.array([0.229,0.224,0.225]) + np.array([0.485,0.456,0.406]), 0, 1)
     ax.imshow(img)
-    ax.set_title(f"T:{s['true_label']} / P:{s['pred_label']}")
+
+    # ← ここでその都度ラベル名を取り出す
+    true_name = class_names[s["true_label"]]
+    pred_name = class_names[s["pred_label"]]
+    ax.set_title(f"T: {true_name} / P: {pred_name}")
+
     ax.axis("off")
 plt.tight_layout()
 plt.savefig("error_samples_STL10.png")

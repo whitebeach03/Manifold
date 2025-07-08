@@ -58,7 +58,7 @@
 # plt.title('UMAP projection of MNIST (2,000 samples)')
 # plt.xlabel('UMAP 1')
 # plt.ylabel('UMAP 2')
-# plt.savefig("UMAP_STL10.png")
+# plt.savefig("UMAP_MNIST.png")
 # plt.show()
 
 

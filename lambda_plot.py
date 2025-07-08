@@ -34,7 +34,7 @@ def find_first(dataset, target_label):
     raise ValueError(f"No sample with label={target_label}")
 
 airplane_img  = find_first(test_stl, class_names.index("bird")).to(device)   # (C,H,W)
-monkey_img = find_first(test_stl, class_names.index("monkey")).to(device)  # (C,H,W)
+monkey_img    = find_first(test_stl, class_names.index("horse")).to(device)  # (C,H,W)
 
 # — 4) 学習済み STL-10 モデルをロード —
 #    すでに訓練した Wide-ResNet / ResNet18 などを model に代入済みとします
@@ -76,10 +76,11 @@ plt.plot(lams, p_monkey, label='monkey')
 plt.plot(lams, p_ship, label='ship')
 plt.plot(lams, p_truck, label='truck')
 
-plt.xlabel("λ (monkey → airplane)")
+plt.xlabel("λ")
 plt.ylabel("Prediction probability")
-plt.title("STL10 airplane-monkey mixup (ResNet)")
+plt.title("STL10 horse-bird mixup")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
+plt.savefig("lambda.png")
 plt.show()
