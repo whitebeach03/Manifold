@@ -1,0 +1,93 @@
+import torch
+import torch.nn as nn
+import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+import numpy as np
+from src.models.wide_resnet import Wide_ResNet
+from src.models.resnet import ResNet18
+from torch.utils.data import Dataset, DataLoader
+from torchvision.datasets import STL10, CIFAR10, CIFAR100
+from src.utils import test
+from tqdm import tqdm
+
+class IndexedDataset(Dataset):
+    def __init__(self, base_dataset):
+        self.dataset = base_dataset
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        img, label = self.dataset[idx]
+        return img, label, idx
+
+def test_and_collect_errors(model, loader, criterion, device):
+    model.eval()
+    total_loss = 0.0
+    total_correct = 0
+    total_samples = 0
+    errors = []   # 誤分類リスト。sample_idx, true, pred を格納
+
+    with torch.no_grad():
+        for inputs, targets, indices in tqdm(loader, leave=False):
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = model(inputs, targets, device=device, augment="Mixup")
+            total_loss += criterion(outputs, targets).item() * inputs.size(0)
+            _, preds = torch.max(outputs, dim=1)
+
+            total_correct += (preds == targets).sum().item()
+            total_samples += targets.size(0)
+
+            # 誤分類をチェック
+            mismatch = preds != targets
+            for i in torch.where(mismatch)[0]:
+                errors.append({
+                    "index": indices[i].item(),
+                    "true_label": targets[i].item(),
+                    "pred_label": preds[i].item()
+                })
+
+    avg_loss = total_loss / total_samples
+    accuracy = total_correct / total_samples
+    return avg_loss, accuracy, errors
+
+# --- 準備 ---
+transform = transforms.Compose([
+    transforms.ToTensor(), 
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+# test_dataset = CIFAR10(root="./data", train=False, transform=transform, download=True)
+test_dataset = STL10(root="./data", split="train", download=True, transform=transform)
+indexed_test = IndexedDataset(test_dataset)
+test_loader = DataLoader(indexed_test, batch_size=128, shuffle=False)
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# model = Wide_ResNet(28, 10, 0.3, num_classes=10).to(device)
+model = ResNet18().to(device)
+# model_save_path = "./logs/wide_resnet_28_10/Mixup/cifar10_250_0.pth"
+model_save_path = "./logs/resnet18/Mixup/stl10_200.pth"
+criterion = nn.CrossEntropyLoss()
+
+model.load_state_dict(torch.load(model_save_path, weights_only=True))
+test_loss, test_acc, misclassified = test_and_collect_errors(model, test_loader, criterion, device)
+
+print(f"Loss={test_loss:.4f}  Acc={test_acc:.4f}  Errors={len(misclassified)} samples")
+# 最初の数件を表示
+for e in misclassified[:10]:
+    print(f"  idx={e['index']}  true={e['true_label']}  pred={e['pred_label']}")
+
+
+# 誤分類サンプルの先頭16件
+samples = misclassified[:16]
+
+fig, axes = plt.subplots(4, 4, figsize=(8,8))
+for ax, s in zip(axes.flatten(), samples):
+    img, _ = test_dataset[s["index"]]     # transform 後の Tensor
+    img = img.numpy().transpose(1,2,0)
+    img = np.clip(img * np.array([0.229,0.224,0.225]) + np.array([0.485,0.456,0.406]), 0, 1)
+    ax.imshow(img)
+    ax.set_title(f"T:{s['true_label']} / P:{s['pred_label']}")
+    ax.axis("off")
+plt.tight_layout()
+plt.savefig("error_samples_STL10.png")
+plt.show()

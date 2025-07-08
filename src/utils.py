@@ -350,7 +350,7 @@ def test(model, test_loader, criterion, device, augment, aug_ok):
     test_loss = 0.0
     test_acc  = 0.0
     with torch.no_grad():
-        for images, labels in test_loader:
+        for images, labels in tqdm(test_loader, leave=False):
             images, labels = images.to(device), labels.to(device)
             
             preds = model(images, labels, device, augment, aug_ok)
