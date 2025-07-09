@@ -25,7 +25,7 @@ from scipy.special import betaincinv
 from src.methods.sk_mixup import KernelMixup
 from src.methods.cutmix import cutmix_data
 from src.methods.augmix import AugMixTransform
-
+from src.models.wide_resnet import Wide_ResNet
 
 def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
     """
@@ -192,6 +192,18 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         elif augment=="SK-Mixup":
             # 1) 特徴量抽出（分類ヘッド直前のベクトル）
             feats = model.extract_features(images)  # → [B, D]
+            # 2) SK-Mixup 適用
+            mixed_x, mixed_y = skmixup(images, labels, feats)
+            # 3) 順伝播・損失
+            preds = model(mixed_x, labels=None, device=device, augment=augment)  # labels フラグは不要なら外す
+            loss  = criterion(preds, mixed_y)
+        
+        elif augment == "Teacher-SK-Mixup":
+            teacher = Wide_ResNet(28, 10, 0.3, num_classes=num_classes).to(device)
+            teacher.load_state_dict(torch.load("./logs/wide_resnet_28_10/Mixup/cifar100_400_0.pth", weights_only=True))
+            teacher.eval()
+            # 1) 特徴量抽出（分類ヘッド直前のベクトル）
+            feats = teacher.extract_features(images)  # → [B, D]
             # 2) SK-Mixup 適用
             mixed_x, mixed_y = skmixup(images, labels, feats)
             # 3) 順伝播・損失
