@@ -23,6 +23,8 @@ from torch.distributions import Beta
 import math
 from scipy.special import betaincinv
 from src.methods.sk_mixup import KernelMixup
+from src.methods.cutmix import cutmix_data
+from src.methods.augmix import AugMixTransform
 
 
 def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
@@ -160,16 +162,8 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     train_acc  = 0.0
     history = {"alpha": []}
 
-    if augment=="SK-Mixup":
-        skmixup = KernelMixup(
-            alpha=1.0,
-            mode="batch",
-            num_classes=num_classes,
-            warping="beta_cdf",  # or "inverse_beta_cdf"
-            tau_max=1.0,
-            tau_std=0.25,
-            lookup_size=4096
-        )
+    skmixup = KernelMixup(alpha=1.0, mode="batch", num_classes=num_classes, warping="beta_cdf", tau_max=1.0, tau_std=0.25, lookup_size=4096)   # or "inverse_beta_cdf"
+    augmix_transform = AugMixTransform(severity=3, width=3, depth=-1, alpha=1.)
 
     batch_idx = 0
     for images, labels in tqdm(train_loader, leave=False):
@@ -181,6 +175,19 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss  = criterion(preds, labels)
             # if batch_idx == 0:
             #     visualize_batch(epochs, images, labels, augment, n=10)
+        
+        elif augment == "CutMix":
+            images, y_a, y_b, lam = cutmix_data(images, labels, alpha=1.0)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        elif augment == "AugMix":
+            # Apply AugMix per image in the batch
+            images_aug = torch.zeros_like(images)
+            for i in range(images.size(0)):
+                images_aug[i] = augmix_transform(images[i])
+            preds = model(images_aug, labels, device, augment, aug_ok)
+            loss = criterion(preds, labels)
         
         elif augment=="SK-Mixup":
             # 1) 特徴量抽出（分類ヘッド直前のベクトル）

@@ -22,8 +22,11 @@ from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFO
 augmentations = [
     # "Default",
 
+    # "CutMix",
+    "AugMix",
+
     # "Manifold-SK-Mixup",
-    "SK-Mixup",
+    # "SK-Mixup",
     # "Ent-Mixup",
 
     # "Mixup",
