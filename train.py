@@ -16,7 +16,7 @@ from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from torch.utils.data import DataLoader, random_split, Subset
-from foma import foma
+from src.methods.foma import foma
 from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFOMABatchSampler
 
 augmentations = [
