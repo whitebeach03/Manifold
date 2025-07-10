@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import pickle
 from tqdm import tqdm
-from foma import foma, foma_hard
+from src.methods.foma import foma, foma_hard
 from torchvision import datasets, transforms
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
