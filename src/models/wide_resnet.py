@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-from foma import foma
+from src.methods.foma import foma
 # from src.utils import mixup_data, local_pca_perturbation
 
 def conv3x3(in_planes, out_planes, stride=1):
