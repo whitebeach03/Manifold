@@ -27,11 +27,11 @@ def main():
         # "Mixup(alpha=5.0)",
         # "Manifold-Mixup(alpha=0.5)",
         # "Manifold-Mixup(alpha=1.0)",
-        # "Manifold-Mixup",
+        "Manifold-Mixup",
         # "Manifold-Mixup(alpha=5.0)",
         # "Mixup-Curriculum",
 
-        # "CutMix",
+        "CutMix",
         # "AugMix",
 
         # "Ent-Mixup",

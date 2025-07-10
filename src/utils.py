@@ -210,6 +210,18 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             preds = model(mixed_x, labels=None, device=device, augment=augment)  # labels フラグは不要なら外す
             loss  = criterion(preds, mixed_y)
         
+        elif augment == "Teacher-SK-Mixup-Curriculum":
+            if epochs < 50:
+                teacher = Wide_ResNet(28, 10, 0.3, num_classes=num_classes).to(device)
+                teacher.load_state_dict(torch.load("./logs/wide_resnet_28_10/Mixup/cifar100_400_0.pth", weights_only=True))
+                teacher.eval()
+                feats = teacher.extract_features(images)  
+            else:
+                feats = model.extract_features(images) 
+            mixed_x, mixed_y = skmixup(images, labels, feats)
+            preds = model(mixed_x, labels=None, device=device, augment=augment)  
+            loss  = criterion(preds, mixed_y)
+        
         elif augment == "Ent-Mixup":
             images, y_a, y_b, lam, alpha = ent_augment_mixup(
                 x=images,
