@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from src.utils import *
-from src.models.resnet import ResNet18
+from src.models.resnet import ResNet18, ResNet101
 from src.models.wide_resnet import Wide_ResNet
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import NearestNeighbors
@@ -20,19 +20,20 @@ from src.methods.foma import foma
 from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFOMABatchSampler
 
 augmentations = [
-    # "Default",
+    "Default",
+    "Mixup",
 
     # "CutMix",
     # "AugMix",
 
-    # "Teacher-SK-Mixup",
-    # "Teacher-SK-Mixup-Curriculum",
+    "SK-Mixup",
+    "Teacher-SK-Mixup",
+    "Teacher-SK-Mixup-Curriculum",
 
     # "Manifold-SK-Mixup",
-    "SK-Mixup",
-    # "Ent-Mixup",
 
-    # "Mixup",
+    # "Ent-Mixup",
+    
     # "Manifold-Mixup",
     # "Manifold-Mixup(alpha=0.5)",
     # "Manifold-Mixup(alpha=1.0)",
@@ -64,9 +65,9 @@ augmentations = [
 def main():
     for i in range(1):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--epochs",     type=int, default=400)
-        parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
-        parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
+        parser.add_argument("--epochs",     type=int, default=300)
+        parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
+        parser.add_argument("--model_type", type=str, default="resnet101", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
         args = parser.parse_args() 
 
         epochs     = args.epochs
@@ -129,6 +130,8 @@ def main():
             # Select Model
             if model_type == "resnet18":
                 model = ResNet18().to(device)
+            elif model_type == "resnet101":
+                model = ResNet101().to(device)
             elif model_type == "wide_resnet_28_10":
                 model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
                 

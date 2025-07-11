@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-from src.methods.foma import foma
+# from src.methods.foma import foma
 # from src.utils import mixup_data, local_pca_perturbation
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -217,3 +217,14 @@ class Wide_ResNet(nn.Module):
         out = F.avg_pool2d(out, 8)
         out = out.view(out.size(0), -1)
         return out
+
+def count_cnn_parameters(model: nn.Module, only_trainable: bool = False) -> int:
+    if only_trainable:
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    else:
+        return sum(p.numel() for p in model.parameters())
+
+if __name__ == "__main__":
+    model = Wide_ResNet(28, 10, 0.3, num_classes=100)
+    trainable_params = count_cnn_parameters(model, only_trainable=True)
+    print(f"Trainable parameters: {trainable_params:,}")

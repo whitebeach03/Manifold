@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--iteration",  type=int, default=1)
-    parser.add_argument("--epochs",     type=int, default=400)
+    parser.add_argument("--epochs",     type=int, default=300)
     parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "wide_resnet_28_10"])
     args = parser.parse_args()
@@ -36,8 +36,8 @@ def main():
 
         # "Ent-Mixup",
         "SK-Mixup",
-        # "Teacher-SK-Mixup",
-        # "Teacher-SK-Mixup-Curriculum",
+        "Teacher-SK-Mixup",
+        "Teacher-SK-Mixup-Curriculum",
 
         # "FOMA",
         # "FOMA_latent_random",

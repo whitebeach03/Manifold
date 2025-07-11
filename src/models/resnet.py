@@ -120,7 +120,7 @@ class PreActBottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10):
+    def __init__(self, block, num_blocks, num_classes=100):
         super(ResNet, self).__init__()
         self.in_planes = 64
 
@@ -141,75 +141,16 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, k=10, aug_ok=False, mixup_hidden=False):
-        if mixup_hidden == False:
-            out = F.relu(self.bn1(self.conv1(x)))
-            out = self.layer1(out)
-            out = self.layer2(out)
-            out = self.layer3(out)
-            out = self.layer4(out)
-            out = F.avg_pool2d(out, out.size()[2])
-            out = out.view(out.size(0), -1)
-            if aug_ok:
-                features = out
-                if augment == "normal":
-                    augmented_data = features
-                elif augment == "perturb":
-                    augmented_data = manifold_perturbation(features, device)
-                elif augment == "PCA":
-                    augmented_data = local_pca_perturbation(features, device, k)
-                elif augment == "PCA-2012":
-                    augmented_data = pca_directional_perturbation_local(features, device, k)
-                elif augment == "Mixup-PCA-sameclass":
-                    augmented_data = local_pca_perturbation(features, labels, device, k)
-                elif augment == "FOMA":
-                    augmented_data, _ = foma_augment_classification(features, labels)
-                else:
-                    augmented_data = local_pca_perturbation(features, device, k)
-
-                out = self.linear(augmented_data)
-            else:
-                out = self.linear(out)
-            return out
-
-        else:
-            mixup_alpha = 0.1
-            layer_mix = random.randint(1,5)
-            out = x
-            
-            # if layer_mix == 0:
-            #     out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
-            
-            out = F.relu(self.bn1(self.conv1(x)))
-            out = self.layer1(out)
-    
-            if layer_mix == 1:
-                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
-
-            out = self.layer2(out)
-    
-            if layer_mix == 2:
-                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
-
-            out = self.layer3(out)
-            
-            if layer_mix == 3:
-                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
-
-            out = self.layer4(out)
-            
-            if layer_mix == 4:
-                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
-
-            # out = F.avg_pool2d(out, 4)
-            out = F.avg_pool2d(out, out.size()[2])
-            out = out.view(out.size(0), -1)
-
-            if layer_mix == 5:
-                out, y_a, y_b, lam = mixup_data_hidden(out, labels, mixup_alpha)
-
-            out = self.linear(out)
-            return out, y_a, y_b, lam
+    def forward(self, x, labels, device, augment, k=10, aug_ok=False, num_classes=100):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = F.avg_pool2d(out, out.size()[2])
+        out = out.view(out.size(0), -1)
+        out = self.linear(out)
+        return out
 
     def extract_features(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -242,6 +183,13 @@ def test():
     net = ResNet18()
     y = net(Variable(torch.randn(1,1,96,96)))
     print(y.size())
+
+
+def count_cnn_parameters(model: nn.Module, only_trainable: bool = False) -> int:
+    if only_trainable:
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    else:
+        return sum(p.numel() for p in model.parameters())
 
 def manifold_perturbation(features, device, epsilon=0.05):
     """
@@ -439,19 +387,7 @@ def foma_augment_classification(Z_l, Y, lam=0.5, k=10):
     return Z_aug, Y_aug
 
 
-def mixup_data_hidden(x, y, alpha, use_cuda=True):
-    '''Returns mixed inputs, pairs of targets, and lambda'''
-    if alpha > 0:
-        lam = np.random.beta(alpha, alpha)
-    else:
-        lam = 1
-
-    batch_size = x.size()[0]
-    if use_cuda:
-        index = torch.randperm(batch_size).cuda()
-    else:
-        index = torch.randperm(batch_size)
-
-    mixed_x = lam * x + (1 - lam) * x[index, :]
-    y_a, y_b = y, y[index]
-    return mixed_x, y_a, y_b, lam
+if __name__ == "__main__":
+    model = ResNet101()
+    trainable_params = count_cnn_parameters(model, only_trainable=True)
+    print(f"Trainable parameters: {trainable_params:,}")
