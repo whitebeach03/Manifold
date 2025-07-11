@@ -36,8 +36,8 @@ def main():
 
         # "Ent-Mixup",
         "SK-Mixup",
-        "Teacher-SK-Mixup",
-        "Teacher-SK-Mixup-Curriculum",
+        # "Teacher-SK-Mixup",
+        # "Teacher-SK-Mixup-Curriculum",
 
         # "FOMA",
         # "FOMA_latent_random",
