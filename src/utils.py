@@ -162,7 +162,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     train_acc  = 0.0
     history = {"alpha": []}
 
-    skmixup = KernelMixup(alpha=1.0, mode="batch", num_classes=num_classes, warping="beta_cdf", tau_max=1.0, tau_std=0.25, lookup_size=4096)   # or "inverse_beta_cdf"
+    skmixup = KernelMixup(alpha=1.0, mode="batch", num_classes=num_classes, warping="inverse_beta_cdf", tau_max=1.0, tau_std=0.25, lookup_size=4096)   # or "inverse_beta_cdf"
     augmix_transform = AugMixTransform(severity=3, width=3, depth=-1, alpha=1.)
 
     batch_idx = 0

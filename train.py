@@ -26,10 +26,10 @@ augmentations = [
     # "AugMix",
 
     # "Teacher-SK-Mixup",
-    "Teacher-SK-Mixup-Curriculum",
+    # "Teacher-SK-Mixup-Curriculum",
 
     # "Manifold-SK-Mixup",
-    # "SK-Mixup",
+    "SK-Mixup",
     # "Ent-Mixup",
 
     # "Mixup",
