@@ -67,7 +67,7 @@ def main():
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=300)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
-        parser.add_argument("--model_type", type=str, default="resnet101", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
+        parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
         args = parser.parse_args() 
 
         epochs     = args.epochs
