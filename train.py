@@ -20,15 +20,15 @@ from src.methods.foma import foma
 from batch_sampler import extract_wrn_features, FeatureKNNBatchSampler, HybridFOMABatchSampler
 
 augmentations = [
-    "Default",
-    "Mixup",
+    # "Default",
+    # "Mixup",
 
     # "CutMix",
     # "AugMix",
 
     "SK-Mixup",
-    "Teacher-SK-Mixup",
-    "Teacher-SK-Mixup-Curriculum",
+    # "Teacher-SK-Mixup",
+    # "Teacher-SK-Mixup-Curriculum",
 
     # "Manifold-SK-Mixup",
 
@@ -65,7 +65,7 @@ augmentations = [
 def main():
     for i in range(1):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--epochs",     type=int, default=300)
+        parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
         args = parser.parse_args() 
