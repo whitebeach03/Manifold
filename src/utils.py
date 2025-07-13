@@ -136,7 +136,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     history = {"alpha": []}
     
     mixup_fn   = Mixup(alpha=1.0, mode="batch", num_classes=num_classes)
-    skmixup_fn = KernelMixup(alpha=1.0, mode="batch", num_classes=num_classes,warping="inverse_beta_cdf",tau_max=1.0,tau_std=0.25,lookup_size=4096,)
+    skmixup_fn = KernelMixup(alpha=1.0, mode="batch", num_classes=num_classes, warping="beta_cdf", tau_max=1.0, tau_std=0.25, lookup_size=4096,)
 
     batch_idx = 0
     for images, labels in tqdm(train_loader, leave=False):
@@ -159,6 +159,19 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
                 images_aug[i] = augmix_transform(images[i])
             preds = model(images_aug, labels, device, augment, aug_ok)
             loss = criterion(preds, labels)
+        
+        elif augment == "RegMixup":
+            preds_clean = model(images, labels=labels, device=device, augment=augment)
+            loss_clean = criterion(preds_clean, labels)
+            
+            lam, index = mixup_fn._get_params(images.size(0), device)
+            mixed_x = mixup_fn._linear_mixing(lam, images, index)
+            mixed_y = mixup_fn._mix_target(lam, labels, index)
+            preds_mix = model(mixed_x, labels=labels, device=device, augment=augment)
+            loss_mix = criterion(preds_mix, mixed_y)
+            
+            eta = 1.0  
+            loss = loss_clean + eta * loss_mix
         
         elif augment=="SK-Mixup":
             # # 1) 特徴量抽出（分類ヘッド直前のベクトル）

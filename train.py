@@ -32,6 +32,7 @@ augmentations = [
 
     # "Manifold-SK-Mixup",
 
+    "RegMixup",
     # "Ent-Mixup",
     
     # "Manifold-Mixup",

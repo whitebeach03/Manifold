@@ -113,7 +113,7 @@ def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, ite
     plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True)
-    plt.ylim(bottom=0.2)
+    # plt.ylim(bottom=0.2)
     
     ### LOSS ###
     plt.subplot(1, 2, 2)
