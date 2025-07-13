@@ -295,7 +295,10 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         optimizer.step()
 
         train_loss += loss.item()
-        train_acc += accuracy_score(labels_true.cpu().detach().numpy(), preds.argmax(dim=-1).cpu().numpy())
+        # train_acc += accuracy_score(labels_true.cpu().detach().numpy(), preds.argmax(dim=-1).cpu().numpy())
+        y_pred = preds.argmax(dim=1)
+        batch_acc = (y_pred == labels_true).float().mean().item()
+        train_acc += batch_acc
 
     train_loss /= len(train_loader)
     train_acc  /= len(train_loader)
@@ -313,7 +316,10 @@ def val(model, val_loader, criterion, device, augment, aug_ok):
             loss  = criterion(preds, labels)
 
             val_loss += loss.item()
-            val_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+            # val_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+            y_pred = preds.argmax(dim=1)
+            batch_acc = (y_pred == labels).float().mean().item()
+            val_acc += batch_acc
 
     val_loss /= len(val_loader)
     val_acc  /= len(val_loader)
@@ -331,7 +337,10 @@ def test(model, test_loader, criterion, device, augment, aug_ok):
             loss  = criterion(preds, labels)
 
             test_loss += loss.item()
-            test_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+            # test_acc  += accuracy_score(labels.cpu().tolist(), preds.argmax(dim=-1).cpu().tolist())
+            y_pred = preds.argmax(dim=1)
+            batch_acc = (y_pred == labels).float().mean().item()
+            test_acc += batch_acc
 
     test_loss /= len(test_loader)
     test_acc  /= len(test_loader)
