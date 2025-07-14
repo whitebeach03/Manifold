@@ -26,7 +26,7 @@ augmentations = [
     # "CutMix",
     # "AugMix",
 
-    "SK-Mixup",
+    # "SK-Mixup",
     # "Teacher-SK-Mixup",
     # "Teacher-SK-Mixup-Curriculum",
 

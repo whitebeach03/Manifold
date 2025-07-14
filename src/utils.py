@@ -161,8 +161,8 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss = criterion(preds, labels)
         
         elif augment == "RegMixup":
-            preds_clean = model(images, labels=labels, device=device, augment=augment)
-            loss_clean = criterion(preds_clean, labels)
+            preds = model(images, labels=labels, device=device, augment=augment)
+            loss_clean = criterion(preds, labels)
             
             lam, index = mixup_fn._get_params(images.size(0), device)
             mixed_x = mixup_fn._linear_mixing(lam, images, index)
