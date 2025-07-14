@@ -166,9 +166,11 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             
             lam, index = mixup_fn._get_params(images.size(0), device)
             mixed_x = mixup_fn._linear_mixing(lam, images, index)
-            mixed_y = mixup_fn._mix_target(lam, labels, index)
+
+            y_a = labels
+            y_b = labels[index]
             preds_mix = model(mixed_x, labels=labels, device=device, augment=augment)
-            loss_mix = criterion(preds_mix, mixed_y)
+            loss_mix = mixup_criterion(criterion, preds, y_a, y_b, lam)
             
             eta = 1.0  
             loss = loss_clean + eta * loss_mix
