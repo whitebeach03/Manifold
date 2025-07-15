@@ -33,6 +33,7 @@ def main():
 
         # "CutMix",
         # "AugMix",
+        "RegMixup",
 
         # "Ent-Mixup",
         "SK-Mixup",

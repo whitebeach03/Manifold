@@ -5,8 +5,9 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
+from src.methods.pca import local_pca_perturbation, fast_batch_pca_perturbation
 # from src.methods.foma import foma
-# from src.utils import mixup_data, local_pca_perturbation
+# from src.utils import mixup_data, fast_batch_pca_perturbation
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
@@ -186,6 +187,47 @@ class Wide_ResNet(nn.Module):
 
                 out = self.linear(out)
                 return out, y_a, y_b, lam
+            else:
+                out = self.conv1(x)
+                out = self.layer1(out)
+                out = self.layer2(out)
+                out = self.layer3(out)
+                out = F.relu(self.bn1(out))
+                out = F.avg_pool2d(out, 8)
+                out = out.view(out.size(0), -1)
+                out = self.linear(out)
+                return out
+        
+        elif augment == "PCA":
+            if aug_ok:
+                # layer_mix = random.randint(1,4)
+                layer_mix = 4
+                out = x
+                
+                if layer_mix == 0:
+                    out = fast_batch_pca_perturbation(out, device)
+                
+                out = self.conv1(out)
+                out = self.layer1(out)
+                if layer_mix == 1:
+                    out = fast_batch_pca_perturbation(out, device)
+
+                out = self.layer2(out)
+                if layer_mix == 2:
+                    out = fast_batch_pca_perturbation(out, device)
+
+                out = self.layer3(out)
+                if layer_mix == 3:
+                    out = fast_batch_pca_perturbation(out, device)
+                
+                out = F.relu(self.bn1(out))
+                out = F.avg_pool2d(out, 8)
+                out = out.view(out.size(0), -1)
+                if layer_mix == 4:
+                    out = fast_batch_pca_perturbation(out, device)
+
+                out = self.linear(out)
+                return out
             else:
                 out = self.conv1(x)
                 out = self.layer1(out)

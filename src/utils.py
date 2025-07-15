@@ -147,6 +147,10 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
         
+        elif augment == "PCA":
+            preds = model(images, labels, device, augment, aug_ok=True)
+            loss = criterion(preds, labels)
+        
         elif augment == "CutMix":
             images, y_a, y_b, lam = cutmix_data(images, labels, alpha=1.0)
             preds = model(images, labels, device, augment, aug_ok)
