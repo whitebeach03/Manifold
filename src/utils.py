@@ -411,51 +411,92 @@ def seed_everything(seed):
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
 
-def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
-    """
-    局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
-    :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
-    :param device: 使用するデバイス（cuda or cpu）
-    :param k: k近傍の数
-    :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
-    :return: 摂動後のテンソル（同shape）
-    """
-    data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
-    N, D = data_np.shape
-    if N < k:
-        k = N
+# def local_pca_perturbation(data, device, k=10, alpha=1.0, perturb_prob=1.0):
+#     """
+#     局所PCAに基づく摂動をデータに加える（近傍の散らばり内に収める）
+#     :param data: (N, D) 次元のテンソル (N: サンプル数, D: 特徴次元)
+#     :param device: 使用するデバイス（cuda or cpu）
+#     :param k: k近傍の数
+#     :param alpha: 摂動の強さ（最大主成分の標準偏差に対する割合）
+#     :return: 摂動後のテンソル（同shape）
+#     """
+#     data_np = data.cpu().detach().numpy() if isinstance(data, torch.Tensor) else data
+#     N, D = data_np.shape
+#     if N < k:
+#         k = N
 
-    nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
-    _, indices = nbrs.kneighbors(data_np)
+#     nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(data_np)
+#     _, indices = nbrs.kneighbors(data_np)
 
-    perturbed_data = np.copy(data_np)
+#     perturbed_data = np.copy(data_np)
 
-    for i in range(N):
-        if random.random() < perturb_prob:
-            neighbors = data_np[indices[i]]
-            pca = PCA(n_components=min(D, k))
-            pca.fit(neighbors)
-            components = pca.components_           # shape: (n_components, D)
-            variances = pca.explained_variance_    # shape: (n_components,)
+#     for i in range(N):
+#         if random.random() < perturb_prob:
+#             neighbors = data_np[indices[i]]
+#             pca = PCA(n_components=min(D, k))
+#             pca.fit(neighbors)
+#             components = pca.components_           # shape: (n_components, D)
+#             variances = pca.explained_variance_    # shape: (n_components,)
 
-            # ノイズベクトル（各主成分方向に沿った合成）
-            noise = np.zeros(D)
-            for j in range(len(components)):
-                    noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
+#             # ノイズベクトル（各主成分方向に沿った合成）
+#             noise = np.zeros(D)
+#             for j in range(len(components)):
+#                     noise += np.random.randn() * np.sqrt(variances[j]) * components[j]
 
-            # ノイズの方向はそのまま、長さをスケールする
-            if np.linalg.norm(noise) > 0:
-                noise = noise / np.linalg.norm(noise)
+#             # ノイズの方向はそのまま、長さをスケールする
+#             if np.linalg.norm(noise) > 0:
+#                 noise = noise / np.linalg.norm(noise)
 
-            # 局所の最大主成分の標準偏差に比例したスケール
-            max_std = np.sqrt(variances[0])  # 最大分散方向
-            scaled_noise = alpha * max_std * noise
-            perturbed_data[i] += scaled_noise
+#             # 局所の最大主成分の標準偏差に比例したスケール
+#             max_std = np.sqrt(variances[0])  # 最大分散方向
+#             scaled_noise = alpha * max_std * noise
+#             perturbed_data[i] += scaled_noise
         
-        else:
-            pass
+#         else:
+#             pass
 
-    return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
+#     return torch.tensor(perturbed_data, dtype=torch.float32).to(device)
+
+def local_pca_perturbation_torch(
+    features: torch.Tensor,
+    k: int = 10,
+    alpha: float = 0.5,
+    perturb_prob: float = 1.0
+) -> torch.Tensor:
+    """
+    features: (B, D)  要素ごとに局所 PCA に基づく摂動を加える
+    """
+    B, D = features.size()
+    device = features.device
+
+    # 1) バッチ内の距離行列を計算 → k 近傍索引取得
+    #    (自己との距離を無限大にして除外)
+    dist = torch.cdist(features, features)  # (B, B)
+    inf_mask = torch.eye(B, device=device) * 1e6
+    idx = torch.topk(dist + inf_mask, k=k, largest=False).indices  # (B, k)
+
+    # 2) 近傍特徴を集める → (B, k, D)
+    neighbors = features[idx]  # (B, k, D)
+
+    # 3) 平均・中心化
+    mu = neighbors.mean(dim=1, keepdim=True)       # (B, 1, D)
+    centered = neighbors - mu                      # (B, k, D)
+
+    # 4) バッチごとに共分散行列を算出
+    #    Σ = (centered^T @ centered) / (k - 1)
+    cov = torch.einsum('bnd,bmd->bnm', centered, centered) / (k - 1)  # (B, D, D)
+    cov = cov + torch.eye(D, device=device).unsqueeze(0) * 1e-5       # 安定化
+
+    # 5) コレスキー分解で √Σ を得てノイズ生成
+    L = torch.linalg.cholesky(cov)                        # (B, D, D)
+    eps = torch.randn(B, D, device=device)                # (B, D)
+    delta = alpha * (L @ eps.unsqueeze(-1)).squeeze(-1)   # (B, D)
+
+    # 6) perturb_prob でマスクし、本来の特徴と合成
+    mask = (torch.rand(B, device=device) < perturb_prob).float().unsqueeze(-1)
+    features_pert = features + mask * delta
+
+    return features_pert
 
 def make_helix(n_samples):
     n_samples = 5000
@@ -495,8 +536,9 @@ def compute_almp_loss_wrn(model, images, labels, lambda_almp=0.5, device='cuda')
     loss_orig = F.cross_entropy(logits_orig, labels)
 
     # ALMPによる特徴摂動
-    features_almp = adaptive_local_manifold_perturbation(features, device=device)
+    # features_almp = adaptive_local_manifold_perturbation(features, device=device)
     # features_almp = local_pca_perturbation(features, device=device)
+    features_almp = local_pca_perturbation_torch(features)
     logits_almp = model.linear(features_almp)
     loss_almp = F.cross_entropy(logits_almp, labels)
 
