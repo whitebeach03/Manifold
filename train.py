@@ -23,7 +23,8 @@ augmentations = [
     # "Default",
     # "Conf-Mixup",
     
-    "PCA",
+    # "PCA",
+    "SVD",
     # "Mixup",
 
     # "CutMix",

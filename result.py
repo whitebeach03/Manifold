@@ -20,12 +20,12 @@ def main():
     augmentations = [
         # "Original",
         "Default",
-        # "PCA",
+        "PCA",
 
-        "Conf-Mixup",
+        # "Conf-Mixup",
 
         # "Mixup(alpha=0.5)",
-        "Mixup",
+        # "Mixup",
         # "Mixup(alpha=2.0)",
         # "Mixup(alpha=5.0)",
         # "Manifold-Mixup(alpha=0.5)",
@@ -39,7 +39,7 @@ def main():
         # "RegMixup",
 
         # "Ent-Mixup",
-        "SK-Mixup",
+        # "SK-Mixup",
         # "Teacher-SK-Mixup",
         # "Teacher-SK-Mixup-Curriculum",
 

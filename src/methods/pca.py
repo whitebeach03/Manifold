@@ -61,7 +61,7 @@ def local_pca_perturbation_torch(
     return features_pert
 
 
-def compute_almp_loss_wrn(model, images, labels, lambda_almp=0.5, device='cuda'):
+def compute_almp_loss_wrn(model, images, labels, method, lambda_almp=0.5, device='cuda'):
     model.train()
     images = images.to(device)
     labels = labels.to(device)
@@ -76,15 +76,14 @@ def compute_almp_loss_wrn(model, images, labels, lambda_almp=0.5, device='cuda')
     # ALMPによる特徴摂動
     # features_almp = adaptive_local_manifold_perturbation(features, device=device)
     # features_almp = local_pca_perturbation(features, device=device)
-    features_almp = local_pca_perturbation_torch(features)
+    features_almp = local_pca_perturbation_torch(features, method=method)
     logits_almp = model.linear(features_almp)
     loss_almp = F.cross_entropy(logits_almp, labels)
 
     return loss_orig + lambda_almp * loss_almp, logits_orig
 
 
-
-
+### ------------------------------------------------------------------------------------------- ###
 
 
 def local_pca_perturbation(data, device, k=10, alpha=1.0):

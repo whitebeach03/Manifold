@@ -166,7 +166,10 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss = mix_loss
         
         elif augment == "PCA":
-            loss, preds = compute_almp_loss_wrn(model, images, labels, lambda_almp=1.0, device=device)
+            loss, preds = compute_almp_loss_wrn(model, images, labels, method="pca", lambda_almp=1.0, device=device)
+        
+        elif augment == "SVD":
+            loss, preds = compute_almp_loss_wrn(model, images, labels, method="svd", lambda_almp=1.0, device=device)
         
         elif augment == "CutMix":
             images, y_a, y_b, lam = cutmix_data(images, labels, alpha=1.0)
