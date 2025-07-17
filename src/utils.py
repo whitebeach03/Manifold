@@ -461,7 +461,7 @@ def local_pca_perturbation_torch(
     features: torch.Tensor,
     k: int = 10,
     alpha: float = 0.5,
-    perturb_prob: float = 0.5
+    perturb_prob: float = 1.0
 ) -> torch.Tensor:
     """
     features: (B, D)
