@@ -10,3 +10,6 @@ all_labels.npy
 data_split_indices.pkl
 data_split_indices_cifar.pkl
 data_split_indices*
+src/__pycache__
+src/methods/__pycache__
+src/models/__pycache__
