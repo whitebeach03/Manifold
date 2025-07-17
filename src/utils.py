@@ -495,9 +495,27 @@ def compute_almp_loss_wrn(model, images, labels, lambda_almp=0.5, device='cuda')
     loss_orig = F.cross_entropy(logits_orig, labels)
 
     # ALMPによる特徴摂動
-    # features_almp = adaptive_local_manifold_perturbation(features, device=device)
-    features_almp = local_pca_perturbation(features, device=device)
+    features_almp = adaptive_local_manifold_perturbation(features, device=device)
+    # features_almp = local_pca_perturbation(features, device=device)
     logits_almp = model.linear(features_almp)
     loss_almp = F.cross_entropy(logits_almp, labels)
 
     return loss_orig + lambda_almp * loss_almp, logits_orig
+
+def adaptive_local_manifold_perturbation(features, k=10, alpha=0.1, device='cuda'):
+    features_np = features.detach().cpu().numpy()
+    neigh = NearestNeighbors(n_neighbors=k+1).fit(features_np)
+    _, indices = neigh.kneighbors(features_np)
+
+    perturbed = []
+    for i in range(features.size(0)):
+        neighbors = features[indices[i][1:]]
+        mu = neighbors.mean(dim=0)
+        cov = torch.from_numpy(np.cov(neighbors.cpu().numpy(), rowvar=False)).float().to(device)
+        cov += torch.eye(cov.size(0), device=device) * 1e-5
+        L = torch.linalg.cholesky(cov)
+        epsilon = torch.randn_like(mu)
+        delta = alpha * (L @ epsilon)
+        z_prime = features[i] + delta
+        perturbed.append(z_prime)
+    return torch.stack(perturbed)
