@@ -137,6 +137,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     
     mixup_fn   = Mixup(alpha=1.0, mode="batch", num_classes=num_classes)
     skmixup_fn = KernelMixup(alpha=1.0, mode="batch", num_classes=num_classes, warping="beta_cdf", tau_max=1.0, tau_std=0.25, lookup_size=4096,)
+    confmix_fn = DynamicMixupShuffled(alpha_max=1.0, alpha_min=0.1, conf_th=0.7)
 
     batch_idx = 0
     for images, labels in tqdm(train_loader, leave=False):
@@ -146,10 +147,25 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         if augment == "Default":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
+            
+        elif augment == "Conf-Mixup":
+            preds = model(images, labels=labels, device=device, augment=augment)
+            loss_clean = criterion(preds, labels)
+            # 予測信頼度（最大ソフトマックス確率）を取得
+            with torch.no_grad():
+                logits = model(images, labels=labels, device=device, augment=augment)           # -> (B, C)
+                probs  = F.softmax(logits, dim=1)
+                # labels が (B,) の LongTensor だとすると…
+                conf = probs[torch.arange(probs.size(0)), labels]  # -> (B,)
+                # print(conf)
+            mixed_x, mixed_y = confmix_fn(images, labels, conf, num_classes)
+            preds = model(mixed_x, labels=labels, device=device, augment=augment)
+            mix_loss = -(mixed_y * F.log_softmax(preds, dim=1)).sum(dim=1).mean()
+
+            loss = mix_loss
         
         elif augment == "PCA":
-            preds = model(images, labels, device, augment, aug_ok=True)
-            loss = criterion(preds, labels)
+            loss, preds = compute_almp_loss_wrn(model, images, labels, lambda_almp=1.0, device=device)
         
         elif augment == "CutMix":
             images, y_a, y_b, lam = cutmix_data(images, labels, alpha=1.0)
@@ -465,3 +481,23 @@ def generate_high_dim_data(regressors, low_dim_data):
     for i, regressor in enumerate(regressors):
         high_dim_data[:, i] = regressor.predict(low_dim_data)
     return high_dim_data
+
+def compute_almp_loss_wrn(model, images, labels, lambda_almp=0.5, device='cuda'):
+    model.train()
+    images = images.to(device)
+    labels = labels.to(device)
+
+    # 特徴抽出
+    features = model.extract_features(images)  # (B, D)
+
+    # 元の分類出力
+    logits_orig = model.linear(features)
+    loss_orig = F.cross_entropy(logits_orig, labels)
+
+    # ALMPによる特徴摂動
+    # features_almp = adaptive_local_manifold_perturbation(features, device=device)
+    features_almp = local_pca_perturbation(features, device=device)
+    logits_almp = model.linear(features_almp)
+    loss_almp = F.cross_entropy(logits_almp, labels)
+
+    return loss_orig + lambda_almp * loss_almp, logits_orig

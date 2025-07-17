@@ -20,6 +20,9 @@ def main():
     augmentations = [
         # "Original",
         "Default",
+        # "PCA",
+
+        "Conf-Mixup",
 
         # "Mixup(alpha=0.5)",
         "Mixup",
@@ -33,7 +36,7 @@ def main():
 
         # "CutMix",
         # "AugMix",
-        "RegMixup",
+        # "RegMixup",
 
         # "Ent-Mixup",
         "SK-Mixup",

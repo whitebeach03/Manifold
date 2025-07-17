@@ -505,3 +505,136 @@ class RankMixupMNDCG(AbstractMixup):
             torch.cat(mixup_y, dim=0),
             torch.tensor(lams, device=x.device),
         )
+
+class ConfidenceAwareMixup(AbstractMixup):
+    """
+    Confidence-Aware Mixup:
+    - Pair samples by their prediction confidence
+    - If confidences are similar: alpha = 0.5
+    - If different: alpha = clipped higher confidence
+    """
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        threshold: float = 0.1,
+        low_conf_thresh: float = 0.7,
+        high_conf_thresh: float = 0.9,
+        num_classes: int = 1000,
+    ) -> None:
+        super().__init__(alpha=1.0, mode="batch", num_classes=num_classes)
+        self.model = model
+        self.threshold = threshold
+        self.low = low_conf_thresh
+        self.high = high_conf_thresh
+
+    def __call__(
+        self,
+        x: Tensor,
+        y: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        # Compute prediction confidences
+        self.model.eval()
+        with torch.no_grad():
+            probs = F.softmax(self.model(x, labels=None, device=None, augment="Conf-Mixup"), dim=1)
+            conf, _ = torch.max(probs, dim=1)
+        self.model.train()
+
+        # Make batch size even by dropping last sample if needed
+        B = x.size(0)
+        if B % 2 != 0:
+            x = x[:-1]
+            y = y[:-1]
+            conf = conf[:-1]
+            B -= 1
+
+        # Sort confidences and form neighbor pairs
+        _, idx = torch.sort(conf)           # ascending order indices
+        idx = idx.view(-1, 2)              # shape (B/2, 2)
+
+        # Build index mapping and lam tensor
+        pair_index = torch.empty(B, dtype=torch.long, device=x.device)
+        lam = torch.empty(B, device=x.device)
+
+        for i1, i2 in idx.tolist():
+            c1, c2 = conf[i1].item(), conf[i2].item()
+            # Decide alpha
+            if abs(c1 - c2) < self.threshold:
+                a = 0.5
+            else:
+                a = max(self.low, min(max(c1, c2), self.high))
+            # Assign for both in pair
+            lam[i1] = a
+            lam[i2] = a
+            pair_index[i1] = i2
+            pair_index[i2] = i1
+
+        # Use base class mixing functions
+        mixed_x = self._linear_mixing(lam, x, pair_index)
+        mixed_y = self._mix_target(lam, y, pair_index)
+
+        return mixed_x, mixed_y
+
+class DynamicMixupShuffled:
+    def __init__(self,
+                 alpha_max: float = 2.0,
+                 alpha_min: float = 0.1,
+                 conf_th: float = 0.8):
+        self.alpha_max = alpha_max
+        self.alpha_min = alpha_min
+        self.conf_th   = conf_th
+
+    def __call__(self,
+                 x: torch.Tensor,
+                 y: torch.Tensor,
+                 confidences: torch.Tensor,
+                 num_classes: int):
+        """
+        x: (B, …) on GPU
+        y: (B,) on GPU
+        confidences: (B,) on GPU
+        num_classes: int
+        """
+        B = x.size(0)
+
+        # 1) confidences を CPU に移す
+        conf_cpu = confidences.detach().cpu()
+
+        # 2) GPU 用と CPU 用、それぞれの perm を作成
+        perm_gpu = torch.randperm(B, device=x.device)
+        perm_cpu = perm_gpu.cpu()
+
+        # 3) シャッフル版を作成
+        x2 = x[perm_gpu]
+        y2 = y[perm_gpu]
+        conf2_cpu = conf_cpu[perm_cpu]
+
+        mixed_x = torch.zeros_like(x)
+        mixed_y = torch.zeros(B, num_classes, device=x.device, dtype=torch.float)
+
+        for i in range(B):
+            xi, xj = x[i], x2[i]
+            yi, yj = y[i], y2[i]
+            # CPU 上から安全に .item()
+            ci = conf_cpu[i].item()
+            cj = conf2_cpu[i].item()
+
+            # α₁, α₂ を決定
+            if ci >= self.conf_th and cj >= self.conf_th:
+                a1 = a2 = self.alpha_max
+            elif ci < self.conf_th and cj < self.conf_th:
+                a1 = a2 = self.alpha_min
+            else:
+                total = ci + cj
+                a1 = self.alpha_max * (ci / total)
+                a2 = self.alpha_max * (cj / total)
+
+            lam = float(np.random.beta(a1, a2))
+
+            # Mixup
+            mixed_x[i] = lam * xi + (1 - lam) * xj
+
+            y_one = F.one_hot(yi, num_classes).float()
+            y_two = F.one_hot(yj, num_classes).float()
+            mixed_y[i] = lam * y_one + (1 - lam) * y_two
+
+        return mixed_x, mixed_y
