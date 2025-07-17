@@ -461,38 +461,36 @@ def local_pca_perturbation_torch(
     features: torch.Tensor,
     k: int = 10,
     alpha: float = 0.5,
-    perturb_prob: float = 1.0
+    perturb_prob: float = 0.5
 ) -> torch.Tensor:
     """
-    features: (B, D)  要素ごとに局所 PCA に基づく摂動を加える
+    features: (B, D)
     """
     B, D = features.size()
     device = features.device
 
-    # 1) バッチ内の距離行列を計算 → k 近傍索引取得
-    #    (自己との距離を無限大にして除外)
+    # 1) 距離行列 → k近傍インデックス
     dist = torch.cdist(features, features)  # (B, B)
     inf_mask = torch.eye(B, device=device) * 1e6
     idx = torch.topk(dist + inf_mask, k=k, largest=False).indices  # (B, k)
 
     # 2) 近傍特徴を集める → (B, k, D)
-    neighbors = features[idx]  # (B, k, D)
+    neighbors = features[idx]
 
-    # 3) 平均・中心化
-    mu = neighbors.mean(dim=1, keepdim=True)       # (B, 1, D)
-    centered = neighbors - mu                      # (B, k, D)
+    # 3) 中心化
+    mu = neighbors.mean(dim=1, keepdim=True)    # (B, 1, D)
+    centered = neighbors - mu                   # (B, k, D)
 
-    # 4) バッチごとに共分散行列を算出
-    #    Σ = (centered^T @ centered) / (k - 1)
-    cov = torch.einsum('bnd,bmd->bnm', centered, centered) / (k - 1)  # (B, D, D)
-    cov = cov + torch.eye(D, device=device).unsqueeze(0) * 1e-5       # 安定化
+    # 4) 共分散を特徴次元方向で計算 → (B, D, D)
+    cov = torch.matmul(centered.transpose(1, 2), centered) / (k - 1)
+    cov = cov + torch.eye(D, device=device).unsqueeze(0) * 1e-5  # 安定化
 
-    # 5) コレスキー分解で √Σ を得てノイズ生成
-    L = torch.linalg.cholesky(cov)                        # (B, D, D)
-    eps = torch.randn(B, D, device=device)                # (B, D)
-    delta = alpha * (L @ eps.unsqueeze(-1)).squeeze(-1)   # (B, D)
+    # 5) チョレスキー分解＋ノイズ生成
+    L = torch.linalg.cholesky(cov)                  # (B, D, D)
+    eps = torch.randn(B, D, device=device)          # (B, D)
+    delta = alpha * (L @ eps.unsqueeze(-1)).squeeze(-1)  # (B, D)
 
-    # 6) perturb_prob でマスクし、本来の特徴と合成
+    # 6) perturb_prob でマスクして合成
     mask = (torch.rand(B, device=device) < perturb_prob).float().unsqueeze(-1)
     features_pert = features + mask * delta
 
