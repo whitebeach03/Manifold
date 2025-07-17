@@ -198,7 +198,7 @@ class Wide_ResNet(nn.Module):
                 out = self.linear(out)
                 return out
         
-        elif augment == "PCA":
+        elif augment == "PCA_latent":
             if aug_ok:
                 # layer_mix = random.randint(1,4)
                 layer_mix = 4
