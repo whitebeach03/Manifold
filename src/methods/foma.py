@@ -9,7 +9,8 @@ def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
     """
     B = X.shape[0]
     # Flatten image to [B, C*H*W]
-    X_flat = X.view(B, -1)
+    # X_flat = X.view(B, -1)
+    X_flat = X
 
     # Convert labels to one-hot if needed
     if Y.ndim == 1:  # [B]
@@ -19,6 +20,8 @@ def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
 
     # Concatenate X and Y
     Z = torch.cat([X_flat, Y_onehot], dim=1)
+    Z = Z - Z.mean(dim=0, keepdim=True)
+    Z = Z + 1e-5 * torch.randn_like(Z)
 
     # SVD
     U, s, Vt = torch.linalg.svd(Z, full_matrices=False)
