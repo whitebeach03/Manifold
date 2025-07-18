@@ -21,6 +21,7 @@ def main():
         # "Original",
         "Default",
         "PCA",
+        "SVD",
 
         # "Conf-Mixup",
 

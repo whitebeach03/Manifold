@@ -48,7 +48,7 @@ def local_pca_perturbation_torch(
     elif method == "cholesky":
         # 4) 共分散を特徴次元方向で計算 → (B, D, D)
         cov = torch.matmul(centered.transpose(1, 2), centered) / (k - 1)
-        cov = cov + torch.eye(D, device=device).unsqueeze(0) * 1e-5  # 安定化
+        cov = cov + torch.eye(D, device=device).unsqueeze(0) * 1e-3  # 安定化
         # 5) チョレスキー分解＋ノイズ生成
         L = torch.linalg.cholesky(cov)                  # (B, D, D)
         eps = torch.randn(B, D, device=device)          # (B, D)

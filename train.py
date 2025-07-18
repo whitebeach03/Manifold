@@ -25,6 +25,8 @@ augmentations = [
     
     # "PCA",
     "SVD",
+    # "Cholesky",
+
     # "Mixup",
 
     # "CutMix",
