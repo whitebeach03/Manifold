@@ -21,7 +21,7 @@ def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
     # Concatenate X and Y
     Z = torch.cat([X_flat, Y_onehot], dim=1)
     Z = Z - Z.mean(dim=0, keepdim=True)
-    Z = Z + 1e-5 * torch.randn_like(Z)
+    Z = Z + 1e-3 * torch.randn_like(Z)
 
     # SVD
     U, s, Vt = torch.linalg.svd(Z, full_matrices=False)
@@ -79,10 +79,11 @@ def compute_foma_loss(model, images, labels, lambda_almp=1.0, device='cuda'):
     # features_almp = local_pca_perturbation_torch(features, method=method)
     features_foma, labels_foma = foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
     logits_foma = model.linear(features_foma)
-    loss_foma = F.kl_div(
-        input=F.log_softmax(logits_foma, dim=1),
-        target=labels_foma,
-        reduction='batchmean'
-    )
+    # loss_foma = F.kl_div(
+    #     input=F.log_softmax(logits_foma, dim=1),
+    #     target=labels_foma,
+    #     reduction='batchmean'
+    # )
+    loss_foma = F.cross_entropy(logits_foma, labels_foma)
 
     return loss_orig + lambda_almp * loss_foma, logits_orig
