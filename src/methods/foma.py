@@ -75,7 +75,11 @@ def compute_foma_loss(model, images, labels, lambda_almp=1.0, device='cuda'):
     # FOMAによる特徴摂動
     # features_almp = local_pca_perturbation_torch(features, method=method)
     features_foma, labels_foma = foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
-    logits_almp = model.linear(features_foma)
-    loss_almp = F.cross_entropy(logits_almp, labels_foma)
+    logits_foma = model.linear(features_foma)
+    loss_foma = F.kl_div(
+        input=F.log_softmax(logits_foma, dim=1),
+        target=labels_foma,
+        reduction='batchmean'
+    )
 
-    return loss_orig + lambda_almp * loss_almp, logits_orig
+    return loss_orig + lambda_almp * loss_foma, logits_orig
