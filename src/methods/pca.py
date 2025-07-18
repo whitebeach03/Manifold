@@ -37,7 +37,7 @@ def local_pca_perturbation_torch(
         eps = torch.randn(B, S.size(1), device=device) 
         sqrt_lambda = (S**2 / (k-1)).sqrt()       
         # δ = V @ (√λ · ε)
-        delta = (Vh.transpose(-2,-1) @ (sqrt_lambda.unsqueeze(-1) * eps.unsqueeze(-1))).squeeze(-1) 
+        delta = alpha * (Vh.transpose(-2,-1) @ (sqrt_lambda.unsqueeze(-1) * eps.unsqueeze(-1))).squeeze(-1) 
     elif method == "pca":
         cov = torch.matmul(centered.transpose(1, 2), centered) / (k - 1)
         cov = cov + torch.eye(D, device=device).unsqueeze(0) * 1e-5  # 安定化

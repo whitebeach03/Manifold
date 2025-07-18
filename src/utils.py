@@ -170,7 +170,8 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss, preds = compute_almp_loss_wrn(model, images, labels, method="pca", lambda_almp=1.0, device=device)
         
         elif augment == "SVD":
-            loss, preds = compute_almp_loss_svd(model, images, labels, lambda_almp=1.0, device=device)
+            loss, preds = compute_almp_loss_wrn(model, images, labels, method="svd", lambda_almp=1.0, device=device)
+            # loss, preds = compute_almp_loss_svd(model, images, labels, lambda_almp=1.0, device=device)
         
         elif augment == "Cholesky":
             loss, preds = compute_almp_loss_wrn(model, images, labels, method="cholesky", lambda_almp=1.0, device=device)
