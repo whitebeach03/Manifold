@@ -59,53 +59,23 @@ def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
 
     return X_scaled, normalized_labels
 
-def foma_hard(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
-    """
-    FOMA for image classification tasks.
-    X: Input images, shape [B, C, H, W]
-    Y: Labels, shape [B] or [B, num_classes]
-    """
-    B = X.shape[0]
-    # Flatten image to [B, C*H*W]
-    X_flat = X.view(B, -1)
 
-    # Convert labels to one-hot if needed
-    if Y.ndim == 1:  # [B]
-        Y_onehot = F.one_hot(Y, num_classes=num_classes).float()
-    else:
-        Y_onehot = Y.float()
+def compute_foma_loss(model, images, labels, lambda_almp=1.0, device='cuda'):
+    model.train()
+    images = images.to(device)
+    labels = labels.to(device)
 
-    # Concatenate X and Y
-    Z = torch.cat([X_flat, Y_onehot], dim=1)
+    # 特徴抽出
+    features = model.extract_features(images)  # (B, D)
 
-    # SVD
-    U, s, Vt = torch.linalg.svd(Z, full_matrices=False)
-    # U, s, Vt = torch.linalg.svd(X_flat, full_matrices=False)
+    # 元の分類出力
+    logits_orig = model.linear(features)
+    loss_orig = F.cross_entropy(logits_orig, labels)
 
-    # Lambda
-    if lam is None:
-        lam = torch.distributions.beta.Beta(alpha, alpha).sample().to(X.device)
-    if not torch.is_tensor(lam):
-        lam = torch.tensor(lam).to(X.device)
+    # FOMAによる特徴摂動
+    # features_almp = local_pca_perturbation_torch(features, method=method)
+    features_foma, labels_foma = foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
+    logits_almp = model.linear(features_foma)
+    loss_almp = F.cross_entropy(logits_almp, labels_foma)
 
-    # Scale singular values (simplified: scaling small singular values)
-    cumperc = torch.cumsum(s, dim=0) / torch.sum(s)
-    condition = cumperc > rho if small_singular else cumperc < rho
-    lam_mult = torch.where(condition, lam, torch.tensor(1.0, device=s.device))
-    s_scaled = s * lam_mult
-
-    # Reconstruct Z
-    Z_scaled = (U @ torch.diag(s_scaled) @ Vt)
-
-    # Split back to X and Y
-    X_flat_scaled = Z_scaled[:, :X_flat.shape[1]]
-    Y_onehot_scaled = Z_scaled[:, X_flat.shape[1]:]
-    # X_flat_scaled = U @ torch.diag(s_scaled) @ Vt
-
-    # Reshape X to original image shape
-    X_scaled = X_flat_scaled.view_as(X)
-
-    # Optionally: Convert one-hot back to class labels (argmax)
-    Y_scaled = torch.argmax(Y_onehot_scaled, dim=1)
-
-    return X_scaled, Y_scaled
+    return loss_orig + lambda_almp * loss_almp, logits_orig

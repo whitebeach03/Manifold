@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import pickle
 from tqdm import tqdm
-from src.methods.foma import foma, foma_hard
 from torchvision import datasets, transforms
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -28,6 +27,7 @@ from src.methods.cutmix import cutmix_data
 from src.methods.augmix import AugMixTransform
 from src.methods.pca import compute_almp_loss_wrn
 from src.methods.svd import compute_almp_loss_svd
+from src.methods.foma import compute_foma_loss
 from src.models.wide_resnet import Wide_ResNet
 
 def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
@@ -166,12 +166,14 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
 
             loss = mix_loss
         
+        elif augment == "FOMA":
+            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device)
+        
         elif augment == "PCA":
             loss, preds = compute_almp_loss_wrn(model, images, labels, method="pca", lambda_almp=1.0, device=device)
         
         elif augment == "SVD":
             loss, preds = compute_almp_loss_wrn(model, images, labels, method="svd", lambda_almp=1.0, device=device)
-            # loss, preds = compute_almp_loss_svd(model, images, labels, lambda_almp=1.0, device=device)
         
         elif augment == "Cholesky":
             loss, preds = compute_almp_loss_wrn(model, images, labels, method="cholesky", lambda_almp=1.0, device=device)

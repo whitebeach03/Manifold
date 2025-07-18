@@ -24,7 +24,7 @@ augmentations = [
     # "Conf-Mixup",
     
     # "PCA",
-    "SVD",
+    # "SVD",
     # "Cholesky",
 
     # "Mixup",
@@ -53,7 +53,7 @@ augmentations = [
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
 
-    # "FOMA",
+    "FOMA",
     # "FOMA_latent_random",
 
     # "FOMA_default",
