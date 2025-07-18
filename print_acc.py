@@ -2,7 +2,7 @@ import pickle
 
 dic = {}
 
-pickle_file_path = f'./history/wide_resnet_28_10/Default/cifar100_400_0.pickle'
+pickle_file_path = f'./history/wide_resnet_28_10/PCA/cifar100_400_0.pickle'
 with open(pickle_file_path, 'rb') as f:
     dic = pickle.load(f)
 
