@@ -31,7 +31,7 @@ def main():
         # "Mixup(alpha=5.0)",
         # "Manifold-Mixup(alpha=0.5)",
         # "Manifold-Mixup(alpha=1.0)",
-        # "Manifold-Mixup",
+        "Manifold-Mixup",
         # "Manifold-Mixup(alpha=5.0)",
         # "Mixup-Curriculum",
 
@@ -44,7 +44,7 @@ def main():
         # "Teacher-SK-Mixup",
         # "Teacher-SK-Mixup-Curriculum",
 
-        # "FOMA",
+        "FOMA",
         # "FOMA_latent_random",
 
         # "FOMA_fixed_input",
@@ -103,11 +103,7 @@ def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, ite
                 
         epochs = range(1, len(train_acc) + 1)
 
-        if augment == "FOMA":
-            augment = "FOMA_input"
-        elif augment == "FOMA_latent_random":
-            augment = "FOMA_latent"
-        elif augment == "Mixup":
+        if augment == "Mixup":
             augment = "Mixup(alpha=1.0)"
         elif augment == "Manifold-Mixup":
             augment = "Manifold-Mixup(alpha=2.0)"
@@ -136,11 +132,7 @@ def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, ite
         
         epochs = range(1, len(train_loss) + 1)
 
-        if augment == "FOMA":
-            augment = "FOMA_input"
-        elif augment == "FOMA_latent_random":
-            augment = "FOMA_latent"
-        elif augment == "Mixup":
+        if augment == "Mixup":
             augment = "Mixup(alpha=1.0)"
         elif augment == "Manifold-Mixup":
             augment = "Manifold-Mixup(alpha=2.0)"
@@ -176,11 +168,7 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
                 
         epochs = range(1, len(val_acc) + 1)
 
-        if augment == "FOMA":
-            augment = "FOMA_input"
-        elif augment == "FOMA_latent_random":
-            augment = "FOMA_latent"
-        elif augment == "Mixup":
+        if augment == "Mixup":
             augment = "Mixup(alpha=1.0)"
         elif augment == "Manifold-Mixup":
             augment = "Manifold-Mixup(alpha=2.0)"
@@ -209,11 +197,7 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
         
         epochs = range(1, len(val_loss) + 1)
 
-        if augment == "FOMA":
-            augment = "FOMA_input"
-        elif augment == "FOMA_latent_random":
-            augment = "FOMA_latent"
-        elif augment == "Mixup":
+        if augment == "Mixup":
             augment = "Mixup(alpha=1.0)"
         elif augment == "Manifold-Mixup":
             augment = "Manifold-Mixup(alpha=2.0)"
