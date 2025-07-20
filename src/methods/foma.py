@@ -58,30 +58,6 @@ def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
 
     return X_scaled, normalized_labels
 
-
-def compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device='cuda'):
-    model.train()
-    images = images.to(device)
-    labels = labels.to(device)
-
-    # 特徴抽出
-    features = model.extract_features(images)  # (B, D)
-
-    # 元の分類出力
-    logits_orig = model.linear(features)
-    loss_orig = F.cross_entropy(logits_orig, labels)
-
-    # FOMAによる特徴摂動
-    if augment == "FOMA"
-        features_foma, labels_foma = foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
-    elif augment == "Local-FOMA":
-        features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
-    logits_foma = model.linear(features_foma)
-    loss_foma = F.cross_entropy(logits_foma, labels_foma)
-
-    return loss_orig + lambda_almp * loss_foma, logits_orig
-
-
 def local_foma(
     X: torch.Tensor,             # (B, D) 特徴ベクトル
     Y: torch.Tensor,             # (B,) あるいは (B, C) one-hot ラベル
@@ -151,3 +127,28 @@ def local_foma(
         Y_aug[i] = y2
 
     return X_aug, Y_aug
+
+
+def compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device='cuda'):
+    model.train()
+    images = images.to(device)
+    labels = labels.to(device)
+
+    # 特徴抽出
+    features = model.extract_features(images)  # (B, D)
+
+    # 元の分類出力
+    logits_orig = model.linear(features)
+    loss_orig = F.cross_entropy(logits_orig, labels)
+
+    # FOMAによる特徴摂動
+    if augment == "FOMA":
+        features_foma, labels_foma = foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
+    elif augment == "Local-FOMA":
+        features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
+    logits_foma = model.linear(features_foma)
+    loss_foma = F.cross_entropy(logits_foma, labels_foma)
+
+    return loss_orig + lambda_almp * loss_foma, logits_orig
+
+

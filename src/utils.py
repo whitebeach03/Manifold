@@ -167,10 +167,10 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss = mix_loss
         
         elif augment == "FOMA":
-            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device)
+            loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)
         
         elif augment == "Local-FOMA":
-            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device)
+            loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)
         
         elif augment == "PCA":
             loss, preds = compute_almp_loss_wrn(model, images, labels, method="pca", lambda_almp=1.0, device=device)
