@@ -177,6 +177,9 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         elif augment == "FOMA":
             loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)
         
+        elif augment == "FOMA-scaleup":
+            loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)
+        
         elif augment == "Local-FOMA":
             loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)
         
