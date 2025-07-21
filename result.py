@@ -20,7 +20,7 @@ def main():
     augmentations = [
         # "Original",
         "Default",
-        # "PCA",
+        "PCA",
         # "SVD",
 
         # "Conf-Mixup",
