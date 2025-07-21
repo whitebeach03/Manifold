@@ -28,6 +28,8 @@ from src.methods.augmix import AugMixTransform
 from src.methods.pca import compute_almp_loss_wrn
 from src.methods.svd import compute_almp_loss_svd
 from src.methods.foma import compute_foma_loss
+from src.methods.fomix import *
+from src.methods.hybrid import *
 from src.models.wide_resnet import Wide_ResNet
 
 def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
@@ -165,6 +167,12 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             mix_loss = -(mixed_y * F.log_softmax(preds, dim=1)).sum(dim=1).mean()
 
             loss = mix_loss
+        
+        elif augment == "Mixup+FOMA":
+            loss, preds = compute_hybrid_loss(model, images, labels)
+        
+        elif augment == "FOMix":
+            loss, preds = compute_fomix_loss(model, images, labels)
         
         elif augment == "FOMA":
             loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)

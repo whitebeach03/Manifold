@@ -1,51 +1,6 @@
 import torch
 import torch.nn.functional as F
-
-def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
-    B = X.shape[0]
-    # Flatten image to [B, C*H*W]
-    # X_flat = X.view(B, -1)
-    X_flat = X
-
-    # Convert labels to one-hot if needed
-    if Y.ndim == 1:  # [B]
-        Y_onehot = F.one_hot(Y, num_classes=num_classes).float()
-    else:
-        Y_onehot = Y.float()
-
-    # Concatenate X and Y
-    Z = torch.cat([X_flat, Y_onehot], dim=1)
-    Z = Z - Z.mean(dim=0, keepdim=True)
-    # Z = Z + 1e-3 * torch.randn_like(Z)
-
-    # SVD
-    U, s, Vt = torch.linalg.svd(Z, full_matrices=False)
-
-    # Lambda
-    if lam is None:
-        lam = torch.distributions.beta.Beta(alpha, alpha).sample().to(X.device)
-    if not torch.is_tensor(lam):
-        lam = torch.tensor(lam).to(X.device)
-
-    # Scale singular values (simplified: scaling small singular values)
-    cumperc = torch.cumsum(s, dim=0) / torch.sum(s)
-    condition = cumperc > rho if small_singular else cumperc < rho
-    lam_mult = torch.where(condition, lam, torch.tensor(1.0, device=s.device))
-    s_scaled = s * lam_mult
-
-    # Reconstruct Z
-    Z_scaled = (U @ torch.diag(s_scaled) @ Vt)
-
-    # Split back to X and Y
-    X_flat_scaled = Z_scaled[:, :X_flat.shape[1]]
-    Y_onehot_scaled = Z_scaled[:, X_flat.shape[1]:]
-
-    # Reshape X to original image shape
-    X_scaled = X_flat_scaled.view_as(X)
-
-    normalized_labels = F.softmax(Y_onehot_scaled, dim=1)
-
-    return X_scaled, normalized_labels
+import numpy as np
 
 def local_foma(
     X: torch.Tensor,             # (B, D) 特徴ベクトル
@@ -117,27 +72,44 @@ def local_foma(
 
     return X_aug, Y_aug
 
-
-def compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device='cuda'):
-    model.train()
-    images = images.to(device)
-    labels = labels.to(device)
-
-    # 特徴抽出
-    features = model.extract_features(images)  # (B, D)
-
-    # 元の分類出力
-    logits_orig = model.linear(features)
+def compute_hybrid_loss(model, images, labels, alpha_mix=1.0, alpha_foma=1.0, rho=0.9, k=10, gamma_mix=1.0, gamma_foma=1.0, device='cuda'):
+    B = images.size(0)
+    # 1) 元損失
+    logits_orig = model.linear(model.extract_features(images))
     loss_orig = F.cross_entropy(logits_orig, labels)
 
-    # FOMAによる特徴摂動
-    if augment == "FOMA":
-        features_foma, labels_foma = foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
-    elif augment == "Local-FOMA":
-        features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
-    logits_foma = model.linear(features_foma)
-    loss_foma = F.cross_entropy(logits_foma, labels_foma)
+    # 2) 入力空間 Mixup
+    x_mix, y_a, y_b, lam1 = mixup_data(images, labels, alpha=alpha_mix)
+    feat_mix = model.extract_features(x_mix)
+    logits_mix = model.linear(feat_mix)
+    loss_mix = lam1 * F.cross_entropy(logits_mix, y_a) + (1-lam1) * F.cross_entropy(logits_mix, y_b)
 
-    return loss_orig + lambda_almp * loss_foma, logits_orig
+    # 3) Local-FOMA（ソフトラベル）
+    #    y_mix_soft: (B, C)
+    y_a_oh = F.one_hot(y_a, 100).float().to(device)
+    y_b_oh = F.one_hot(y_b, 100).float().to(device)
+    y_mix_soft = lam1 * y_a_oh + (1 - lam1) * y_b_oh
 
+    feat_foma, _ = local_foma(feat_mix, y_mix_soft, num_classes=100, alpha=alpha_foma, rho=rho, k=k)
+    logits_foma = model.linear(feat_foma)
+    # ソフトラベル用クロスエントロピー
+    loss_foma = -(y_mix_soft * F.log_softmax(logits_foma, dim=-1)).sum(dim=1).mean()
 
+    # 4) 合成
+    total_loss = (loss_orig + gamma_mix * loss_mix + gamma_foma * loss_foma)
+    return total_loss, logits_orig
+
+def mixup_data(x, y, alpha=1.0, use_cuda=True):
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+    batch_size = x.size()[0]
+    if use_cuda:
+        index = torch.randperm(batch_size).cuda()
+    else:
+        index = torch.randperm(batch_size)
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam

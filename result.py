@@ -20,8 +20,8 @@ def main():
     augmentations = [
         # "Original",
         "Default",
-        "PCA",
-        "SVD",
+        # "PCA",
+        # "SVD",
 
         # "Conf-Mixup",
 
@@ -31,7 +31,7 @@ def main():
         # "Mixup(alpha=5.0)",
         # "Manifold-Mixup(alpha=0.5)",
         # "Manifold-Mixup(alpha=1.0)",
-        # "Manifold-Mixup",
+        "Manifold-Mixup",
         # "Manifold-Mixup(alpha=5.0)",
         # "Mixup-Curriculum",
 
@@ -44,7 +44,8 @@ def main():
         # "Teacher-SK-Mixup",
         # "Teacher-SK-Mixup-Curriculum",
 
-        "FOMA",
+        # "FOMA",
+        "Local-FOMA",
         # "FOMA_latent_random",
 
         # "FOMA_fixed_input",
