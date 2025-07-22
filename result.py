@@ -25,13 +25,14 @@ def main():
 
         # "Conf-Mixup",
 
+        "Mixup+FOMA",
         # "Mixup(alpha=0.5)",
         "Mixup",
         # "Mixup(alpha=2.0)",
         # "Mixup(alpha=5.0)",
         # "Manifold-Mixup(alpha=0.5)",
         # "Manifold-Mixup(alpha=1.0)",
-        "Manifold-Mixup",
+        # "Manifold-Mixup",
         # "Manifold-Mixup(alpha=5.0)",
         # "Mixup-Curriculum",
 
@@ -45,7 +46,7 @@ def main():
         # "Teacher-SK-Mixup-Curriculum",
 
         # "FOMA",
-        "FOMA-scaleup",
+        # "FOMA-scaleup",
         "Local-FOMA",
         # "FOMA_latent_random",
 

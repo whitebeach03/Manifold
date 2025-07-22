@@ -12,15 +12,15 @@ from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from tqdm import tqdm
 
 # 設定
-epochs     = 10
-data_type  = "cifar10"
+epochs     = 400
+data_type  = "cifar100"
 model_type = "wide_resnet_28_10"
 device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 augmentations = [
     # "Local-FOMA",
-    "Mixup",
-    # "Default",
+    # "Mixup",
+    "Default",
 ]
 
 for augment in augmentations:
@@ -60,7 +60,7 @@ for augment in augmentations:
     elif data_type == "cifar10":
         test_dataset = CIFAR10(root="./data", train=False, download=True, transform=transform)
     
-    # テストセットの1/10だけ使う
+    # テストセットの半分だけ使う
     total_len = len(test_dataset)
     subset_len = total_len // 2
     indices = random.sample(range(total_len), subset_len)

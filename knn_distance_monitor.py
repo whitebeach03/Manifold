@@ -69,10 +69,10 @@ def compute_avg_knn_distance(features, k=10):
 
 def main():
     # Parameters
-    data_type   = "cifar10"       # or "cifar100", "stl10"
+    data_type   = "cifar100"       # or "cifar100", "stl10"
     model_type  = "wide_resnet_28_10"
-    augment     = "Mixup"       # folder name used for checkpoints
-    epochs_list = [20, 250]
+    augment     = "Default"       # folder name used for checkpoints
+    epochs_list = [5, 400]
 
     # Determine dataset-specific settings
     if data_type == "stl10":
