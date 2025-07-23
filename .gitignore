@@ -1,6 +1,7 @@
 data/
 logs/
 history/
+distance_log/
 our_dataset/
 never_correct_data/
 umap_results.npy

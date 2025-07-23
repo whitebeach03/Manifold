@@ -160,7 +160,7 @@ def main():
                 train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok=False, epochs=epoch)
                 val_loss, val_acc     = val(model, val_loader, criterion, device, augment, aug_ok=False)
 
-                train_feats = extract_wrn_features(model, train_loader, device)
+                train_feats = extract_wrn_features(model, train_loader.dataset, device)
                 feats_t = torch.from_numpy(train_feats).to(device)
                 avg_dist = compute_avg_knn_distance(feats_t, k=10)
                 distance_log.append((epoch+1, avg_dist))
