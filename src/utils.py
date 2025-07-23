@@ -510,3 +510,27 @@ def generate_high_dim_data(regressors, low_dim_data):
 
 
 
+def compute_avg_knn_distance(features: torch.Tensor, k: int = 10) -> float:
+    """
+    features: (N, D) Tensor
+    k:        近傍数
+    戻り値:   全サンプルの k-NN 距離平均
+    """
+    # 距離行列 (N, N)
+    dist = torch.cdist(features, features)
+    # 自己距離を除外
+    N = features.size(0)
+    dist += torch.eye(N, device=features.device) * 1e6
+    # k-NN indices
+    idx = dist.topk(k=k, largest=False).indices    # (N, k)
+    # 距離を gather して平均
+    knn_dists = dist.gather(1, idx)               # (N, k)
+    return knn_dists.mean().item()
+
+def save_distance_log(distance_log: list, filename: str):
+    """
+    distance_log: [(epoch, avg_dist), ...]
+    filename:     保存先 pickle ファイル
+    """
+    with open(filename, "wb") as f:
+        pickle.dump(distance_log, f)

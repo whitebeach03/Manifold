@@ -27,7 +27,7 @@ augmentations = [
     # "SVD",
     # "Cholesky",
 
-    "Mixup",
+    # "Mixup",
 
     # "CutMix",
     # "AugMix",
@@ -56,7 +56,7 @@ augmentations = [
     # "FOMA-scaleup"
     # "Mixup+FOMA",
     # "FOMix",
-    # "Local-FOMA",
+    "Local-FOMA",
     # "FOMA",
     # "FOMA_latent_random",
 
@@ -74,10 +74,10 @@ augmentations = [
 ]
 
 def main():
-    for i in range(1):
+    for i in range(1, 2):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--epochs",     type=int, default=10)
-        parser.add_argument("--data_type",  type=str, default="cifar10",  choices=["stl10", "cifar100", "cifar10"])
+        parser.add_argument("--epochs",     type=int, default=400)
+        parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
         args = parser.parse_args() 
 
@@ -137,6 +137,7 @@ def main():
         
         for augment in augmentations:
             print(f"\n==> Training with {augment} ...")
+            distance_log = []
 
             # Select Model
             if model_type == "resnet18":
@@ -159,6 +160,12 @@ def main():
                 train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok=False, epochs=epoch)
                 val_loss, val_acc     = val(model, val_loader, criterion, device, augment, aug_ok=False)
 
+                train_feats = extract_wrn_features(model, train_loader, device)
+                feats_t = torch.from_numpy(train_feats).to(device)
+                avg_dist = compute_avg_knn_distance(feats_t, k=10)
+                distance_log.append((epoch+1, avg_dist))
+                print(f"  → Epoch {epoch+1}: Avg 10-NN dist = {avg_dist:.4f}")
+
                 if score <= val_acc:
                     print("Save model parameters...")
                     score = val_acc
@@ -173,6 +180,8 @@ def main():
 
             with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}.pickle", "wb") as f:
                 pickle.dump(history, f)
+            
+            save_distance_log(distance_log, f"./distance_log/{model_type}/{augment}/{data_type}_{epochs}_{i}_knn_dist.pkl")
             
             ### TEST ###
             model.load_state_dict(torch.load(model_save_path, weights_only=True))

@@ -74,6 +74,12 @@ def local_foma(
     dist += torch.eye(B, device=device) * 1e6
     idx  = torch.topk(dist, k=k, largest=False).indices           # (B, k)
 
+    # --- ここから追加 ---
+    # knn_dists = dist.gather(1, idx)                       # (B, k)
+    # avg_knn_dist = knn_dists.mean().item()                    # scalar
+    # print(f"Avg {k}-NN distance: {avg_knn_dist:.4f}")
+    # --- ここまで追加 ---
+
     X_aug = torch.empty_like(X)
     Y_aug = torch.empty_like(Yh)
 
@@ -138,7 +144,10 @@ def compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device='c
         features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
     logits_foma = model.linear(features_foma)
     loss_foma = F.cross_entropy(logits_foma, labels_foma)
+    # loss_foma = F.kl_div(
+    #     F.log_softmax(logits_foma, dim=1),
+    #     labels_foma,
+    #     reduction='batchmean'
+    # )
 
     return loss_orig + lambda_almp * loss_foma, logits_orig
-
-
