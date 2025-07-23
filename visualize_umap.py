@@ -18,8 +18,8 @@ model_type = "wide_resnet_28_10"
 device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 augmentations = [
-    # "Local-FOMA",
-    # "Mixup",
+    "Local-FOMA",
+    "Mixup",
     "Default",
 ]
 
@@ -96,5 +96,5 @@ for augment in augmentations:
     plt.xlabel("UMAP Dim 1")
     plt.ylabel("UMAP Dim 2")
     plt.tight_layout()
-    plt.savefig(f"./umap/{data_type}_{augment}_{epochs}.png")
+    plt.savefig(f"./umap_fig/{data_type}_{augment}_{epochs}.png")
     plt.close()
