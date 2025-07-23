@@ -6,11 +6,13 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Dict
 from torch.utils.data import DataLoader
 from src.models.resnet import ResNet18, ResNet101
 from src.models.wide_resnet import Wide_ResNet
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from sklearn.metrics import accuracy_score
+from matplotlib.colors import LinearSegmentedColormap
 
 # --- Calibration utilities ---
 def compute_ece(confidences: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
@@ -58,7 +60,7 @@ def reliability_diagram(confidences: np.ndarray, predictions: np.ndarray, labels
     plt.figure(figsize=(6,6))
     plt.plot([0,1], [0,1], linestyle='--', label='Perfect Calibration')
     plt.plot(bin_centers, accuracies, marker='o', label='Accuracy')
-    plt.plot(bin_centers, avg_confidences, marker='x', label='Confidence')
+    # plt.plot(bin_centers, avg_confidences, marker='x', label='Confidence')
     plt.xlabel('Confidence')
     plt.ylabel('Accuracy')
     plt.title('Reliability Diagram')
@@ -81,6 +83,28 @@ def compute_ece_from_preds(confidences: np.ndarray, predictions: np.ndarray, lab
             avg_confidence_in_bin = confidences[mask].mean()
             ece += np.abs(avg_confidence_in_bin - accuracy_in_bin) * prop_in_bin
     return ece
+
+def compute_classwise_ece(
+    confidences: np.ndarray,
+    predictions: np.ndarray,
+    labels: np.ndarray,
+    n_bins: int = 50
+) -> Dict[int, float]:
+    """
+    各クラスごとに ECE を計算して辞書で返す
+    """
+    class_ece: Dict[int, float] = {}
+    for cls in np.unique(labels):
+        mask = (labels == cls)
+        confs_cls = confidences[mask]
+        preds_cls = predictions[mask]
+        labels_cls = labels[mask]
+        # サンプル数が少ない場合はスキップも可
+        if len(confs_cls) == 0:
+            continue
+        ece_cls = compute_ece_from_preds(confs_cls, preds_cls, labels_cls, n_bins)
+        class_ece[int(cls)] = ece_cls
+    return class_ece
 
 
 # --- Main testing with calibration ---
@@ -119,8 +143,10 @@ def main():
                                    transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])
                                ]))
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    
+    all_classwise_ece = {}
 
-    for augment in ["Default","Mixup", "Manifold-Mixup", "Local-FOMA"]:
+    for augment in ["Mixup", "Local-FOMA"]:
         print(f"\n==> Test with {augment} ...")
         # Model
         if model_type == "resnet18": model = ResNet18().to(device)
@@ -160,11 +186,131 @@ def main():
         ece = compute_ece_from_preds(all_confidences, all_preds, all_labels, n_bins=50)
 
         print(f"Test Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}, ECE: {ece:.4f}")
+        classwise_ece = compute_classwise_ece(all_confidences, all_preds, all_labels, n_bins=50)
+        all_classwise_ece[augment] = classwise_ece
         reliability_diagram(
             all_confidences, all_preds, all_labels,
             n_bins=50,
             savepath=f"reliability_{augment}.png"
         )
+        
+        classwise_ece = compute_classwise_ece(all_confidences, all_preds, all_labels, n_bins=50)
+        print(">> Class-wise ECE:")
+        for cls, ece_val in sorted(classwise_ece.items()):
+            print(f"  Class {cls:3d}: ECE = {ece_val:.4f}")
+    
+    
+    # methods = list(all_classwise_ece.keys())
+    # num_classes = max(len(v) for v in all_classwise_ece.values())
+    # x = list(range(num_classes))
+
+    # plt.figure(figsize=(10, 6))
+    # for method in methods:
+    #     ece_dict = all_classwise_ece[method]
+    #     y = [ece_dict.get(cls, 0.0) for cls in x]
+    #     plt.plot(x, y, marker='o', label=method)
+
+    # plt.xlabel('Class Label')
+    # plt.ylabel('ECE')
+    # plt.title('Class-wise ECE Comparison Across Methods')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.savefig("classwise_ece_comparison.png")
+    
+    # methods = list(all_classwise_ece.keys())
+    # num_classes = max(len(v) for v in all_classwise_ece.values())
+    # # 行列データ作成（methods 行 × classes 列）
+    # data = np.array([
+    #     [ all_classwise_ece[m].get(c, 0.0) for c in range(num_classes) ]
+    #     for m in methods
+    # ])
+
+    # plt.figure(figsize=(12, 3))
+    # plt.imshow(data, aspect='auto', cmap='viridis')
+    # plt.colorbar(label='ECE')
+    # plt.yticks(np.arange(len(methods)), methods)
+    # plt.xlabel('Class Label')
+    # plt.title('Class-wise ECE Heatmap')
+    # plt.tight_layout()
+    # plt.savefig('classwise_ece_heatmap.png')
+    
+    # methods = list(all_classwise_ece.keys())
+    # num_classes = max(len(v) for v in all_classwise_ece.values())
+    # data = np.array([
+    #     [ all_classwise_ece[m].get(c, 0.0) for c in range(num_classes) ]
+    #     for m in methods
+    # ])
+
+    # plt.figure(figsize=(12, 3))
+    # # cmap='bwr' や 'coolwarm' を指定すると青から赤のグラデーションになります
+    # plt.imshow(data, aspect='auto', cmap='bwr', 
+    #         vmin=data.min(), vmax=data.max())
+    # cbar = plt.colorbar(label='ECE')
+    # cbar.set_ticks(np.linspace(data.min(), data.max(), 5))  # 目盛り調整
+    # plt.yticks(np.arange(len(methods)), methods)
+    # plt.xlabel('Class Label')
+    # plt.title('Class-wise ECE Heatmap (Blue=Low, Red=High)')
+    # plt.tight_layout()
+    # plt.savefig('classwise_ece_heatmap_br.png')
+    
+    # all_classwise_ece: {method: {cls: ece, …}, …}
+    methods = list(all_classwise_ece.keys())
+    num_classes = max(len(v) for v in all_classwise_ece.values())
+    data = np.array([
+        [ all_classwise_ece[m].get(c, 0.0) for c in range(num_classes) ]
+        for m in methods
+    ])
+
+    # # カスタムカラーマップ（青→赤、白を挟まない）
+    # blue_red = LinearSegmentedColormap.from_list(
+    #     'BlueRed_no_white', 
+    #     ['#0050b3',  # 濃い青
+    #     '#7a0177',  # 中間は紫
+    #     '#b2182b']  # 濃い赤
+    # )
+
+    # plt.figure(figsize=(12, 3))
+    # plt.imshow(
+    #     data, 
+    #     aspect='auto', 
+    #     cmap=blue_red, 
+    #     vmin=data.min(), 
+    #     vmax=data.max()
+    # )
+    # cbar = plt.colorbar(label='ECE')
+    # cbar.set_ticks(np.linspace(data.min(), data.max(), 5))
+    # plt.yticks(np.arange(len(methods)), methods)
+    # plt.xlabel('Class Label')
+    # plt.title('Class-wise ECE Heatmap (Blue=Low, Red=High)')
+    # plt.tight_layout()
+    # plt.savefig('classwise_ece_heatmap_bluered.png')
+    
+    plt.figure(figsize=(20, 3))
+
+    # カスタムカラーマップ
+    blue_red = LinearSegmentedColormap.from_list(
+        'BlueRed_no_white', 
+        ['#0050b3', '#7a0177', '#b2182b']
+    )
+
+    # ヒートマップ表示
+    plt.imshow(
+        data,
+        aspect='auto',        # セルの縦横比をデータに合わせて自動調整
+        cmap=blue_red,
+        vmin=data.min(),
+        vmax=data.max()
+    )
+
+    # カラーバーと軸ラベル
+    cbar = plt.colorbar(label='ECE')
+    cbar.set_ticks(np.linspace(data.min(), data.max(), 5))
+    plt.yticks(np.arange(len(methods)), methods)
+    plt.xlabel('Class Label')
+    plt.title('Class-wise ECE Heatmap (Blue=Low, Red=High)')
+    plt.tight_layout()
+    plt.savefig('classwise_ece_heatmap_wide.png')
 
 if __name__ == "__main__":
     main()
