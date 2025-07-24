@@ -38,7 +38,6 @@ def compute_ece(confidences: np.ndarray, labels: np.ndarray, n_bins: int = 15) -
     # We'll implement combined function below.
     return ece
 
-
 def reliability_diagram(confidences: np.ndarray, predictions: np.ndarray, labels: np.ndarray, n_bins: int = 15, savepath: str = "reliability_diagram.png"):  
     # Compute per-bin accuracy and confidence
     bins = np.linspace(0.0, 1.0, n_bins + 1)
@@ -68,8 +67,6 @@ def reliability_diagram(confidences: np.ndarray, predictions: np.ndarray, labels
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(savepath)
-    plt.show()
-
 
 def compute_ece_from_preds(confidences: np.ndarray, predictions: np.ndarray, labels: np.ndarray, n_bins: int = 50) -> float:
     bins = np.linspace(0.0, 1.0, n_bins + 1)
@@ -106,7 +103,6 @@ def compute_classwise_ece(
         class_ece[int(cls)] = ece_cls
     return class_ece
 
-
 # --- Main testing with calibration ---
 def main():
     parser = argparse.ArgumentParser()
@@ -123,25 +119,13 @@ def main():
     # Dataset & loader
     if data_type == "stl10":
         num_classes, batch_size = 10, 64
-        test_dataset = STL10(root="./data", split="train", download=True,
-                             transform=transforms.Compose([
-                                 transforms.ToTensor(),
-                                 transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])
-                             ]))
+        test_dataset = STL10(root="./data", split="train", download=True,  transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
     elif data_type == "cifar100":
         num_classes, batch_size = 100, 128
-        test_dataset = CIFAR100(root="./data", train=False, download=True,
-                                transform=transforms.Compose([
-                                    transforms.ToTensor(),
-                                    transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])
-                                ]))
+        test_dataset = CIFAR100(root="./data", train=False, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
     else:
         num_classes, batch_size = 10, 128
-        test_dataset = CIFAR10(root="./data", train=False, download=True,
-                               transform=transforms.Compose([
-                                   transforms.ToTensor(),
-                                   transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])
-                               ]))
+        test_dataset = CIFAR10(root="./data", train=False, download=True,  transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
     all_classwise_ece = {}
@@ -191,126 +175,43 @@ def main():
         reliability_diagram(
             all_confidences, all_preds, all_labels,
             n_bins=50,
-            savepath=f"reliability_{augment}.png"
+            savepath=f"./ECE/reliability_{augment}.png"
         )
         
         classwise_ece = compute_classwise_ece(all_confidences, all_preds, all_labels, n_bins=50)
-        print(">> Class-wise ECE:")
-        for cls, ece_val in sorted(classwise_ece.items()):
-            print(f"  Class {cls:3d}: ECE = {ece_val:.4f}")
+        # print(">> Class-wise ECE:")
+        # for cls, ece_val in sorted(classwise_ece.items()):
+        #     print(f"  Class {cls:3d}: ECE = {ece_val:.4f}")
     
-    
-    # methods = list(all_classwise_ece.keys())
-    # num_classes = max(len(v) for v in all_classwise_ece.values())
-    # x = list(range(num_classes))
-
-    # plt.figure(figsize=(10, 6))
-    # for method in methods:
-    #     ece_dict = all_classwise_ece[method]
-    #     y = [ece_dict.get(cls, 0.0) for cls in x]
-    #     plt.plot(x, y, marker='o', label=method)
-
-    # plt.xlabel('Class Label')
-    # plt.ylabel('ECE')
-    # plt.title('Class-wise ECE Comparison Across Methods')
-    # plt.legend()
-    # plt.grid(True)
-    # plt.tight_layout()
-    # plt.savefig("classwise_ece_comparison.png")
-    
-    # methods = list(all_classwise_ece.keys())
-    # num_classes = max(len(v) for v in all_classwise_ece.values())
-    # # 行列データ作成（methods 行 × classes 列）
-    # data = np.array([
-    #     [ all_classwise_ece[m].get(c, 0.0) for c in range(num_classes) ]
-    #     for m in methods
-    # ])
-
-    # plt.figure(figsize=(12, 3))
-    # plt.imshow(data, aspect='auto', cmap='viridis')
-    # plt.colorbar(label='ECE')
-    # plt.yticks(np.arange(len(methods)), methods)
-    # plt.xlabel('Class Label')
-    # plt.title('Class-wise ECE Heatmap')
-    # plt.tight_layout()
-    # plt.savefig('classwise_ece_heatmap.png')
-    
-    # methods = list(all_classwise_ece.keys())
-    # num_classes = max(len(v) for v in all_classwise_ece.values())
-    # data = np.array([
-    #     [ all_classwise_ece[m].get(c, 0.0) for c in range(num_classes) ]
-    #     for m in methods
-    # ])
-
-    # plt.figure(figsize=(12, 3))
-    # # cmap='bwr' や 'coolwarm' を指定すると青から赤のグラデーションになります
-    # plt.imshow(data, aspect='auto', cmap='bwr', 
-    #         vmin=data.min(), vmax=data.max())
-    # cbar = plt.colorbar(label='ECE')
-    # cbar.set_ticks(np.linspace(data.min(), data.max(), 5))  # 目盛り調整
-    # plt.yticks(np.arange(len(methods)), methods)
-    # plt.xlabel('Class Label')
-    # plt.title('Class-wise ECE Heatmap (Blue=Low, Red=High)')
-    # plt.tight_layout()
-    # plt.savefig('classwise_ece_heatmap_br.png')
-    
-    # all_classwise_ece: {method: {cls: ece, …}, …}
     methods = list(all_classwise_ece.keys())
     num_classes = max(len(v) for v in all_classwise_ece.values())
+    # 行列データ作成（methods 行 × classes 列）
     data = np.array([
         [ all_classwise_ece[m].get(c, 0.0) for c in range(num_classes) ]
         for m in methods
     ])
 
-    # # カスタムカラーマップ（青→赤、白を挟まない）
-    # blue_red = LinearSegmentedColormap.from_list(
-    #     'BlueRed_no_white', 
-    #     ['#0050b3',  # 濃い青
-    #     '#7a0177',  # 中間は紫
-    #     '#b2182b']  # 濃い赤
-    # )
-
-    # plt.figure(figsize=(12, 3))
-    # plt.imshow(
-    #     data, 
-    #     aspect='auto', 
-    #     cmap=blue_red, 
-    #     vmin=data.min(), 
-    #     vmax=data.max()
-    # )
-    # cbar = plt.colorbar(label='ECE')
-    # cbar.set_ticks(np.linspace(data.min(), data.max(), 5))
-    # plt.yticks(np.arange(len(methods)), methods)
-    # plt.xlabel('Class Label')
-    # plt.title('Class-wise ECE Heatmap (Blue=Low, Red=High)')
-    # plt.tight_layout()
-    # plt.savefig('classwise_ece_heatmap_bluered.png')
-    
-    plt.figure(figsize=(20, 3))
-
-    # カスタムカラーマップ
-    blue_red = LinearSegmentedColormap.from_list(
-        'BlueRed_no_white', 
-        ['#0050b3', '#7a0177', '#b2182b']
-    )
-
-    # ヒートマップ表示
-    plt.imshow(
-        data,
-        aspect='auto',        # セルの縦横比をデータに合わせて自動調整
-        cmap=blue_red,
-        vmin=data.min(),
-        vmax=data.max()
-    )
-
-    # カラーバーと軸ラベル
-    cbar = plt.colorbar(label='ECE')
-    cbar.set_ticks(np.linspace(data.min(), data.max(), 5))
+    plt.figure(figsize=(12, 3))
+    plt.imshow(data, aspect='auto', cmap='viridis')
+    plt.colorbar(label='ECE')
     plt.yticks(np.arange(len(methods)), methods)
     plt.xlabel('Class Label')
-    plt.title('Class-wise ECE Heatmap (Blue=Low, Red=High)')
+    plt.title('Class-wise ECE Heatmap')
     plt.tight_layout()
-    plt.savefig('classwise_ece_heatmap_wide.png')
+    plt.savefig('./ECE/classwise_ece_heatmap.png')
+
+    ece_values_by_method = [
+        [all_classwise_ece[method].get(cls, np.nan) for cls in range(num_classes)]
+        for method in methods
+    ]
+    
+    plt.figure(figsize=(10, 5))
+    plt.boxplot(ece_values_by_method, tick_labels=methods, showfliers=True)
+    plt.ylabel("ECE")
+    plt.title("Class-wise ECE Distribution by Method (Boxplot)")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("./ECE/classwise_ece_boxplot.png")
 
 if __name__ == "__main__":
     main()
