@@ -1,5 +1,7 @@
 import torch
+import pickle
 import numpy as np
+import matplotlib.pyplot as plt
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10, CIFAR100, STL10
@@ -69,32 +71,48 @@ def compute_avg_knn_distance(features, k=10):
 
 def main():
     # Parameters
-    data_type   = "cifar100"       # or "cifar100", "stl10"
-    model_type  = "wide_resnet_28_10"
-    augment     = "Default"       # folder name used for checkpoints
-    epochs_list = [5, 400]
+    # data_type   = "cifar100"       # or "cifar100", "stl10"
+    # model_type  = "wide_resnet_28_10"
+    # augment     = "Default"       # folder name used for checkpoints
+    # epochs_list = [5, 400]
 
-    # Determine dataset-specific settings
-    if data_type == "stl10":
-        num_classes = 10; batch_size = 64
-    elif data_type == "cifar100":
-        num_classes = 100; batch_size = 128
-    elif data_type == "cifar10":
-        num_classes = 10; batch_size = 128
-    else:
-        raise ValueError(f"Unknown data_type: {data_type}")
+    # # Determine dataset-specific settings
+    # if data_type == "stl10":
+    #     num_classes = 10; batch_size = 64
+    # elif data_type == "cifar100":
+    #     num_classes = 100; batch_size = 128
+    # elif data_type == "cifar10":
+    #     num_classes = 10; batch_size = 128
+    # else:
+    #     raise ValueError(f"Unknown data_type: {data_type}")
 
-    # Load training data
-    train_loader = get_train_loader(data_type, batch_size)
+    # # Load training data
+    # train_loader = get_train_loader(data_type, batch_size)
 
-    for epochs in epochs_list:
-        # Load model at specified epoch
-        model = load_model(model_type, data_type, augment, epochs, num_classes, device)
-        # Extract features for entire training set
-        features = extract_features(model, train_loader, device)
-        # Compute average k-NN distance
-        avg_dist = compute_avg_knn_distance(features, k=10)
-        print(f"Epochs={epochs}: Avg 10-NN distance = {avg_dist:.6f}")
+    # for epochs in epochs_list:
+    #     # Load model at specified epoch
+    #     model = load_model(model_type, data_type, augment, epochs, num_classes, device)
+    #     # Extract features for entire training set
+    #     features = extract_features(model, train_loader, device)
+    #     # Compute average k-NN distance
+    #     avg_dist = compute_avg_knn_distance(features, k=10)
+    #     print(f"Epochs={epochs}: Avg 10-NN distance = {avg_dist:.6f}")
+    
+    filename = "./distance_log/wide_resnet_28_10/cifar100_1_2_knn_dist.pkl"
+
+    with open(filename, "rb") as f:
+        distance_log = pickle.load(f)
+    
+    epochs_list, avg_dists = zip(*distance_log)
+    plt.figure(figsize=(6,4))
+    plt.plot(epochs_list, avg_dists, "-o")
+    plt.xlabel("Epoch")
+    plt.ylabel("Average 10-NN Distance")
+    plt.title(f"Local-FOMA  k-NN Distance over Epochs")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
 
 if __name__ == '__main__':
     main()

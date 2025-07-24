@@ -19,17 +19,17 @@ features_list = []
 labels_list = []
 
 augmentations = [
-    "Default", 
+    # "Default", 
     "Local-FOMA",
     # "Mixup(alpha=0.5)", 
-    "Mixup",
+    # "Mixup",
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
     # "Local-FOMA",
 ]
 
 for augment in augmentations:
-    model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
+    model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_1.pth"
 
     if data_type == "stl10":
         num_classes = 10

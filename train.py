@@ -74,7 +74,7 @@ augmentations = [
 ]
 
 def main():
-    for i in range(1, 2):
+    for i in range(2, 3):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
@@ -154,6 +154,7 @@ def main():
 
             os.makedirs(f"./logs/{model_type}/{augment}",    exist_ok=True)
             os.makedirs(f"./history/{model_type}/{augment}", exist_ok=True)
+            os.makedirs(f"./distance_log/{model_type}",      exist_ok=True)
 
             ### TRAINING ###
             for epoch in range(epochs):
@@ -181,7 +182,7 @@ def main():
             with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}.pickle", "wb") as f:
                 pickle.dump(history, f)
             
-            save_distance_log(distance_log, f"./distance_log/{model_type}/{augment}/{data_type}_{epochs}_{i}_knn_dist.pkl")
+            save_distance_log(distance_log, f"./distance_log/{model_type}/{data_type}_{epochs}_{i}_knn_dist.pkl")
             
             ### TEST ###
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
