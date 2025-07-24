@@ -21,7 +21,7 @@ def main():
         # "Original",
         "Default",
         # "PCA",
-        "SVD",
+        # "SVD",
 
         # "Conf-Mixup",
 
@@ -45,7 +45,7 @@ def main():
         # "Teacher-SK-Mixup",
         # "Teacher-SK-Mixup-Curriculum",
 
-        # "FOMA",
+        "FOMA",
         # "FOMA-scaleup",
         "Local-FOMA",
         # "FOMA_latent_random",

@@ -125,7 +125,7 @@ def local_foma(
     return X_aug, Y_aug
 
 
-def compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device='cuda'):
+def compute_foma_loss(model, images, labels, augment, k, lambda_almp=1.0, device='cuda'):
     model.train()
     images = images.to(device)
     labels = labels.to(device)
@@ -141,7 +141,7 @@ def compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device='c
     if augment == "FOMA":
         features_foma, labels_foma = foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
     elif augment == "Local-FOMA" or augment == "FOMA-scaleup":
-        features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9)
+        features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9, k=k)
     logits_foma = model.linear(features_foma)
     loss_foma = F.cross_entropy(logits_foma, labels_foma)
     # loss_foma = F.kl_div(

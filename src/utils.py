@@ -183,6 +183,17 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         elif augment == "Local-FOMA":
             loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)
         
+        elif augment == "FOMA-knn-Curriculum":
+            if epochs < 100:
+                k = 10
+            elif epochs >= 100 and epochs < 200:
+                k = 20
+            elif epochs >= 200 and epochs < 300:
+                k = 30
+            elif epochs >= 300 and epochs < 400:
+                k = 40
+            loss, preds = compute_foma_loss(model, images, labels, augment, k, lambda_almp=1.0, device=device)
+        
         elif augment == "PCA":
             loss, preds = compute_almp_loss_wrn(model, images, labels, method="pca", lambda_almp=1.0, device=device)
         
