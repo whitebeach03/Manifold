@@ -58,14 +58,6 @@ augmentations = [
     # "FOMix",
     "Local-FOMA",
     # "FOMA",
-    # "FOMA_latent_random",
-
-    # "FOMA_default",
-    # "FOMA_knn_input",
-    # "FOMA_hard",
-    # "FOMA_curriculum"
-    # "FOMA_samebatch"
-    # "FOMA_knn"
 
     # "Mixup-Original",
     # "Mixup-PCA",
