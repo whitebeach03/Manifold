@@ -45,9 +45,10 @@ def main():
         # "Teacher-SK-Mixup",
         # "Teacher-SK-Mixup-Curriculum",
 
-        "FOMA",
+        # "FOMA",
         # "FOMA-scaleup",
-        "Local-FOMA",
+        # "Local-FOMA",
+        "FOMA-knn-Curriculum",
         # "FOMA_latent_random",
 
         # "FOMA_fixed_input",
