@@ -27,12 +27,12 @@ def main():
 
         # "Mixup+FOMA",
         # "Mixup(alpha=0.5)",
-        # "Mixup",
+        "Mixup",
         # "Mixup(alpha=2.0)",
         # "Mixup(alpha=5.0)",
         # "Manifold-Mixup(alpha=0.5)",
         # "Manifold-Mixup(alpha=1.0)",
-        # "Manifold-Mixup",
+        "Manifold-Mixup",
         # "Manifold-Mixup(alpha=5.0)",
         # "Mixup-Curriculum",
 
@@ -47,8 +47,8 @@ def main():
 
         # "FOMA",
         # "FOMA-scaleup",
-        # "Local-FOMA",
-        "FOMA-knn-Curriculum",
+        "Local-FOMA",
+        # "FOMA-knn-Curriculum",
         # "FOMA_latent_random",
 
         # "FOMA_fixed_input",
