@@ -99,7 +99,6 @@ def local_foma(
         # λ の用意（サンプル共通 or per-sample）
         if lam is None:
             lam_i = torch.distributions.Beta(alpha, alpha).sample().to(device)
-            lam_i += 1
         else:
             lam_i = lam if torch.is_tensor(lam) else torch.tensor(lam, device=device)
 
