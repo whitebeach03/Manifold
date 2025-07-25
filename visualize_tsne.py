@@ -2,7 +2,9 @@ import torch
 import torchvision
 import random
 import torchvision.transforms as transforms
+import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from torch.utils.data import DataLoader, Subset
 from src.models.resnet import ResNet18
 from sklearn.manifold import TSNE
@@ -19,13 +21,12 @@ features_list = []
 labels_list = []
 
 augmentations = [
-    # "Default", 
-    "Local-FOMA",
+    "Default", 
+    # "Local-FOMA",
     # "Mixup(alpha=0.5)", 
     # "Mixup",
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
-    # "Local-FOMA",
 ]
 
 for augment in augmentations:
@@ -78,9 +79,27 @@ for augment in augmentations:
     tsne = TSNE(n_components=2, random_state=42, perplexity=30)
     X_2d = tsne.fit_transform(X)
 
-    plt.figure(figsize=(8, 6))
-    scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=6, alpha=0.7)
-    plt.colorbar(scatter, label="Class label")
+    # plt.figure(figsize=(8, 6))
+    # scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=6, alpha=0.7)
+    # plt.colorbar(scatter, label="Class label")
+    # plt.title("t-SNE of ResNet Feature Representations")
+    # plt.xlabel("Dim 1")
+    # plt.ylabel("Dim 2")
+    # plt.tight_layout()
+    # plt.savefig(f"./tsne/{data_type}_{augment}.png")
+
+
+    # カラーマップを100クラスに対応させる
+    num_classes = 100  # ここはdata_typeに応じて変えるか、すでにある変数を使う
+    cmap = cm.get_cmap('nipy_spectral', num_classes)  # 高識別性で100色対応
+
+    plt.figure(figsize=(10, 8))
+    scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap=cmap, s=6, alpha=0.7)
+
+    # カラーバー（省略してもよい）
+    cbar = plt.colorbar(scatter, ticks=np.linspace(0, num_classes, 11, endpoint=False))
+    cbar.set_label("Class label")
+
     plt.title("t-SNE of ResNet Feature Representations")
     plt.xlabel("Dim 1")
     plt.ylabel("Dim 2")
