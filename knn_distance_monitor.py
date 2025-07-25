@@ -98,20 +98,20 @@ def main():
     #     avg_dist = compute_avg_knn_distance(features, k=10)
     #     print(f"Epochs={epochs}: Avg 10-NN distance = {avg_dist:.6f}")
     
-    filename = "./distance_log/wide_resnet_28_10/cifar100_1_2_knn_dist.pkl"
+    filename = "./distance_log/wide_resnet_28_10/cifar100_400_2_knn_dist.pkl"
 
     with open(filename, "rb") as f:
         distance_log = pickle.load(f)
     
     epochs_list, avg_dists = zip(*distance_log)
     plt.figure(figsize=(6,4))
-    plt.plot(epochs_list, avg_dists, "-o")
+    plt.plot(epochs_list, avg_dists)
     plt.xlabel("Epoch")
     plt.ylabel("Average 10-NN Distance")
     plt.title(f"Local-FOMA  k-NN Distance over Epochs")
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
+    plt.savefig("./result_plot/knn_distance.png")
 
 
 if __name__ == '__main__':
