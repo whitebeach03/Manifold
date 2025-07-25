@@ -29,7 +29,7 @@ augmentations = [
 ]
 
 for augment in augmentations:
-    model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_1.pth"
+    model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
 
     if data_type == "stl10":
         num_classes = 10

@@ -153,11 +153,11 @@ def main():
                 train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok=False, epochs=epoch)
                 val_loss, val_acc     = val(model, val_loader, criterion, device, augment, aug_ok=False)
 
-                train_feats = extract_wrn_features(model, train_loader.dataset, device)
-                feats_t = torch.from_numpy(train_feats).to(device)
-                avg_dist = compute_avg_knn_distance(feats_t, k=10)
-                distance_log.append((epoch+1, avg_dist))
-                print(f"  → Epoch {epoch+1}: Avg 10-NN dist = {avg_dist:.4f}")
+               # train_feats = extract_wrn_features(model, train_loader.dataset, device)
+               # feats_t = torch.from_numpy(train_feats).to(device)
+               # avg_dist = compute_avg_knn_distance(feats_t, k=10)
+               # distance_log.append((epoch+1, avg_dist))
+               # print(f"  → Epoch {epoch+1}: Avg 10-NN dist = {avg_dist:.4f}")
 
                 if score <= val_acc:
                     print("Save model parameters...")
@@ -174,7 +174,7 @@ def main():
             with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}.pickle", "wb") as f:
                 pickle.dump(history, f)
             
-            save_distance_log(distance_log, f"./distance_log/{model_type}/{data_type}_{epochs}_{i}_knn_dist.pkl")
+            # save_distance_log(distance_log, f"./distance_log/{model_type}/{data_type}_{epochs}_{i}_knn_dist.pkl")
             
             ### TEST ###
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
