@@ -52,10 +52,11 @@ augmentations = [
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
 
+    "FOMA-Mixup",
     # "FOMA-scaleup"
     # "Mixup+FOMA",
     # "FOMix",
-    "Local-FOMA",
+    # "Local-FOMA",
     # "FOMA",
     # "FOMA-knn-Curriculum",
 
@@ -66,7 +67,7 @@ augmentations = [
 ]
 
 def main():
-    for i in range(1, 3):
+    for i in range(1):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
