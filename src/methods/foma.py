@@ -143,10 +143,5 @@ def compute_foma_loss(model, images, labels, augment, k, lambda_almp=1.0, device
         features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9, k=k)
     logits_foma = model.linear(features_foma)
     loss_foma = F.cross_entropy(logits_foma, labels_foma)
-    # loss_foma = F.kl_div(
-    #     F.log_softmax(logits_foma, dim=1),
-    #     labels_foma,
-    #     reduction='batchmean'
-    # )
 
     return loss_orig + lambda_almp * loss_foma, logits_orig
