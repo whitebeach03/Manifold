@@ -41,7 +41,7 @@ def main():
     
     all_classwise_ece = {}
 
-    for augment in ["Mixup", "Local-FOMA", "FOMA-Mixup", "RegMixup"]:
+    for augment in ["Mixup", "Local-FOMA", "FOMA-Mixup"]:
         print(f"\n==> Test with {augment} ...")
         # Model
         if model_type == "resnet18": model = ResNet18().to(device)

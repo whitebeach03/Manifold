@@ -30,7 +30,6 @@ from src.methods.svd import compute_almp_loss_svd
 from src.methods.foma import compute_foma_loss
 from src.methods.fomix import *
 from src.methods.hybrid import *
-from src.models.wide_resnet import Wide_ResNet
 
 def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
     """
