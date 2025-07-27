@@ -175,25 +175,33 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss, preds = compute_fomix_loss(model, images, labels)
         
         elif augment == "FOMA":
-            loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)
+            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device)
         
         elif augment == "FOMA-scaleup":
-            loss, preds = compute_foma_loss(model, images, labels, augment, lambda_almp=1.0, device=device)
+            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device)
         
         elif augment == "Local-FOMA":
-            loss, preds = compute_foma_loss(model, images, labels, augment, k=10, lambda_almp=1.0, device=device)
+            loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
         
         elif augment == "FOMA-Mixup":
             if epochs < 50:
-                loss, preds = compute_foma_loss(model, images, labels, augment, k=10, lambda_almp=1.0, device=device)
+                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
             else:
                 preds = model(images, labels=labels, device=device, augment=augment)
                 loss_clean = criterion(preds, labels)
-                
                 mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
                 preds_mix = model(mixed_x, labels, device, augment, aug_ok)
                 loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
-
+                loss = loss_clean + loss_mix
+            
+        elif augment == "FOMA-Manifold-Mixup":
+            if epochs < 50:
+                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
+            else:
+                preds = model(images, labels=labels, device=device, augment=augment, aug_ok=False)
+                loss_clean = criterion(preds, labels)
+                preds_mix, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
+                loss_mix = mixup_criterion(criterion, preds, y_a, y_b, lam)
                 loss = loss_clean + loss_mix
             
         elif augment == "FOMA-knn-Curriculum":

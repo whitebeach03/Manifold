@@ -21,7 +21,8 @@ features_list = []
 labels_list = []
 
 augmentations = [
-    "Default", 
+    "FOMA-Mixup",
+    # "Default", 
     # "Local-FOMA",
     # "Mixup(alpha=0.5)", 
     # "Mixup",

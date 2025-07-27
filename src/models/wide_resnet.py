@@ -7,7 +7,7 @@ import torch.nn.init as init
 import torch.nn.functional as F
 from src.methods.pca import local_pca_perturbation, fast_batch_pca_perturbation
 # from src.methods.foma import foma
-# from src.utils import mixup_data, fast_batch_pca_perturbation
+from src.utils import mixup_data
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
@@ -73,7 +73,7 @@ class Wide_ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x, labels, device, augment, k=10, aug_ok=False, num_classes=100):
-        if augment == "Manifold-Mixup":
+        if augment == "Manifold-Mixup" or augment == "FOMA-Manifold-Mixup":
             if aug_ok:
                 mixup_alpha = 2.0
                 layer_mix = random.randint(0,4)

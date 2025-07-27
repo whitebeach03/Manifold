@@ -124,7 +124,7 @@ def local_foma(
     return X_aug, Y_aug
 
 
-def compute_foma_loss(model, images, labels, augment, k, lambda_almp=1.0, device='cuda'):
+def compute_foma_loss(model, images, labels, k, lambda_almp=1.0, device='cuda'):
     model.train()
     images = images.to(device)
     labels = labels.to(device)
