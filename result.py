@@ -46,6 +46,7 @@ def main():
         # "Teacher-SK-Mixup-Curriculum",
 
         "FOMA-Mixup",
+        # "FOMA-Manifold-Mixup",
         # "FOMA",
         # "FOMA-scaleup",
         "Local-FOMA",

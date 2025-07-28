@@ -193,6 +193,14 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
                 loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
                 loss = loss_clean + loss_mix
             
+        elif augment == "FOMA-Mixup2":
+            if epochs < 50:
+                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
+            else:
+                mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(mixed_x, labels, device, augment, aug_ok)
+                loss  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
+            
         elif augment == "FOMA-Manifold-Mixup":
             if epochs < 50:
                 loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
