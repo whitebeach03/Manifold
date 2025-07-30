@@ -54,9 +54,9 @@ augmentations = [
     # "Mixup",
     # "Manifold-Mixup",
     # "Local-FOMA",
-    # "FOMA-Mixup2",
+    "FOMA-Mixup2",
     # "RegMixup",
-    "FOMA-scaleup"
+    # "FOMA-scaleup"
 ]
 
 corruption_types = [
@@ -132,8 +132,8 @@ def main():
 
             model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
-            test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
-            print(f"[CIFAR-100]   Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}")
+            # test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
+            # print(f"[CIFAR-100]   Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}")
 
             for corruption in corruption_types:
                 test_dataset_C = CIFAR100C(corruption_type=corruption, severity=severity, transform=transform)
