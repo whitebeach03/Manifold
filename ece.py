@@ -14,7 +14,6 @@ from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from sklearn.metrics import accuracy_score
 from matplotlib.colors import LinearSegmentedColormap
 
-# --- Main testing with calibration ---
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=400)
@@ -41,7 +40,7 @@ def main():
     
     all_classwise_ece = {}
 
-    for augment in ["Mixup", "Local-FOMA", "FOMA-Mixup"]:
+    for augment in ["FOMA-scaleup"]:
         print(f"\n==> Test with {augment} ...")
         # Model
         if model_type == "resnet18": model = ResNet18().to(device)

@@ -53,7 +53,8 @@ augmentations = [
     # "Mixup(alpha=5.0)",
 
     # "FOMA-Mixup",
-    "FOMA-Mixup2",
+    # "FOMA-Mixup2",
+    "FOMA-scaleup-Mixup",
     # "FOMA-Manifold-Mixup",
     # "FOMA-scaleup"
     # "Mixup+FOMA",

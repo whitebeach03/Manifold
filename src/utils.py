@@ -174,17 +174,17 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss, preds = compute_fomix_loss(model, images, labels)
         
         elif augment == "FOMA":
-            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device)
+            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device, scaleup=False)
         
         elif augment == "FOMA-scaleup":
-            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device)
+            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device, scaleup=True)
         
         elif augment == "Local-FOMA":
-            loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
+            loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device, scaleup=False)
         
         elif augment == "FOMA-Mixup":
             if epochs < 50:
-                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
+                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device, scaleup=False)
             else:
                 preds = model(images, labels=labels, device=device, augment=augment)
                 loss_clean = criterion(preds, labels)
@@ -195,7 +195,15 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             
         elif augment == "FOMA-Mixup2":
             if epochs < 50:
-                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
+                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device, scaleup=False)
+            else:
+                mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(mixed_x, labels, device, augment, aug_ok)
+                loss  = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            
+        elif augment == "FOMA-scaleup-Mixup":
+            if epochs < 50:
+                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device, scaleup=True)
             else:
                 mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
                 preds = model(mixed_x, labels, device, augment, aug_ok)

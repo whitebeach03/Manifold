@@ -54,6 +54,7 @@ def local_foma(
     alpha: float,
     rho: float,
     k: int = 10,
+    scaleup: bool=False,
     small_singular: bool = True,
     lam: torch.Tensor = None,
 ) -> (torch.Tensor, torch.Tensor):
@@ -99,10 +100,12 @@ def local_foma(
         # λ の用意（サンプル共通 or per-sample）
         if lam is None:
             lam_i = torch.distributions.Beta(alpha, alpha).sample().to(device)
+            if scaleup:
+                lam_i += 1
         else:
             lam_i = lam if torch.is_tensor(lam) else torch.tensor(lam, device=device)
 
-        # 特異値縮小
+        # 特異値縮小or拡大
         cum = torch.cumsum(s, dim=0) / s.sum()
         cond = cum > rho if small_singular else cum < rho
         scale = torch.where(cond, lam_i, torch.tensor(1.0, device=device))
@@ -124,7 +127,7 @@ def local_foma(
     return X_aug, Y_aug
 
 
-def compute_foma_loss(model, images, labels, k, lambda_almp=1.0, device='cuda'):
+def compute_foma_loss(model, images, labels, k, lambda_almp=1.0, device='cuda', scaleup=True):
     model.train()
     images = images.to(device)
     labels = labels.to(device)
@@ -137,7 +140,7 @@ def compute_foma_loss(model, images, labels, k, lambda_almp=1.0, device='cuda'):
     loss_orig = F.cross_entropy(logits_orig, labels)
 
     # FOMAによる特徴摂動
-    features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9, k=k)
+    features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9, k=k, scaleup=scaleup)
     logits_foma = model.linear(features_foma)
     loss_foma = F.cross_entropy(logits_foma, labels_foma)
 

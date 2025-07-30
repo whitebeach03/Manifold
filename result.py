@@ -49,15 +49,16 @@ def main():
         # "FOMA",
         # "FOMA-scaleup",
         "Local-FOMA",
-        "FOMA-Mixup",
+        # "FOMA-Mixup",
         # "FOMA-knn-Curriculum",
         # "FOMA_latent_random",
+        "FOMA-scaleup",
 
         # "FOMA_fixed_input",
         # "FOMA_fixed_latent",
         
         # "FOMA_default",
-        # "FOMA_Mixup",
+        "FOMA-Mixup2",
         
         # "FOMA_knn_input",
         # "FOMA_knn_latent",

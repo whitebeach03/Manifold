@@ -50,11 +50,12 @@ class CIFAR100C(Dataset):
         return img, label
 
 augmentations = [
-    "Default",
-    "Mixup",
+    # "Default",
+    # "Mixup",
     # "Manifold-Mixup",
-    "Local-FOMA",
-    "FOMA-Mixup"
+    # "Local-FOMA",
+    "FOMA-Mixup2",
+    # "RegMixup"
 ]
 
 corruption_types = [
@@ -111,10 +112,7 @@ def main():
 
         test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
 
-        # corruption = 'gaussian_noise'  # 他にも 'fog', 'motion_blur' など
-        # severity = 5
-        # test_dataset_C = CIFAR100C(corruption_type=corruption, severity=severity, transform=transform)
-        # test_loader_C = torch.utils.data.DataLoader(test_dataset_C, batch_size=128, shuffle=False)
+        severity = 5
         
         for augment in augmentations:
             total_acc = 0
@@ -133,12 +131,12 @@ def main():
 
             model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
-            # test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
-            # print(f"[CIFAR-100]   Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}")
+            test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
+            print(f"[CIFAR-100]   Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}")
 
             for corruption in corruption_types:
-                test_dataset_C = CIFAR100C(corruption_type=corruption, severity=1, transform=transform)
-                test_loader_C = torch.utils.data.DataLoader(test_dataset_C, batch_size=256, shuffle=False)
+                test_dataset_C = CIFAR100C(corruption_type=corruption, severity=severity, transform=transform)
+                test_loader_C = torch.utils.data.DataLoader(test_dataset_C, batch_size=512, shuffle=False)
 
                 test_loss_C, test_acc_C = test(model, test_loader_C, criterion, device, augment, aug_ok=False)
                 print(f"  [{corruption}] Loss: {test_loss_C:.3f}, Accuracy: {test_acc_C:.2f}%")
