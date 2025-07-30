@@ -54,8 +54,9 @@ augmentations = [
     # "Mixup",
     # "Manifold-Mixup",
     # "Local-FOMA",
-    "FOMA-Mixup2",
-    # "RegMixup"
+    # "FOMA-Mixup2",
+    # "RegMixup",
+    "FOMA-scaleup"
 ]
 
 corruption_types = [
