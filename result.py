@@ -47,12 +47,12 @@ def main():
 
         # "FOMA-Manifold-Mixup",
         # "FOMA",
-        # "FOMA-scaleup",
+        # "FOMA-scaleup-Mixup",
         "Local-FOMA",
         # "FOMA-Mixup",
         # "FOMA-knn-Curriculum",
         # "FOMA_latent_random",
-        "FOMA-scaleup",
+        # "FOMA-scaleup",
 
         # "FOMA_fixed_input",
         # "FOMA_fixed_latent",
@@ -185,6 +185,8 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
             augment = "Manifold-Mixup(alpha=2.0)"
         elif augment == "SVD":
             augment = "PCA"
+        elif augment == "FOMA-Mixup2":
+            augment = "FOMA-Mixup"
         plt.plot(epochs, val_acc, linestyle='solid', linewidth=0.8, label=f'{augment}')
         
     plt.title('Validation Accuracy')
@@ -216,6 +218,8 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
             augment = "Manifold-Mixup(alpha=2.0)"
         elif augment == "SVD":
             augment = "PCA"
+        elif augment == "FOMA-Mixup2":
+            augment = "FOMA-Mixup"
         plt.plot(epochs, val_loss, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Validation Loss')

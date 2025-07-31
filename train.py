@@ -19,14 +19,14 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 augmentations = [
-    # "Default",
+    "Default",
     # "Conf-Mixup",
     
     # "PCA",
     # "SVD",
     # "Cholesky",
 
-    # "Mixup",
+    "Mixup",
 
     # "CutMix",
     # "AugMix",
@@ -40,7 +40,7 @@ augmentations = [
     # "RegMixup",
     # "Ent-Mixup",
     
-    # "Manifold-Mixup",
+    "Manifold-Mixup",
     # "Manifold-Mixup(alpha=0.5)",
     # "Manifold-Mixup(alpha=1.0)",
     # "Manifold-Mixup(alpha=5.0)",
@@ -52,14 +52,14 @@ augmentations = [
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
 
-    # "FOMA-Mixup",
+    "FOMA-Mixup",
     # "FOMA-Mixup2",
-    "FOMA-scaleup-Mixup",
+    # "FOMA-scaleup-Mixup",
     # "FOMA-Manifold-Mixup",
     # "FOMA-scaleup"
     # "Mixup+FOMA",
     # "FOMix",
-    # "Local-FOMA",
+    "Local-FOMA",
     # "FOMA",
     # "FOMA-knn-Curriculum",
 
@@ -72,8 +72,8 @@ augmentations = [
 def main():
     for i in range(1):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--epochs",     type=int, default=400)
-        parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
+        parser.add_argument("--epochs",     type=int, default=300)
+        parser.add_argument("--data_type",  type=str, default="cifar10",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
         args = parser.parse_args() 
 
