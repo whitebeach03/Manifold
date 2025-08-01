@@ -167,6 +167,9 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
 
             loss = mix_loss
         
+        elif augment == "Mixup-FOMA":
+            if epochs
+
         elif augment == "Mixup+FOMA":
             loss, preds = compute_hybrid_loss(model, images, labels)
         
