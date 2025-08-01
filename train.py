@@ -19,16 +19,17 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 augmentations = [
-    # "Default",
+    "Default",
     # "Conf-Mixup",
 
-    "Mixup-FOMA",
+    # "Mixup-FOMA",
+    # "Mixup-Dual-Lambda",
     
     # "PCA",
     # "SVD",
     # "Cholesky",
 
-    # "Mixup",
+    "Mixup",
 
     # "CutMix",
     # "AugMix",
@@ -54,14 +55,14 @@ augmentations = [
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
 
-    # "FOMA-Mixup",
+    "FOMA-Mixup",
     # "FOMA-Mixup2",
     # "FOMA-scaleup-Mixup",
     # "FOMA-Manifold-Mixup",
     # "FOMA-scaleup"
     # "Mixup+FOMA",
     # "FOMix",
-    # "Local-FOMA",
+    "Local-FOMA",
     # "FOMA",
     # "FOMA-knn-Curriculum",
 
@@ -72,7 +73,7 @@ augmentations = [
 ]
 
 def main():
-    for i in range(1):
+    for i in range(1, 3):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])

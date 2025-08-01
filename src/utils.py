@@ -167,8 +167,10 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
 
             loss = mix_loss
         
-        elif augment == "Mixup-FOMA":
-            if epochs
+        elif augment == "Mixup-Dual-Lambda":
+            mixed_x, y_a, y_b, lam = mixup_data_dual_lambda(images, labels, alpha_x=1.0, alpha_y=1.0)
+            preds = model(mixed_x, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
 
         elif augment == "Mixup+FOMA":
             loss, preds = compute_hybrid_loss(model, images, labels)
@@ -470,6 +472,28 @@ def mixup_data(x, y, alpha=1.0, use_cuda=True):
     mixed_x = lam * x + (1 - lam) * x[index, :]
     y_a, y_b = y, y[index]
     return mixed_x, y_a, y_b, lam
+
+def mixup_data_dual_lambda(x, y, alpha_x=1.0, alpha_y=1.0, use_cuda=True):
+    '''Returns mixed inputs with one lambda and mixed labels with another lambda'''
+
+    # Lambda for image mix
+    lam_x = np.random.beta(alpha_x, alpha_x) if alpha_x > 0 else 1.0
+    # Lambda for label mix
+    lam_y = np.random.beta(alpha_y, alpha_y) if alpha_y > 0 else 1.0
+
+    batch_size = x.size(0)
+    if use_cuda:
+        index = torch.randperm(batch_size).cuda()
+    else:
+        index = torch.randperm(batch_size)
+
+    # Mix images with lam_x
+    mixed_x = lam_x * x + (1 - lam_x) * x[index, :]
+
+    # Get original and permuted labels
+    y_a, y_b = y, y[index]
+
+    return mixed_x, y_a, y_b, lam_y  # use lam_y for mixing labels externally
 
 def mixup_criterion(criterion, pred, y_a, y_b, lam):
     loss_a = criterion(pred, y_a)

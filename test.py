@@ -30,13 +30,13 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 augmentations = [
-    "Default",
+    # "Default",
     "Mixup",
     # "Manifold-Mixup",
     # "Local-FOMA",
-    # "FOMA-Mixup2",
+    "FOMA-Mixup",
     # "RegMixup",
-    "FOMA-scaleup"
+    # "FOMA-scaleup"
 ]
 
 corruption_types = [
