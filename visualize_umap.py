@@ -12,15 +12,16 @@ from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from tqdm import tqdm
 
 # 設定
-epochs     = 400
-data_type  = "cifar100"
+epochs     = 250
+data_type  = "cifar10"
 model_type = "wide_resnet_28_10"
 device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 augmentations = [
-    "Local-FOMA",
+    # "Local-FOMA",
     "Mixup",
     "Default",
+    "FOMA-Mixup"
 ]
 
 for augment in augmentations:

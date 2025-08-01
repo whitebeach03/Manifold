@@ -12,8 +12,8 @@ from tqdm import tqdm
 from src.models.wide_resnet import Wide_ResNet
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 
-epochs     = 400
-data_type  = "cifar100"
+epochs     = 250
+data_type  = "cifar10"
 model_type = "wide_resnet_28_10"
 device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -22,10 +22,10 @@ labels_list = []
 
 augmentations = [
     "FOMA-Mixup",
-    # "Default", 
+    "Default", 
     # "Local-FOMA",
     # "Mixup(alpha=0.5)", 
-    # "Mixup",
+    "Mixup",
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
 ]

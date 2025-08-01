@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--iteration",  type=int, default=1)
-    parser.add_argument("--epochs",     type=int, default=400)
-    parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
+    parser.add_argument("--epochs",     type=int, default=250)
+    parser.add_argument("--data_type",  type=str, default="cifar10",          choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     args = parser.parse_args()
 
@@ -48,8 +48,8 @@ def main():
         # "FOMA-Manifold-Mixup",
         # "FOMA",
         # "FOMA-scaleup-Mixup",
-        "Local-FOMA",
-        # "FOMA-Mixup",
+        # "Local-FOMA",
+        "FOMA-Mixup",
         # "FOMA-knn-Curriculum",
         # "FOMA_latent_random",
         # "FOMA-scaleup",
@@ -58,7 +58,7 @@ def main():
         # "FOMA_fixed_latent",
         
         # "FOMA_default",
-        "FOMA-Mixup2",
+        # "FOMA-Mixup2",
         
         # "FOMA_knn_input",
         # "FOMA_knn_latent",
