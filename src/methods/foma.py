@@ -140,7 +140,7 @@ def compute_foma_loss(model, images, labels, k, lambda_almp=1.0, device='cuda', 
     loss_orig = F.cross_entropy(logits_orig, labels)
 
     # FOMAによる特徴摂動
-    features_foma, labels_foma = local_foma(features, labels, num_classes=10, alpha=1.0, rho=0.9, k=k, scaleup=scaleup)
+    features_foma, labels_foma = local_foma(features, labels, num_classes=100, alpha=1.0, rho=0.9, k=k, scaleup=scaleup)
     logits_foma = model.linear(features_foma)
     loss_foma = F.cross_entropy(logits_foma, labels_foma)
 
