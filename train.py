@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 augmentations = [
-    "Default",
+    # "Default",
     # "Conf-Mixup",
 
     # "Mixup-FOMA",
@@ -29,7 +29,8 @@ augmentations = [
     # "SVD",
     # "Cholesky",
 
-    "Mixup",
+    # "Mixup",
+    "Mixup-FOMA"
 
     # "CutMix",
     # "AugMix",
@@ -55,14 +56,14 @@ augmentations = [
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
 
-    "FOMA-Mixup",
+    # "FOMA-Mixup",
     # "FOMA-Mixup2",
     # "FOMA-scaleup-Mixup",
     # "FOMA-Manifold-Mixup",
     # "FOMA-scaleup"
     # "Mixup+FOMA",
     # "FOMix",
-    "Local-FOMA",
+    # "Local-FOMA",
     # "FOMA",
     # "FOMA-knn-Curriculum",
 

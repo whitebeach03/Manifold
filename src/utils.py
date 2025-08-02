@@ -172,8 +172,13 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             preds = model(mixed_x, labels, device, augment, aug_ok)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
 
-        elif augment == "Mixup+FOMA":
-            loss, preds = compute_hybrid_loss(model, images, labels)
+        elif augment == "Mixup-FOMA":
+            if epochs < 300:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            else:
+                loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device, scaleup=False)
         
         elif augment == "FOMix":
             loss, preds = compute_fomix_loss(model, images, labels)

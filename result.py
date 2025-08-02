@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--iteration",  type=int, default=1)
-    parser.add_argument("--epochs",     type=int, default=250)
-    parser.add_argument("--data_type",  type=str, default="cifar10",          choices=["stl10", "cifar100", "cifar10"])
+    parser.add_argument("--epochs",     type=int, default=400)
+    parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     args = parser.parse_args()
 
@@ -27,12 +27,12 @@ def main():
 
         # "Mixup+FOMA",
         # "Mixup(alpha=0.5)",
-        "Mixup",
+        # "Mixup",
         # "Mixup(alpha=2.0)",
         # "Mixup(alpha=5.0)",
         # "Manifold-Mixup(alpha=0.5)",
         # "Manifold-Mixup(alpha=1.0)",
-        "Manifold-Mixup",
+        # "Manifold-Mixup",
         # "Manifold-Mixup(alpha=5.0)",
         # "Mixup-Curriculum",
 
@@ -46,10 +46,10 @@ def main():
         # "Teacher-SK-Mixup-Curriculum",
 
         # "FOMA-Manifold-Mixup",
-        # "FOMA",
+        "FOMA",
         # "FOMA-scaleup-Mixup",
         # "Local-FOMA",
-        "FOMA-Mixup",
+        # "FOMA-Mixup",
         # "FOMA-knn-Curriculum",
         # "FOMA_latent_random",
         # "FOMA-scaleup",
