@@ -19,7 +19,7 @@ def main():
     
     augmentations = [
         # "Original",
-        "Default",
+        # "Default",
         # "PCA",
         # "SVD",
 
@@ -27,7 +27,7 @@ def main():
 
         # "Mixup+FOMA",
         # "Mixup(alpha=0.5)",
-        "Mixup",
+        "Mixup-FOMA",
         # "Mixup(alpha=2.0)",
         # "Mixup(alpha=5.0)",
         # "Manifold-Mixup(alpha=0.5)",
@@ -48,7 +48,7 @@ def main():
         # "FOMA-Manifold-Mixup",
         # "FOMA",
         # "FOMA-scaleup-Mixup",
-        "Local-FOMA",
+        # "Local-FOMA",
         # "FOMA-Mixup",
         # "FOMA-knn-Curriculum",
         # "FOMA_latent_random",

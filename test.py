@@ -31,10 +31,10 @@ from src.methods.foma import foma
 
 augmentations = [
     # "Default",
-    "Mixup",
+    "Mixup-FOMA",
     # "Manifold-Mixup",
     # "Local-FOMA",
-    "FOMA-Mixup",
+    # "FOMA-Mixup",
     # "RegMixup",
     # "FOMA-scaleup"
 ]
@@ -49,8 +49,8 @@ severity = 5
 def main():
     for i in range(1):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--epochs",     type=int, default=250)
-        parser.add_argument("--data_type",  type=str, default="cifar10",  choices=["stl10", "cifar100", "cifar10"])
+        parser.add_argument("--epochs",     type=int, default=400)
+        parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
         args = parser.parse_args() 
 
