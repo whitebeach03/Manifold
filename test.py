@@ -31,11 +31,11 @@ from src.methods.foma import foma
 
 augmentations = [
     # "Default",
-    "Mixup-FOMA",
+    # "Mixup-FOMA",
     # "Manifold-Mixup",
     # "Local-FOMA",
     # "FOMA-Mixup",
-    # "RegMixup",
+    "RegMixup",
     # "FOMA-scaleup"
 ]
 
