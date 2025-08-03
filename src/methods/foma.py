@@ -127,7 +127,7 @@ def local_foma(
     return X_aug, Y_aug
 
 
-def compute_foma_loss(model, images, labels, k, lambda_almp=1.0, device='cuda', scaleup=True):
+def compute_foma_loss(model, images, labels, k, num_classes, lambda_almp=1.0, device='cuda', scaleup=True):
     model.train()
     images = images.to(device)
     labels = labels.to(device)
@@ -139,8 +139,8 @@ def compute_foma_loss(model, images, labels, k, lambda_almp=1.0, device='cuda', 
     logits_orig = model.linear(features)
     loss_orig = F.cross_entropy(logits_orig, labels)
 
-    # FOMAによる特徴摂動
-    features_foma, labels_foma = local_foma(features, labels, num_classes=10, alpha=1.0, rho=0.9, k=k, scaleup=scaleup)
+    # FOMAによる特徴摂動 
+    features_foma, labels_foma = local_foma(features, labels, num_classes=num_classes, alpha=1.0, rho=0.9, k=k, scaleup=scaleup)
     logits_foma = model.linear(features_foma)
     loss_foma = F.cross_entropy(logits_foma, labels_foma)
 
