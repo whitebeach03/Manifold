@@ -11,5 +11,5 @@ for epoch in range(400):
     train_loss = dic["loss"][epoch]
     val_acc    = dic["val_accuracy"][epoch]
     val_loss   = dic["val_loss"][epoch]
-#    if val_acc >= 0.64:
+    # if val_acc >= 0.78:
     print(f"| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |")
