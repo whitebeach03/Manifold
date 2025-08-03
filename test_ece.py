@@ -85,7 +85,7 @@ def main():
         reliability_diagram(
             all_confidences, all_preds, all_labels,
             n_bins=50,
-            savepath=f"./ECE/reliability_{augment}.png"
+            savepath=f"./ECE/{data_type}/{augment}.png"
         )
         
         classwise_ece = compute_classwise_ece(all_confidences, all_preds, all_labels, n_bins=50)
@@ -108,7 +108,7 @@ def main():
     plt.xlabel('Class Label')
     plt.title('Class-wise ECE Heatmap')
     plt.tight_layout()
-    plt.savefig('./ECE/classwise_ece_heatmap.png')
+    plt.savefig(f'./ECE/{data_type}/classwise_heatmap.png')
 
     ece_values_by_method = [
         [all_classwise_ece[method].get(cls, np.nan) for cls in range(num_classes)]
@@ -121,7 +121,8 @@ def main():
     plt.title("Class-wise ECE Distribution by Method (Boxplot)")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("./ECE/classwise_ece_boxplot.png")
+    plt.savefig(f"./ECE/{data_type}/classwise_boxplot.png")
+
 
 # --- Calibration utilities ---
 def compute_ece(confidences: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:

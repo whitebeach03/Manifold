@@ -97,5 +97,5 @@ for augment in augmentations:
     plt.xlabel("UMAP Dim 1")
     plt.ylabel("UMAP Dim 2")
     plt.tight_layout()
-    plt.savefig(f"./umap_fig/{data_type}_{augment}_{epochs}.png")
+    plt.savefig(f"./result_umap/{data_type}_{augment}_{epochs}.png")
     plt.close()

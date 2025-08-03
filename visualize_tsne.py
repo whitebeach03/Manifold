@@ -105,4 +105,4 @@ for augment in augmentations:
     plt.xlabel("Dim 1")
     plt.ylabel("Dim 2")
     plt.tight_layout()
-    plt.savefig(f"./tsne/{data_type}_{augment}.png")
+    plt.savefig(f"./result_tsne/{data_type}_{augment}.png")
