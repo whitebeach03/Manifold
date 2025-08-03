@@ -140,7 +140,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     if num_classes == 100:
         t_mixup = 350
     elif num_classes == 10:
-        t_mixup = 200
+        t_mixup = 220
     
     mixup_fn   = Mixup(alpha=1.0, mode="batch", num_classes=num_classes)
     skmixup_fn = KernelMixup(alpha=1.0, mode="batch", num_classes=num_classes, warping="beta_cdf", tau_max=1.0, tau_std=0.25, lookup_size=4096,)
