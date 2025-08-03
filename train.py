@@ -27,56 +27,37 @@ augmentations = [
     # "RegMixup",
     "Local-FOMA",
 
-    # "Conf-Mixup",
-
-    # "Mixup-FOMA",
-    # "Mixup-Dual-Lambda",
     
     # "PCA",
     # "SVD",
     # "Cholesky",
 
-    # "Mixup",
-
-    # "CutMix",
+    # "Conf-Mixup",
     # "AugMix",
+    # "Ent-Mixup",
 
     # "SK-Mixup",
     # "Teacher-SK-Mixup",
     # "Teacher-SK-Mixup-Curriculum",
-
     # "Manifold-SK-Mixup",
 
-    # "RegMixup",
-    # "Ent-Mixup",
-    
-    # "Manifold-Mixup",
     # "Manifold-Mixup(alpha=0.5)",
     # "Manifold-Mixup(alpha=1.0)",
     # "Manifold-Mixup(alpha=5.0)",
-
-    # "Mixup-Curriculum",
-
     # "Mixup(alpha=0.5)",
     # "Mixup(alpha=1.0)",
     # "Mixup(alpha=2.0)",
     # "Mixup(alpha=5.0)",
 
+    # "FOMA",
     # "FOMA-Mixup",
     # "FOMA-Mixup2",
     # "FOMA-scaleup-Mixup",
     # "FOMA-Manifold-Mixup",
     # "FOMA-scaleup"
     # "Mixup+FOMA",
-    # "FOMix",
-    # "Local-FOMA",
-    # "FOMA",
     # "FOMA-knn-Curriculum",
-
-    # "Mixup-Original",
-    # "Mixup-PCA",
-    # "Mixup-Original&PCA",
-    # "PCA",
+    # "Mixup-Curriculum",
 ]
 
 def main():
