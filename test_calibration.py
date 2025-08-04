@@ -15,11 +15,11 @@ from sklearn.metrics import accuracy_score
 from matplotlib.colors import LinearSegmentedColormap
 
 augmentations = [
-    "Default",
-    "Mixup",
+    # "Default",
+    # "Mixup",
     # "Manifold-Mixup",
-    "Mixup-FOMA",
-    # "Local-FOMA"
+    # "Mixup-FOMA",
+    "Local-FOMA"
 ]
 
 def main():
