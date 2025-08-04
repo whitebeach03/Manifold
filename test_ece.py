@@ -15,10 +15,10 @@ from sklearn.metrics import accuracy_score
 from matplotlib.colors import LinearSegmentedColormap
 
 augmentations = [
-    # "Default",
-    # "Mixup",
-    "Manifold-Mixup",
-    # "Mixup-FOMA",
+    "Default",
+    "Mixup",
+    # "Manifold-Mixup",
+    "Mixup-FOMA",
     # "Local-FOMA"
 ]
 
@@ -39,37 +39,58 @@ def main():
     # Dataset & loader
     if data_type == "stl10":
         num_classes, batch_size = 10, 64
-        test_dataset = STL10(root="./data", split="train", download=True,  transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
+        test_dataset = STL10(root="./data", split="train", download=True,
+                              transform=transforms.Compose([
+                                  transforms.ToTensor(),
+                                  transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                       std=[0.229, 0.224, 0.225])
+                              ]))
     elif data_type == "cifar100":
         num_classes, batch_size, epochs = 100, 128, 400
-        test_dataset = CIFAR100(root="./data", train=False, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
+        test_dataset = CIFAR100(root="./data", train=False, download=True,
+                                 transform=transforms.Compose([
+                                     transforms.ToTensor(),
+                                     transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                          std=[0.229, 0.224, 0.225])
+                                 ]))
     else:
         num_classes, batch_size, epochs = 10, 128, 250
-        test_dataset = CIFAR10(root="./data", train=False, download=True,  transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
+        test_dataset = CIFAR10(root="./data", train=False, download=True,
+                                transform=transforms.Compose([
+                                    transforms.ToTensor(),
+                                    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                         std=[0.229, 0.224, 0.225])
+                                ]))
+
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-    
-    all_classwise_ece = {}
 
     for augment in augmentations:
         print(f"\n==> Test with {augment} ...")
+
         # Model
-        if model_type == "resnet18": model = ResNet18().to(device)
-        elif model_type == "resnet101": model = ResNet101().to(device)
-        else: model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
+        if model_type == "resnet18":
+            model = ResNet18().to(device)
+        elif model_type == "resnet101":
+            model = ResNet101().to(device)
+        else:
+            model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
 
         model_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
         model.load_state_dict(torch.load(model_path, weights_only=True))
         model.eval()
 
+        criterion = nn.CrossEntropyLoss()
+
         all_confidences = []
         all_preds = []
         all_labels = []
+        all_probs = []
         total_loss = 0.0
-        criterion = nn.CrossEntropyLoss()
 
         with torch.no_grad():
             for inputs, targets in test_loader:
                 inputs, targets = inputs.to(device), targets.to(device)
+
                 outputs = model(inputs, targets, device, augment)
                 loss = criterion(outputs, targets)
                 total_loss += loss.item() * inputs.size(0)
@@ -77,23 +98,37 @@ def main():
                 probs = F.softmax(outputs, dim=1)
                 conf, preds = torch.max(probs, dim=1)
 
+                all_probs.append(probs.cpu())
                 all_confidences.append(conf.cpu().numpy())
                 all_preds.append(preds.cpu().numpy())
                 all_labels.append(targets.cpu().numpy())
 
+        # Convert to full tensors/arrays
         all_confidences = np.concatenate(all_confidences)
         all_preds = np.concatenate(all_preds)
-        all_labels = np.concatenate(all_labels)
+        all_labels_np = np.concatenate(all_labels)
+        all_probs = torch.cat(all_probs, dim=0)
+        all_labels = torch.tensor(all_labels_np)
 
+        # ECE
         ece = evaluate_calibration(
             confidences=all_confidences,
             predictions=all_preds,
-            labels=all_labels,
+            labels=all_labels_np,
             n_bins=n_bins,
             save_path=f"./ECE/{data_type}/{augment}.png"
         )
         print(f"ECE = {ece:.4f}")
 
+        # NLL
+        log_probs = torch.log(all_probs + 1e-12)
+        nll = F.nll_loss(log_probs, all_labels, reduction='mean').item()
+
+        # Brier Score
+        one_hot = F.one_hot(all_labels, num_classes=num_classes).float()
+        brier = torch.mean(torch.sum((all_probs - one_hot) ** 2, dim=1)).item()
+
+        print(f"NLL = {nll:.4f}, Brier Score = {brier:.4f}")
     #     avg_loss = total_loss / len(test_dataset)
     #     accuracy = accuracy_score(all_labels, all_preds)
     #     ece = compute_ece_from_preds(all_confidences, all_preds, all_labels, n_bins=n_bins)
