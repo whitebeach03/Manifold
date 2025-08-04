@@ -14,7 +14,7 @@ from src.models.wide_resnet import Wide_ResNet
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from umap import UMAP
 
-method     = "tsne"
+method     = "umap"
 
 data_type  = "cifar10"
 model_type = "wide_resnet_28_10"
@@ -23,11 +23,10 @@ os.makedirs(f"./result_features/{method}/{data_type}", exist_ok=True)
 
 augmentations = [
     # "FOMA-Mixup",
-    # "Default",
-    # "Mixup", 
+    "Default",
+    "Mixup", 
     # "Local-FOMA", 
-    # "Mixup-FOMA",
-    "FOMA-Mixup"
+    "Mixup-FOMA",
 ]
 
 if data_type == "stl10":
@@ -82,9 +81,16 @@ for augment in augmentations:
     y = torch.cat(labels_list, dim=0).numpy()
 
     if method == "tsne":
-        reducer = TSNE(n_components=2, random_state=42, perplexity=30)
+        reducer = TSNE(n_components=2, random_state=42, perplexity=30, n_iter=1500)
     elif method == "umap":
-        reducer = UMAP(n_components=2, random_state=42)
+        # reducer = UMAP(n_components=2, random_state=42)
+        reducer = UMAP(
+            n_components=2,
+            n_neighbors=15,
+            min_dist=0.1,
+            metric='euclidean',
+            random_state=42
+        )
     X_2d = reducer.fit_transform(X)
 
     plt.figure(figsize=(8, 6))
