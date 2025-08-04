@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--iteration",  type=int, default=1)
+    parser.add_argument("--iteration",  type=int, default=3)
     parser.add_argument("--epochs",     type=int, default=400)
     parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
@@ -18,13 +18,13 @@ def main():
     model_type = args.model_type
     
     augmentations = [
-        "Default",
-        "Mixup",
-        # "Manifold-Mixup",
+        # "Default",
+        # "Mixup",
+        "Manifold-Mixup",
         # "CutMix",
         # "RegMixup",
-        "Local-FOMA",
-        "Mixup-FOMA",
+        # "Local-FOMA",
+        # "Mixup-FOMA",
 
         # "Original",
         # "PCA",
@@ -78,6 +78,11 @@ def main():
         # "Mixup-Original&PCA",
         # "PCA",
     ]
+
+    if data_type == "cifar100":
+        epochs = 400
+    elif data_type == "cifar10":
+        epochs = 250
     
     ### Plot accuracy & loss ###
     plot_comparison_graph(model_type, augmentations, data_type, epochs, iteration)

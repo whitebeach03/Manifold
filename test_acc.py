@@ -31,11 +31,12 @@ from src.methods.foma import foma
 
 augmentations = [
     # "Default",
+    # "Mixup",
     # "Mixup-FOMA",
-    # "Manifold-Mixup",
+    "Manifold-Mixup",
     # "Local-FOMA",
     # "FOMA-Mixup",
-    "RegMixup",
+    # "RegMixup",
     # "FOMA-scaleup"
 ]
 
@@ -70,10 +71,12 @@ def main():
             batch_size  = 64
             test_dataset = STL10(root="./data", split="train", download=True, transform=transform)
         elif data_type == "cifar100":
+            epochs      = 400
             num_classes = 100
             batch_size  = 128
             test_dataset   = CIFAR100(root="./data", train=False, transform=transform, download=True)
         elif data_type == "cifar10":
+            epochs      = 250
             num_classes = 10
             batch_size  = 128
             test_dataset   = CIFAR10(root="./data", train=False, transform=transform, download=True)
@@ -97,8 +100,8 @@ def main():
 
             model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
-            # test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
-            # print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}")
+            test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
+            print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}")
 
             for corruption in corruption_types:
                 if data_type == "cifar100":

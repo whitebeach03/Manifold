@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Dict
+from typing import Dict, Tuple
 from torch.utils.data import DataLoader
 from src.models.resnet import ResNet18, ResNet101
 from src.models.wide_resnet import Wide_ResNet
@@ -17,7 +17,7 @@ from matplotlib.colors import LinearSegmentedColormap
 augmentations = [
     "Default",
     "Mixup",
-    "Manifold-Mixup",
+    # "Manifold-Mixup",
     "Mixup-FOMA",
     "Local-FOMA"
 ]
@@ -34,15 +34,17 @@ def main():
     model_type = args.model_type
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    n_bins = 20
+
     # Dataset & loader
     if data_type == "stl10":
         num_classes, batch_size = 10, 64
         test_dataset = STL10(root="./data", split="train", download=True,  transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
     elif data_type == "cifar100":
-        num_classes, batch_size = 100, 128
+        num_classes, batch_size, epochs = 100, 128, 400
         test_dataset = CIFAR100(root="./data", train=False, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
     else:
-        num_classes, batch_size = 10, 128
+        num_classes, batch_size, epochs = 10, 128, 250
         test_dataset = CIFAR10(root="./data", train=False, download=True,  transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])]))
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
@@ -83,78 +85,63 @@ def main():
         all_preds = np.concatenate(all_preds)
         all_labels = np.concatenate(all_labels)
 
-        avg_loss = total_loss / len(test_dataset)
-        accuracy = accuracy_score(all_labels, all_preds)
-        ece = compute_ece_from_preds(all_confidences, all_preds, all_labels, n_bins=50)
-
-        print(f"Test Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}, ECE: {ece:.4f}")
-        classwise_ece = compute_classwise_ece(all_confidences, all_preds, all_labels, n_bins=50)
-        all_classwise_ece[augment] = classwise_ece
-        reliability_diagram(
-            all_confidences, all_preds, all_labels,
-            n_bins=50,
-            savepath=f"./ECE/{data_type}/{augment}.png"
+        ece = evaluate_calibration(
+            confidences=all_confidences,
+            predictions=all_preds,
+            labels=all_labels,
+            n_bins=n_bins,
+            save_path=f"./ECE/{data_type}/{augment}.png"
         )
+        print(f"ECE = {ece:.4f}")
+
+    #     avg_loss = total_loss / len(test_dataset)
+    #     accuracy = accuracy_score(all_labels, all_preds)
+    #     ece = compute_ece_from_preds(all_confidences, all_preds, all_labels, n_bins=n_bins)
+
+    #     print(f"Test Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}, ECE: {ece:.4f}")
+    #     classwise_ece = compute_classwise_ece(all_confidences, all_preds, all_labels, n_bins=n_bins)
+    #     all_classwise_ece[augment] = classwise_ece
+    #     reliability_diagram(
+    #         all_confidences, all_preds, all_labels,
+    #         n_bins=n_bins,
+    #         savepath=f"./ECE/{data_type}/{augment}.png"
+    #     )
         
-        classwise_ece = compute_classwise_ece(all_confidences, all_preds, all_labels, n_bins=50)
-        # print(">> Class-wise ECE:")
-        # for cls, ece_val in sorted(classwise_ece.items()):
-        #     print(f"  Class {cls:3d}: ECE = {ece_val:.4f}")
+    #     classwise_ece = compute_classwise_ece(all_confidences, all_preds, all_labels, n_bins=n_bins)
+    #     # print(">> Class-wise ECE:")
+    #     # for cls, ece_val in sorted(classwise_ece.items()):
+    #     #     print(f"  Class {cls:3d}: ECE = {ece_val:.4f}")
     
-    methods = list(all_classwise_ece.keys())
-    num_classes = max(len(v) for v in all_classwise_ece.values())
-    # 行列データ作成（methods 行 × classes 列）
-    data = np.array([
-        [ all_classwise_ece[m].get(c, 0.0) for c in range(num_classes) ]
-        for m in methods
-    ])
+    # methods = list(all_classwise_ece.keys())
+    # num_classes = max(len(v) for v in all_classwise_ece.values())
+    # # 行列データ作成（methods 行 × classes 列）
+    # data = np.array([
+    #     [ all_classwise_ece[m].get(c, 0.0) for c in range(num_classes) ]
+    #     for m in methods
+    # ])
 
-    plt.figure(figsize=(12, 3))
-    plt.imshow(data, aspect='auto', cmap='viridis')
-    plt.colorbar(label='ECE')
-    plt.yticks(np.arange(len(methods)), methods)
-    plt.xlabel('Class Label')
-    plt.title('Class-wise ECE Heatmap')
-    plt.tight_layout()
-    plt.savefig(f'./ECE/{data_type}/classwise_heatmap.png')
+    # plt.figure(figsize=(12, 3))
+    # plt.imshow(data, aspect='auto', cmap='viridis')
+    # plt.colorbar(label='ECE')
+    # plt.yticks(np.arange(len(methods)), methods)
+    # plt.xlabel('Class Label')
+    # plt.title('Class-wise ECE Heatmap')
+    # plt.tight_layout()
+    # plt.savefig(f'./ECE/{data_type}/classwise_heatmap.png')
 
-    ece_values_by_method = [
-        [all_classwise_ece[method].get(cls, np.nan) for cls in range(num_classes)]
-        for method in methods
-    ]
+    # ece_values_by_method = [
+    #     [all_classwise_ece[method].get(cls, np.nan) for cls in range(num_classes)]
+    #     for method in methods
+    # ]
     
-    plt.figure(figsize=(10, 5))
-    plt.boxplot(ece_values_by_method, labels=methods, showfliers=True)
-    plt.ylabel("ECE")
-    plt.title("Class-wise ECE Distribution by Method (Boxplot)")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(f"./ECE/{data_type}/classwise_boxplot.png")
+    # plt.figure(figsize=(10, 5))
+    # plt.boxplot(ece_values_by_method, labels=methods, showfliers=True)
+    # plt.ylabel("ECE")
+    # plt.title("Class-wise ECE Distribution by Method (Boxplot)")
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.savefig(f"./ECE/{data_type}/classwise_boxplot.png")
 
-
-# --- Calibration utilities ---
-def compute_ece(confidences: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
-    """
-    Expected Calibration Error (ECE)
-    confidences: shape (N,), model confidence for predicted class
-    labels:      shape (N,), true labels
-    """
-    bins = np.linspace(0.0, 1.0, n_bins + 1)
-    bin_lowers = bins[:-1]
-    bin_uppers = bins[1:]
-    ece = 0.0
-    N = len(confidences)
-    for lower, upper in zip(bin_lowers, bin_uppers):
-        mask = (confidences > lower) & (confidences <= upper)
-        prop_in_bin = mask.mean()
-        if prop_in_bin > 0:
-            accuracy_in_bin = (labels[mask] == labels[mask]).mean() if False else None
-            # Actually compute accuracy of predictions matching true labels
-            # But here confidences correspond to predicted class confidence,
-            # so we need predictions array separately. We'll compute ECE later with preds.
-            pass
-    # We'll implement combined function below.
-    return ece
 
 def reliability_diagram(confidences: np.ndarray, predictions: np.ndarray, labels: np.ndarray, n_bins: int = 15, savepath: str = "reliability_diagram.png"):  
     # Compute per-bin accuracy and confidence
@@ -186,7 +173,7 @@ def reliability_diagram(confidences: np.ndarray, predictions: np.ndarray, labels
     plt.tight_layout()
     plt.savefig(savepath)
 
-def compute_ece_from_preds(confidences: np.ndarray, predictions: np.ndarray, labels: np.ndarray, n_bins: int = 50) -> float:
+def compute_ece_from_preds(confidences: np.ndarray, predictions: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
     bins = np.linspace(0.0, 1.0, n_bins + 1)
     ece = 0.0
     N = len(confidences)
@@ -220,6 +207,77 @@ def compute_classwise_ece(
         ece_cls = compute_ece_from_preds(confs_cls, preds_cls, labels_cls, n_bins)
         class_ece[int(cls)] = ece_cls
     return class_ece
+
+def evaluate_calibration(
+    confidences: np.ndarray,
+    predictions: np.ndarray,
+    labels: np.ndarray,
+    n_bins: int = 15,
+    save_path: str = "reliability_diagram.png",
+    show: bool = False,
+) -> float:
+    """
+    ECEを計算し、Reliability Diagramを描画・保存する関数
+
+    Args:
+        confidences: shape (N,), 各予測の予測クラスの信頼度
+        predictions: shape (N,), モデルの予測ラベル
+        labels:      shape (N,), 正解ラベル
+        n_bins: ビンの数（default: 15）
+        save_path: 図の保存パス
+        show: plt.show() するかどうか
+
+    Returns:
+        ece: Expected Calibration Error のスカラー値
+    """
+    assert len(confidences) == len(predictions) == len(labels), "入力配列の長さが不一致"
+
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    bin_centers = (bins[:-1] + bins[1:]) / 2.0
+
+    accuracies = []
+    avg_confidences = []
+    bin_counts = []
+    ece = 0.0
+    N = len(confidences)
+
+    for lower, upper in zip(bins[:-1], bins[1:]):
+        mask = (confidences > lower) & (confidences <= upper)
+        bin_size = np.sum(mask)
+        if bin_size > 0:
+            avg_conf = confidences[mask].mean()
+            acc = (predictions[mask] == labels[mask]).mean()
+            weight = bin_size / N
+            ece += np.abs(avg_conf - acc) * weight
+
+            accuracies.append(acc)
+            avg_confidences.append(avg_conf)
+            bin_counts.append(bin_size)
+        else:
+            accuracies.append(0.0)
+            avg_confidences.append(0.0)
+            bin_counts.append(0)
+
+    # 可視化
+    plt.figure(figsize=(6, 6))
+    plt.plot([0, 1], [0, 1], '--', label='Perfect Calibration')
+    plt.plot(bin_centers, accuracies, marker='o', label='Accuracy', color='darkorange')
+    # plt.bar(bin_centers, [c / max(bin_counts) for c in bin_counts], width=1/n_bins*0.8, alpha=0.2, label='Sample Ratio')
+    plt.xlabel('Confidence')
+    plt.ylabel('Accuracy')
+    plt.title('Reliability Diagram')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+    return ece
 
 if __name__ == "__main__":
     main()
