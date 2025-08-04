@@ -31,107 +31,6 @@ from src.methods.foma import compute_foma_loss
 from src.methods.fomix import *
 from src.methods.hybrid import *
 
-def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
-    """
-    Mixup インターフェースに合わせて、
-    EntAugment による動的 α を使った mixup_data 相当を返す。
-
-    Returns:
-      mixed_x: [B, C, H, W]
-      y_a:      [B] 元ラベル
-      y_b:      [B] シャッフル後ラベル
-      lam:      [B] 各サンプルの mixup 比率
-    """
-    B = x.size(0)
-
-    # 1) 各サンプルのエントロピーに基づき α_i を計算
-    with torch.no_grad():
-        logits = model(x, labels=None, device=None, augment="Ent-Mixup")                 # [B, num_classes]
-        probs  = F.softmax(logits, dim=1)
-        ent    = -torch.sum(probs * torch.log(probs + eps), dim=1) / math.log(num_classes)
-        mag    = (1.0 - ent).clamp(min=eps)     # 低エントロピーほど大きく
-        alpha  = alpha_max * mag               # [B]
-        # print(alpha)
-
-    # 2) Beta(alpha_i, alpha_i) から λ_i をサンプル
-    lam = Beta(alpha, alpha).sample()         # [B]
-    lam = lam.to(x.device)
-
-    # 3) バッチをシャッフル
-    idx  = torch.randperm(B).to(x.device)
-    x2   = x[idx]
-    y2   = y[idx]
-
-    # 4) Mixup 入力生成
-    lam_x   = lam.view(B, 1, 1, 1)
-    mixed_x = lam_x * x + (1 - lam_x) * x2
-
-    # 5) ラベルペアとして返す
-    y_a = y
-    y_b = y2
-
-    return mixed_x, y_a, y_b, lam, alpha
-
-class FixedAugmentedDataset(Dataset):
-    def __init__(self, base_dataset, random_transform):
-        """
-        base_dataset:  元の PIL 画像＋ラベルの Dataset
-        random_transform: transforms.Compose([...Random...]) のインスタンス
-        """
-        self.labels = []
-        self.images = []
-        # ここで一度だけ全サンプルに変換を適用してキャッシュ
-        for img, lbl in base_dataset:
-            img_aug = random_transform(img)
-            self.images.append(img_aug)
-            self.labels.append(lbl)
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, idx):
-        # 常にキャッシュ済みの同じ img_aug を返す
-        return self.images[idx], self.labels[idx]
-
-# ------------ 可視化用ユーティリティ ------------
-# 正規化を解除する関数
-def unnormalize(tensor):
-    mean = torch.tensor([0.485,0.456,0.406]).view(3,1,1)
-    std  = torch.tensor([0.229,0.224,0.225]).view(3,1,1)
-    return torch.clamp(tensor * std + mean, 0, 1)
-
-# バッチをグリッド表示する関数
-def visualize_batch(
-                    epochs: int,
-                    images: torch.Tensor,
-                    labels: torch.Tensor=None,
-                    augment: str=None, 
-                    classes: list=None,
-                    n: int = 8,
-                    title: str = None):
-    """
-    images:     Tensor[B, C, H, W], 正規化後の画像
-    labels:     Tensor[B]（あるいは list of int）
-    classes:    CIFAR-100 クラス名リスト
-    n:          表示する枚数（先頭 n 枚）
-    title:      画像上部に出したい文字列（デフォルトはラベル名をスペース区切りで）
-    """
-    images = images.detach().cpu()
-    # 先頭 n 枚をアンノーマライズして PIL に戻す
-    imgs = [unnormalize(img) for img in images[:n]]
-    grid = make_grid(imgs, nrow=n, padding=0)
-    
-    plt.figure(figsize=(n*1.5, 1.5))
-    npimg = grid.numpy().transpose(1,2,0)
-    plt.imshow(npimg)
-    plt.axis('off')
-    
-    if labels is not None and classes is not None:
-        labs = labels[:n].cpu().numpy()
-        lab_str = [classes[l] for l in labs]
-        plt.title(title or "  ".join(lab_str), fontsize=10)
-    plt.savefig(f"{augment}_{epochs}.png")
-
 def train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok, epochs):
     model.train()
     train_loss = 0.0
@@ -527,3 +426,105 @@ def save_distance_log(distance_log: list, filename: str):
     """
     with open(filename, "wb") as f:
         pickle.dump(distance_log, f)
+
+
+def ent_augment_mixup(x, y, model, alpha_max, num_classes, eps=1e-8):
+    """
+    Mixup インターフェースに合わせて、
+    EntAugment による動的 α を使った mixup_data 相当を返す。
+
+    Returns:
+      mixed_x: [B, C, H, W]
+      y_a:      [B] 元ラベル
+      y_b:      [B] シャッフル後ラベル
+      lam:      [B] 各サンプルの mixup 比率
+    """
+    B = x.size(0)
+
+    # 1) 各サンプルのエントロピーに基づき α_i を計算
+    with torch.no_grad():
+        logits = model(x, labels=None, device=None, augment="Ent-Mixup")                 # [B, num_classes]
+        probs  = F.softmax(logits, dim=1)
+        ent    = -torch.sum(probs * torch.log(probs + eps), dim=1) / math.log(num_classes)
+        mag    = (1.0 - ent).clamp(min=eps)     # 低エントロピーほど大きく
+        alpha  = alpha_max * mag               # [B]
+        # print(alpha)
+
+    # 2) Beta(alpha_i, alpha_i) から λ_i をサンプル
+    lam = Beta(alpha, alpha).sample()         # [B]
+    lam = lam.to(x.device)
+
+    # 3) バッチをシャッフル
+    idx  = torch.randperm(B).to(x.device)
+    x2   = x[idx]
+    y2   = y[idx]
+
+    # 4) Mixup 入力生成
+    lam_x   = lam.view(B, 1, 1, 1)
+    mixed_x = lam_x * x + (1 - lam_x) * x2
+
+    # 5) ラベルペアとして返す
+    y_a = y
+    y_b = y2
+
+    return mixed_x, y_a, y_b, lam, alpha
+
+class FixedAugmentedDataset(Dataset):
+    def __init__(self, base_dataset, random_transform):
+        """
+        base_dataset:  元の PIL 画像＋ラベルの Dataset
+        random_transform: transforms.Compose([...Random...]) のインスタンス
+        """
+        self.labels = []
+        self.images = []
+        # ここで一度だけ全サンプルに変換を適用してキャッシュ
+        for img, lbl in base_dataset:
+            img_aug = random_transform(img)
+            self.images.append(img_aug)
+            self.labels.append(lbl)
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        # 常にキャッシュ済みの同じ img_aug を返す
+        return self.images[idx], self.labels[idx]
+
+# ------------ 可視化用ユーティリティ ------------
+# 正規化を解除する関数
+def unnormalize(tensor):
+    mean = torch.tensor([0.485,0.456,0.406]).view(3,1,1)
+    std  = torch.tensor([0.229,0.224,0.225]).view(3,1,1)
+    return torch.clamp(tensor * std + mean, 0, 1)
+
+# バッチをグリッド表示する関数
+def visualize_batch(
+                    epochs: int,
+                    images: torch.Tensor,
+                    labels: torch.Tensor=None,
+                    augment: str=None, 
+                    classes: list=None,
+                    n: int = 8,
+                    title: str = None):
+    """
+    images:     Tensor[B, C, H, W], 正規化後の画像
+    labels:     Tensor[B]（あるいは list of int）
+    classes:    CIFAR-100 クラス名リスト
+    n:          表示する枚数（先頭 n 枚）
+    title:      画像上部に出したい文字列（デフォルトはラベル名をスペース区切りで）
+    """
+    images = images.detach().cpu()
+    # 先頭 n 枚をアンノーマライズして PIL に戻す
+    imgs = [unnormalize(img) for img in images[:n]]
+    grid = make_grid(imgs, nrow=n, padding=0)
+    
+    plt.figure(figsize=(n*1.5, 1.5))
+    npimg = grid.numpy().transpose(1,2,0)
+    plt.imshow(npimg)
+    plt.axis('off')
+    
+    if labels is not None and classes is not None:
+        labs = labels[:n].cpu().numpy()
+        lab_str = [classes[l] for l in labs]
+        plt.title(title or "  ".join(lab_str), fontsize=10)
+    plt.savefig(f"{augment}_{epochs}.png")
