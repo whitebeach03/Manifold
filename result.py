@@ -252,6 +252,7 @@ def load_acc(path, iteration):
             dic[i] = pickle.load(f)
     avg_acc = 0
     for i in range(iteration):
+        print(dic[i]["acc"])
         avg_acc += dic[i]["acc"]
     avg_acc = avg_acc / iteration
     avg_acc *= 100
