@@ -186,7 +186,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
                 preds = model(images, labels, device, augment, aug_ok)
                 loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
             else:
-                loss, preds = compute_foma_loss(model, images, labels, k=16, num_classes=num_classes, lambda_almp=1.0, device=device, scaleup=False)
+                loss, preds = compute_foma_loss(model, images, labels, k=10, num_classes=num_classes, lambda_almp=1.0, device=device, scaleup=False)
     
         elif augment=="SK-Mixup":
             with torch.no_grad():
