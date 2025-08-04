@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader, random_split
 
 def main():
     iteration  = 1
-    epochs     = 400
-    data_type  = "cifar100"
+    epochs     = 250
+    data_type  = "cifar10"
     model_type = "wide_resnet_28_10"
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -21,8 +21,9 @@ def main():
         "Default",
         "Mixup",
         # "Manifold-Mixup",
-        "Local-FOMA",
-        "FOMA-Mixup",
+        # "Local-FOMA",
+        # "FOMA-Mixup",
+        "Mixup-FOMA"
     ]
 
     for augment in augmentations:

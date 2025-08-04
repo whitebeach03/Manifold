@@ -1,3 +1,4 @@
+import os
 import torch
 import torchvision
 import random
@@ -11,37 +12,40 @@ from sklearn.manifold import TSNE
 from tqdm import tqdm
 from src.models.wide_resnet import Wide_ResNet
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
+from umap import UMAP
 
-epochs     = 400
-data_type  = "cifar100"
+method     = "tsne"
+
+data_type  = "cifar10"
 model_type = "wide_resnet_28_10"
 device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-features_list = []
-labels_list = []
+os.makedirs(f"./result_features/{method}/{data_type}", exist_ok=True)
 
 augmentations = [
     # "FOMA-Mixup",
-    # "Default", 
-    # "Local-FOMA",
-    # "Mixup(alpha=0.5)", 
-    "Mixup-FOMA",
-    # "Mixup(alpha=2.0)",
-    # "Mixup(alpha=5.0)",
+    # "Default",
+    # "Mixup", 
+    # "Local-FOMA", 
+    # "Mixup-FOMA",
+    "FOMA-Mixup"
 ]
 
-for augment in augmentations:
-    model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
+if data_type == "stl10":
+    num_classes = 10
+    batch_size  = 64
+elif data_type == "cifar100":
+    epochs      = 400
+    num_classes = 100
+    batch_size  = 128
+elif data_type == "cifar10":
+    epochs      = 250
+    num_classes = 10
+    batch_size  = 128
 
-    if data_type == "stl10":
-        num_classes = 10
-        batch_size  = 64
-    elif data_type == "cifar100":
-        num_classes = 100
-        batch_size  = 128
-    elif data_type == "cifar10":
-        num_classes = 10
-        batch_size  = 128
+for augment in augmentations:
+    features_list = []
+    labels_list = []
+    model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
     
     if model_type == "resnet18":
         model = ResNet18().to(device)
@@ -77,32 +81,35 @@ for augment in augmentations:
     X = torch.cat(features_list, dim=0).numpy()
     y = torch.cat(labels_list, dim=0).numpy()
 
-    tsne = TSNE(n_components=2, random_state=42, perplexity=30)
-    X_2d = tsne.fit_transform(X)
+    if method == "tsne":
+        reducer = TSNE(n_components=2, random_state=42, perplexity=30)
+    elif method == "umap":
+        reducer = UMAP(n_components=2, random_state=42)
+    X_2d = reducer.fit_transform(X)
 
-    # plt.figure(figsize=(8, 6))
-    # scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=6, alpha=0.7)
-    # plt.colorbar(scatter, label="Class label")
-    # plt.title("t-SNE of ResNet Feature Representations")
-    # plt.xlabel("Dim 1")
-    # plt.ylabel("Dim 2")
-    # plt.tight_layout()
-    # plt.savefig(f"./tsne/{data_type}_{augment}.png")
-
-
-    # カラーマップを100クラスに対応させる
-    num_classes = 100  # ここはdata_typeに応じて変えるか、すでにある変数を使う
-    cmap = cm.get_cmap('nipy_spectral', num_classes)  # 高識別性で100色対応
-
-    plt.figure(figsize=(10, 8))
-    scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap=cmap, s=6, alpha=0.7)
-
-    # カラーバー（省略してもよい）
-    cbar = plt.colorbar(scatter, ticks=np.linspace(0, num_classes, 11, endpoint=False))
-    cbar.set_label("Class label")
-
+    plt.figure(figsize=(8, 6))
+    scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=6, alpha=0.7)
+    plt.colorbar(scatter, label="Class label")
     plt.title("t-SNE of ResNet Feature Representations")
     plt.xlabel("Dim 1")
     plt.ylabel("Dim 2")
     plt.tight_layout()
-    plt.savefig(f"./result_tsne/{data_type}_{augment}.png")
+    plt.savefig(f"./result_features/{method}/{data_type}/{augment}.png")
+
+
+    # # カラーマップを100クラスに対応させる
+    # num_classes = 100  # ここはdata_typeに応じて変えるか、すでにある変数を使う
+    # cmap = cm.get_cmap('nipy_spectral', num_classes)  # 高識別性で100色対応
+
+    # plt.figure(figsize=(10, 8))
+    # scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap=cmap, s=6, alpha=0.7)
+
+    # # カラーバー（省略してもよい）
+    # cbar = plt.colorbar(scatter, ticks=np.linspace(0, num_classes, 11, endpoint=False))
+    # cbar.set_label("Class label")
+
+    # plt.title("t-SNE of ResNet Feature Representations")
+    # plt.xlabel("Dim 1")
+    # plt.ylabel("Dim 2")
+    # plt.tight_layout()
+    # plt.savefig(f"./result_tsne/{data_type}/{augment}.png")
