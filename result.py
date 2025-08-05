@@ -19,12 +19,12 @@ def main():
     
     augmentations = [
         # "Default",
-        # "Mixup",
+        "Mixup",
         # "Manifold-Mixup",
         # "CutMix",
         # "RegMixup",
         # "Local-FOMA",
-        # "Mixup-FOMA",
+        "Mixup-FOMA",
         "Mixup-FOMA-scaleup"
 
         # "Original",
