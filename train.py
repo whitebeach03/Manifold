@@ -21,6 +21,7 @@ from src.methods.foma import foma
 augmentations = [
     "Mixup-FOMA",
     "Mixup-FOMA-scaleup",
+
     # "Default",
     # "Mixup",
     # "Manifold-Mixup",
