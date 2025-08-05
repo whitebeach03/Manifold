@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 import numpy as np
+from tqdm import tqdm
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score
 from typing import Dict
@@ -46,7 +47,7 @@ def evaluate(model, dataloader, device, augment, num_classes: int):
     total_loss = 0.0
 
     with torch.no_grad():
-        for inputs, targets in dataloader:
+        for inputs, targets in tqdm(dataloader, leave=False):
             inputs, targets = inputs.to(device), targets.to(device)
 
             outputs = model(inputs, targets, device, augment)
@@ -115,7 +116,7 @@ def main():
     else:
         raise ValueError("Invalid data_type")
 
-    batch_size = 128
+    batch_size = 512
     model = get_model(args.model_type, num_classes=num_classes).to(device)
     model_path = f"./logs/{args.model_type}/{args.augment}/{args.data_type}_{epochs}_0.pth"
     model.load_state_dict(torch.load(model_path, weights_only=True))
