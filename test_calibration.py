@@ -14,10 +14,12 @@ from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from sklearn.metrics import accuracy_score
 from matplotlib.colors import LinearSegmentedColormap
 
+n_iteration = 3
+
 augmentations = [
-    "Default",
-    "Mixup",
-    "Manifold-Mixup",
+    # "Default",
+    # "Mixup",
+    # "Manifold-Mixup",
     # "CutMix",
     "Mixup-FOMA",
     # "Local-FOMA",
@@ -77,7 +79,7 @@ def main():
         else:
             model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
 
-        model_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
+        model_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{n_iteration}.pth"
         model.load_state_dict(torch.load(model_path, weights_only=True))
         model.eval()
 
@@ -118,7 +120,7 @@ def main():
             predictions=all_preds,
             labels=all_labels_np,
             n_bins=n_bins,
-            save_path=f"./ECE/{data_type}/{augment}.png"
+            save_path=f"./ECE/{data_type}/{augment}_{n_iteration}.png"
         )
         print(f"ECE = {ece:.4f}")
 
@@ -131,6 +133,8 @@ def main():
         brier = torch.mean(torch.sum((all_probs - one_hot) ** 2, dim=1)).item()
 
         print(f"NLL = {nll:.4f}, Brier Score = {brier:.4f}")
+
+
     #     avg_loss = total_loss / len(test_dataset)
     #     accuracy = accuracy_score(all_labels, all_preds)
     #     ece = compute_ece_from_preds(all_confidences, all_preds, all_labels, n_bins=n_bins)
