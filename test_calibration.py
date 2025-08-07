@@ -14,7 +14,7 @@ from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from sklearn.metrics import accuracy_score
 from matplotlib.colors import LinearSegmentedColormap
 
-n_iteration = 3
+n_iteration = 0
 
 augmentations = [
     # "Default",
