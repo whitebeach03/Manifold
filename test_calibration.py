@@ -122,7 +122,6 @@ def main():
             n_bins=n_bins,
             save_path=f"./ECE/{data_type}/{augment}_{n_iteration}.png"
         )
-        print(f"ECE = {ece:.4f}")
 
         # NLL
         log_probs = torch.log(all_probs + 1e-12)
@@ -132,7 +131,7 @@ def main():
         one_hot = F.one_hot(all_labels, num_classes=num_classes).float()
         brier = torch.mean(torch.sum((all_probs - one_hot) ** 2, dim=1)).item()
 
-        print(f"NLL = {nll:.4f}, Brier Score = {brier:.4f}")
+        print(f"ECE = {ece:.4f}, Brier Score = {brier:.4f}, NLL = {nll:.4f}")
 
 
     #     avg_loss = total_loss / len(test_dataset)
