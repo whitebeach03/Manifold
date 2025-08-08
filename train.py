@@ -24,11 +24,11 @@ augmentations = [
     # "Mixup-FOMA-scaleup",
 
     # "Default",
-    # "Mixup",
+    "Mixup",
     # "Manifold-Mixup",
     # "CutMix",
     # "RegMixup",
-    "Local-FOMA",
+    # "Local-FOMA",
 
     
     # "PCA",
@@ -64,12 +64,14 @@ augmentations = [
 ]
 
 def main():
-    for i in range(1):
+    for i in range(3, 4):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
         args = parser.parse_args() 
+
+        set_seed(i)
 
         epochs     = args.epochs
         data_type  = args.data_type
@@ -120,7 +122,7 @@ def main():
 
         n_samples = len(full_train_aug)
         n_train   = int(n_samples * 0.8)
-        index_file = f"./data/split_indices_{data_type}.pkl"
+        index_file = f"./data_split/split_indices_{data_type}_{i}.pkl"
 
         if os.path.exists(index_file):
             print(f"Loading split indices from {index_file}")
