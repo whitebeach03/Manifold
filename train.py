@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import random
 import os
 import pickle
 import torch
@@ -112,10 +113,26 @@ def main():
             full_train_plain = CIFAR10(root="./data", train=True,  transform=transform,         download=True)
             test_dataset     = CIFAR10(root="./data", train=False, transform=transform,         download=True)
         
+        # n_samples = len(full_train_aug)
+        # n_train   = int(n_samples * 0.8)
+        # n_val     = n_samples - n_train
+        # train_indices, val_indices = random_split(range(n_samples), [n_train, n_val])
+
         n_samples = len(full_train_aug)
         n_train   = int(n_samples * 0.8)
-        n_val     = n_samples - n_train
-        train_indices, val_indices = random_split(range(n_samples), [n_train, n_val])
+        index_file = f"./data/split_indices_{data_type}.pkl"
+
+        if os.path.exists(index_file):
+            print(f"Loading split indices from {index_file}")
+            with open(index_file, "rb") as f:
+                train_indices, val_indices = pickle.load(f)
+        else:
+            print("Generating new split indices...")
+            indices = list(range(n_samples))
+            random.shuffle(indices)  # set_seedで固定される
+            train_indices, val_indices = indices[:n_train], indices[n_train:]
+            with open(index_file, "wb") as f:
+                pickle.dump((train_indices, val_indices), f)
 
         train_dataset = torch.utils.data.Subset(full_train_aug, train_indices)
         val_dataset   = torch.utils.data.Subset(full_train_plain, val_indices)
@@ -181,6 +198,14 @@ def main():
             test_history = {"acc": test_acc, "loss": test_loss}
             with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
                 pickle.dump(test_history, f)
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 if __name__ == "__main__":
     main()
