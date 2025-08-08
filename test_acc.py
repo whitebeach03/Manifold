@@ -32,10 +32,10 @@ from src.methods.foma import foma
 augmentations = [
     # "Default",
     # "Mixup",
-    # "Mixup-FOMA",
+    "Mixup-FOMA",
     # "Mixup-FOMA-scaleup",_
     # "Manifold-Mixup",
-    "Local-FOMA",
+    # "Local-FOMA",
     # "FOMA-Mixup",
     # "RegMixup",
     # "FOMA-scaleup"
@@ -49,7 +49,7 @@ corruption_types = [
 ]
 severity = 5
 def main():
-    for i in range(6):
+    for i in range(1):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])

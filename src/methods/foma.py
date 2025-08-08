@@ -72,8 +72,13 @@ def local_foma(
 
     # 距離行列 + 自己除外 + kNN
     dist = torch.cdist(X, X)                                      # (B, B)
-    dist += torch.eye(B, device=device) * 1e6
-    idx  = torch.topk(dist, k=k, largest=False).indices           # (B, k)
+    # dist += torch.eye(B, device=device) * 1e6
+    # idx  = torch.topk(dist, k=k, largest=False).indices           # (B, k)
+    dist_fill = dist.clone()
+    dist_fill.fill_diagonal_(float("inf"))  # 自己を除外して k-1 近傍を探す
+    nbr = torch.topk(dist_fill, k=k-1, largest=False, sorted=True).indices  # (B, k-1)
+    self_idx = torch.arange(B, device=device).unsqueeze(1)                 # (B, 1)
+    idx = torch.cat([self_idx, nbr], dim=1)        
 
     # --- ここから追加 ---
     # knn_dists = dist.gather(1, idx)                       # (B, k)
@@ -81,8 +86,11 @@ def local_foma(
     # print(f"Avg {k}-NN distance: {avg_knn_dist:.4f}")
     # --- ここまで追加 ---
 
-    X_aug = torch.empty_like(X)
-    Y_aug = torch.empty_like(Yh)
+    # X_aug = torch.empty_like(X)
+    # Y_aug = torch.empty_like(Yh)
+    X_aug = torch.empty((B, D), device=device, dtype=X.dtype)
+    Y_aug = torch.empty((B, num_classes), device=device, dtype=Yh.dtype)
+    one = torch.tensor(1.0, device=device)
 
     for i in range(B):
         # --- 局所 Z_i の構成 ---

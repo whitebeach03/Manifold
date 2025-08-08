@@ -77,7 +77,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss = loss_clean + loss_mix
             
         elif augment == "Local-FOMA":
-            loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device, scaleup=False)
+            loss, preds = compute_foma_loss(model, images, labels, k=16, num_classes=num_classes,lambda_almp=1.0, device=device, scaleup=False)
             
         elif augment == "Mixup-FOMA" or augment == "Mixup-FOMA-scaleup":
             if augment == "Mixup-FOMA":
@@ -89,7 +89,26 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
                 preds = model(images, labels, device, augment, aug_ok)
                 loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
             else:
-                loss, preds = compute_foma_loss(model, images, labels, k=10, num_classes=num_classes, lambda_almp=1.0, device=device, scaleup=scaleup)
+                loss, preds = compute_foma_loss(model, images, labels, k=16, num_classes=num_classes, lambda_almp=1.0, device=device, scaleup=scaleup)
+            
+        elif augment == "Mixup-FOMA2":
+            if epochs < t_mixup:
+                preds = model(images, labels=labels, device=device, augment=augment)
+                loss_clean = criterion(preds, labels)
+                mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds_mix = model(mixed_x, labels, device, augment, aug_ok)
+                loss_mix = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
+                loss = loss_clean + loss_mix
+            else:
+                if num_classes == 100:
+                    total_epochs = 400
+                elif num_classes == 10:
+                    total_epochs = 250
+                phase2_epoch = epochs - t_mixup
+                phase2_total = total_epochs - t_mixup  # Phase2全体の長さ
+                # 前半は係数を上げる、後半は1.0で固定
+                w_foma = min(1.0, phase2_epoch / (phase2_total / 2))
+                loss, preds = compute_foma_loss(model, images, labels, k=10, num_classes=num_classes, lambda_almp=w_foma, device=device, scaleup=False)
     
         elif augment=="SK-Mixup":
             with torch.no_grad():
