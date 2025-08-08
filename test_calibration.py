@@ -21,7 +21,7 @@ augmentations = [
     # "Mixup",
     # "Manifold-Mixup",
     # "CutMix",
-    "Mixup-FOMA",
+    "Mixup-FOMA2",
     # "Local-FOMA",
     # "Mixup-FOMA-scaleup"
 ]

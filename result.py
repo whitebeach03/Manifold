@@ -24,7 +24,7 @@ def main():
         # "CutMix",
         # "RegMixup",
         # "Local-FOMA",
-        "Mixup-FOMA",
+        "Mixup-FOMA2",
         # "Mixup-FOMA-scaleup"
         # "FOMA-Mixup"
 

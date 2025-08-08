@@ -32,7 +32,7 @@ from src.methods.foma import foma
 augmentations = [
     # "Default",
     # "Mixup",
-    "Mixup-FOMA",
+    "Mixup-FOMA2",
     # "Mixup-FOMA-scaleup",_
     # "Manifold-Mixup",
     # "Local-FOMA",

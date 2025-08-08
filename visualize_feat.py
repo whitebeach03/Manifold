@@ -14,19 +14,19 @@ from src.models.wide_resnet import Wide_ResNet
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from umap import UMAP
 
-method     = "umap"
+method     = "tsne"
 
-data_type  = "cifar10"
+data_type  = "cifar100"
 model_type = "wide_resnet_28_10"
 device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 os.makedirs(f"./result_features/{method}/{data_type}", exist_ok=True)
 
 augmentations = [
     # "FOMA-Mixup",
-    "Default",
-    "Mixup", 
+    # "Default",
+    # "Mixup", 
     # "Local-FOMA", 
-    "Mixup-FOMA",
+    "Mixup-FOMA2",
 ]
 
 if data_type == "stl10":
