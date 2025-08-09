@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 def main():
-    for i in range(3, 6):
+    for i in range(3, 4):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
@@ -105,7 +105,7 @@ def main():
         elif model_type == "wide_resnet_28_10":
             model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
         
-        mixup_save_path = f"./logs/wide_resnet_28_10/Mixup/{data_type}_{epochs}_{i}.pth"
+        mixup_save_path = f"./logs/wide_resnet_28_10/RegMixup/{data_type}_360_{i}.pth"
         model.load_state_dict(torch.load(mixup_save_path, weights_only=True))
             
         criterion = nn.CrossEntropyLoss()
@@ -119,8 +119,8 @@ def main():
 
         ### TRAINING ###
         for epoch in range(40):
-            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment="Local-FOMA", num_classes, aug_ok=False, epochs=epoch)
-            val_loss, val_acc     = val(model, val_loader, criterion, device, augment, aug_ok=False)
+            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment="Local-FOMA", num_classes=num_classes, aug_ok=False, epochs=epoch)
+            val_loss, val_acc     = val(model, val_loader, criterion, device, augment="Local-FOMA", aug_ok=False)
 
             if score <= val_acc:
                 print("Save model parameters...")

@@ -24,10 +24,10 @@ augmentations = [
     # "Mixup-FOMA-scaleup",
 
     # "Default",
-    "Mixup",
+    # "Mixup",
     # "Manifold-Mixup",
     # "CutMix",
-    # "RegMixup",
+    "RegMixup",
     # "Local-FOMA",
 
     
