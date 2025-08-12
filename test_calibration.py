@@ -14,14 +14,14 @@ from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from sklearn.metrics import accuracy_score
 from matplotlib.colors import LinearSegmentedColormap
 
-n_iteration = 3
+n_iteration = 2
 
 augmentations = [
     # "Default",
-    "Mixup",
+    # "Mixup",
     # "Manifold-Mixup",
     # "CutMix",
-    # "Mixup-FOMA2",
+    "Mixup-FOMA2",
     # "Local-FOMA",
     # "Mixup-FOMA-scaleup"
 ]
