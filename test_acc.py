@@ -49,7 +49,7 @@ corruption_types = [
 ]
 severity = 5
 def main():
-    for i in range(2, 3):
+    for i in range(3, 4):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
