@@ -83,12 +83,12 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss_mix = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
             
             phase2_epoch = epochs
-            phase2_total = 40  # Phase2全体の長さ
-            # 前半は係数を上げる、後半は1.0で固定
+            phase2_total = 40  
             w_foma = min(1.0, phase2_epoch / (phase2_total / 2))
             loss_foma, preds = compute_foma_loss(model, images, labels, k=10, num_classes=num_classes, lambda_almp=w_foma, device=device, scaleup=False)
+            w_mix = 1 - w_foma
             
-            loss = loss_mix + loss_foma
+            loss = w_mix*loss_mix + loss_foma
             
             
         elif augment == "Mixup-FOMA" or augment == "Mixup-FOMA-scaleup":

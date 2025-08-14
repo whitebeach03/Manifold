@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 def main():
-    for i in range(3, 4):
+    for i in range(1, 2):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
@@ -105,7 +105,14 @@ def main():
         elif model_type == "wide_resnet_28_10":
             model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
         
-        mixup_save_path = f"./logs/wide_resnet_28_10/RegMixup/{data_type}_360_{i}.pth"
+        if data_type == "cifar100":
+            e = 360
+            train_epoch = 40
+        elif data_type == "cifar10":
+            e = 230
+            train_epoch = 20
+            
+        mixup_save_path = f"./logs/wide_resnet_28_10/RegMixup/{data_type}_{e}_{i}.pth"
         model.load_state_dict(torch.load(mixup_save_path, weights_only=True))
             
         criterion = nn.CrossEntropyLoss()
@@ -118,7 +125,7 @@ def main():
         os.makedirs(f"./distance_log/{model_type}",      exist_ok=True)
 
         ### TRAINING ###
-        for epoch in range(40):
+        for epoch in range(train_epoch):
             train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment="Local-FOMA", num_classes=num_classes, aug_ok=False, epochs=epoch)
             val_loss, val_acc     = val(model, val_loader, criterion, device, augment="Local-FOMA", aug_ok=False)
 
