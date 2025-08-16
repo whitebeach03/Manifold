@@ -27,7 +27,7 @@ augmentations = [
     # "Mixup",
     # "Manifold-Mixup",
     # "CutMix",
-    # "RegMixup",
+    "RegMixup",
     # "Local-FOMA",
 
     

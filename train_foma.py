@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 def main():
-    for i in range(1, 2):
+    for i in range(3, 4):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
@@ -146,7 +146,7 @@ def main():
         
         ### TEST ###
         model.load_state_dict(torch.load(model_save_path, weights_only=True))
-        test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
+        test_loss, test_acc = test(model, test_loader, criterion, device, aug_ok=False)
         print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.5f}")
 
         test_history = {"acc": test_acc, "loss": test_loss}
