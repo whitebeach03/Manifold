@@ -49,7 +49,7 @@ corruption_types = [
 ]
 severity = 5
 def main():
-    for i in range(3, 4):
+    for i in range(1, 2):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
@@ -102,7 +102,7 @@ def main():
             model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
             test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
-            print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.3f}")
+            print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc*100:.4f}")
 
             for corruption in corruption_types:
                 if data_type == "cifar100":
