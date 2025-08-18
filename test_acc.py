@@ -49,14 +49,16 @@ corruption_types = [
 ]
 severity = 5
 def main():
-    for i in range(3, 4):
+    for i in range(1):
         parser = argparse.ArgumentParser()
+        parser.add_argument("--i",          type=int, default=1)
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
         parser.add_argument("--k_foma",     type=int, default=32)
         args = parser.parse_args() 
 
+        i          = args.i
         epochs     = args.epochs
         data_type  = args.data_type
         model_type = args.model_type
