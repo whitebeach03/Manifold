@@ -25,7 +25,6 @@ def main():
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
-        parser.add_argument("--k_foma",     type=int, default=32)
         args = parser.parse_args() 
 
         set_seed(i)
@@ -33,7 +32,6 @@ def main():
         epochs     = args.epochs
         data_type  = args.data_type
         model_type = args.model_type
-        k_foma     = args.k_foma
         device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Number of Classes & Batch Size
@@ -128,13 +126,13 @@ def main():
 
         ### TRAINING ###
         for epoch in range(train_epoch):
-            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment="Local-FOMA", num_classes=num_classes, aug_ok=False, epochs=epoch, k_foma=k_foma)
-            val_loss, val_acc     = val(model, val_loader, criterion, device, augment="Local-FOMA", aug_ok=False)
+            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment="Default", num_classes=num_classes, aug_ok=False, epochs=epoch)
+            val_loss, val_acc     = val(model, val_loader, criterion, device, augment="Default", aug_ok=False)
 
             if score <= val_acc:
                 print("Save model parameters...")
                 score = val_acc
-                model_save_path = f"./logs/{model_type}/Mixup-FOMA2/{data_type}_{epochs}_{i}_{k_foma}.pth"
+                model_save_path = f"./logs/{model_type}/Mixup-FOMA2/{data_type}_{epochs}_{i}.pth"
                 torch.save(model.state_dict(), model_save_path)
             
             history["loss"].append(train_loss)

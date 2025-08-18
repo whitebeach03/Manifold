@@ -31,7 +31,7 @@ from src.methods.foma import compute_foma_loss
 from src.methods.fomix import *
 from src.methods.hybrid import *
 
-def train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok, epochs):
+def train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok, epochs, k_foma=32):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
@@ -85,7 +85,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             phase2_epoch = epochs
             phase2_total = 40  
             w_foma = min(1.0, phase2_epoch / (phase2_total / 2))
-            loss_foma, preds = compute_foma_loss(model, images, labels, k=64, num_classes=num_classes, lambda_almp=w_foma, device=device, scaleup=False)
+            loss_foma, preds = compute_foma_loss(model, images, labels, k=k_foma, num_classes=num_classes, lambda_almp=w_foma, device=device, scaleup=False)
             w_mix = 1 - w_foma
             
             loss = w_mix*loss_mix + loss_foma
