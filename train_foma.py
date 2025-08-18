@@ -29,14 +29,15 @@ def main():
         parser.add_argument("--k_foma",     type=int, default=32)
         args = parser.parse_args() 
 
-        set_seed(i)
-
+        i          = args.i
         epochs     = args.epochs
         data_type  = args.data_type
         model_type = args.model_type
         k_foma     = args.k_foma
         device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+        
+        set_seed(i)
+        
         # Number of Classes & Batch Size
         if data_type == "stl10":
             num_classes = 10
