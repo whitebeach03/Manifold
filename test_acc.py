@@ -54,11 +54,13 @@ def main():
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
+        parser.add_argument("--k_foma",     type=int, default=32)
         args = parser.parse_args() 
 
         epochs     = args.epochs
         data_type  = args.data_type
         model_type = args.model_type
+        k_foma     = args.k_foma
         device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         transform = transforms.Compose([
@@ -99,7 +101,7 @@ def main():
             
             criterion = nn.CrossEntropyLoss()
 
-            model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
+            model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}_{k_foma}.pth"
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
             test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
             print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc*100:.4f}")
