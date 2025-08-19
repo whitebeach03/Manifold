@@ -32,12 +32,12 @@ from src.methods.foma import foma
 augmentations = [
     # "Default",
     # "Mixup",
-    "Mixup-FOMA2",
+    # "Mixup-FOMA2",
     # "Mixup-FOMA-scaleup",_
     # "Manifold-Mixup",
     # "Local-FOMA",
     # "FOMA-Mixup",
-    # "RegMixup",
+    "RegMixup",
     # "FOMA-scaleup"
 ]
 
@@ -103,7 +103,10 @@ def main():
             
             criterion = nn.CrossEntropyLoss()
 
-            model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}_{k_foma}.pth"
+            if k_foma == 0:
+                model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
+            else:    
+                model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}_{k_foma}.pth"
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
             test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
             print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc*100:.4f}")
