@@ -32,10 +32,10 @@ from src.methods.foma import foma
 augmentations = [
     # "Default",
     # "Mixup",
-    # "Mixup-FOMA2",
+    "Mixup-FOMA2",
     # "Mixup-FOMA-scaleup",_
     # "Manifold-Mixup",
-    "Local-FOMA",
+    # "Local-FOMA",
     # "FOMA-Mixup",
     # "RegMixup",
     # "FOMA-scaleup"
@@ -111,8 +111,8 @@ def main():
             else:    
                 model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}_{k_foma}.pth"
             model.load_state_dict(torch.load(model_save_path, weights_only=True))
-            test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
-            print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc*100:.4f}")
+            # test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
+            # print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc*100:.4f}")
 
             for corruption in corruption_types:
                 if data_type == "cifar100":
@@ -121,7 +121,7 @@ def main():
                     test_dataset_C = CIFAR10C(corruption_type=corruption, severity=severity, transform=transform)
                 test_loader_C  = torch.utils.data.DataLoader(test_dataset_C, batch_size=512, shuffle=False)
                 test_loss_C, test_acc_C = test(model, test_loader_C, criterion, device, augment, aug_ok=False)
-                # print(f"  [{corruption}] Loss: {test_loss_C:.3f}, Accuracy: {test_acc_C:.2f}%")
+                print(f"  [{corruption}] Loss: {test_loss_C:.3f}, Accuracy: {test_acc_C:.2f}%")
                 total_acc += test_acc_C
                 total_loss += test_loss_C
 
