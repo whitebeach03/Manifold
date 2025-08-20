@@ -174,7 +174,7 @@ os.makedirs(f"./result_features/{method}/{data_type}", exist_ok=True)
 augmentations = [
     # "FOMA-Mixup",
     "Default",
-    # "Mixup", 
+    "Mixup", 
     # "Local-FOMA", 
     # "Mixup-FOMA2",
 ]
@@ -276,6 +276,8 @@ for augment in augmentations:
     plt.figure(figsize=(8, 6))
     if augment == "Mixup-FOMA2":
         augment = "Mixup-FOMA"
+    if augment == "Default":
+        augment = "Baseline"
     if data_type == "cifar100":
         # cmap = cm.get_cmap('tab20', 20)
         cmap = plt.get_cmap('tab20', 20)
@@ -295,7 +297,7 @@ for augment in augmentations:
             cbar.ax.set_yticklabels(REPRESENTATIVE_20_NAMES)
         except Exception:
             pass
-        title = f"t-SNE of Feature Representations ({augment})"
+        title = f"{augment}"
         save_suffix = "_20classes"
     else:
         scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=6, alpha=1)
