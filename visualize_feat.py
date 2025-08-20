@@ -262,7 +262,7 @@ for augment in augmentations:
         y = np.vectorize(FINE_TO_20IDX.get)(y)
 
     if method == "tsne":
-        reducer = TSNE(n_components=2, random_state=42, perplexity=30, n_iter=1500)
+        reducer = TSNE(n_components=2, random_state=42, perplexity=30)
     elif method == "umap":
         reducer = UMAP(
             n_components=2,
