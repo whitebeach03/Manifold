@@ -174,9 +174,9 @@ os.makedirs(f"./result_features/{method}/{data_type}", exist_ok=True)
 augmentations = [
     # "FOMA-Mixup",
     # "Default",
-    # "Mixup", 
+    "Mixup", 
     # "Local-FOMA", 
-    "Mixup-FOMA2",
+    # "Mixup-FOMA2",
 ]
 
 if data_type == "stl10":
@@ -274,8 +274,11 @@ for augment in augmentations:
     X_2d = reducer.fit_transform(X)
 
     plt.figure(figsize=(8, 6))
+    if augment == "Mixup-FOMA2":
+        augment = "Mixup-FOMA"
     if data_type == "cifar100":
-        cmap = cm.get_cmap('tab20', 20)
+        # cmap = cm.get_cmap('tab20', 20)
+        cmap = plt.get_cmap('tab20', 20)
         # bright_colors = [
         #     "red", "blue", "green", "orange", "purple",
         #     "cyan", "magenta", "yellow", "brown", "lime",
@@ -284,7 +287,7 @@ for augment in augmentations:
         # ]
         # cmap = ListedColormap(bright_colors)
         # cmap = plt.cm.get_cmap("gist_rainbow", 20)  # 20 クラス対応
-        scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap=cmap, s=6, alpha=0.7)
+        scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap=cmap, s=10, alpha=0.7)
         cbar = plt.colorbar(scatter, ticks=np.arange(20))
         cbar.set_label("Representative class (20)")
         # 余裕があればクラス名も表示（長い場合は省略されます）
@@ -292,12 +295,12 @@ for augment in augmentations:
             cbar.ax.set_yticklabels(REPRESENTATIVE_20_NAMES)
         except Exception:
             pass
-        title = "t-SNE of Feature Representations (CIFAR-100: 20 selected classes)"
+        title = f"t-SNE of Feature Representations ({augment})"
         save_suffix = "_20classes"
     else:
         scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=6, alpha=1)
         plt.colorbar(scatter, label="Class label")
-        title = "t-SNE of ResNet Feature Representations"
+        title = f"t-SNE of ResNet Feature Representations ({augment})"
         save_suffix = ""
 
     plt.title(title)
