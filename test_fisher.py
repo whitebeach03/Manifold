@@ -12,18 +12,18 @@ from torch.utils.data import DataLoader, random_split
 
 def main():
     iteration  = 1
-    epochs     = 250
-    data_type  = "cifar10"
+    epochs     = 400
+    data_type  = "cifar100"
     model_type = "wide_resnet_28_10"
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     augmentations = [
         "Default",
-        "Mixup",
+        # "Mixup",
         # "Manifold-Mixup",
         # "Local-FOMA",
         # "FOMA-Mixup",
-        "Mixup-FOMA"
+        # "Mixup-FOMA"
     ]
 
     for augment in augmentations:
@@ -32,7 +32,7 @@ def main():
         snn_list    = []
         for i in range(iteration):
 
-            model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
+            model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_2.pth"
 
             if data_type == "stl10":
                 num_classes = 10

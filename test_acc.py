@@ -32,13 +32,14 @@ from src.methods.foma import foma
 augmentations = [
     # "Default",
     # "Mixup",
-    # "Mixup-FOMA2",
+    "Mixup-FOMA2",
     # "Mixup-FOMA-scaleup",_
     # "Manifold-Mixup",
     # "Local-FOMA",
     # "FOMA-Mixup",
-    "RegMixup",
+    # "RegMixup",
     # "FOMA-scaleup"
+    # "CutMix"
 ]
 
 corruption_types = [

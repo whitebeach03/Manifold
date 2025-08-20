@@ -6,6 +6,7 @@ import torchvision.transforms as transforms
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import argparse
 from torch.utils.data import DataLoader, Subset
 from src.models.resnet import ResNet18
 from sklearn.manifold import TSNE
@@ -16,8 +17,19 @@ from umap import UMAP
 
 method     = "tsne"
 
-data_type  = "cifar100"
-model_type = "wide_resnet_28_10"
+parser = argparse.ArgumentParser()
+parser.add_argument("--i",          type=int, default=1)
+parser.add_argument("--epochs",     type=int, default=400)
+parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
+parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
+parser.add_argument("--k_foma",     type=int, default=0)
+args = parser.parse_args() 
+
+i          = args.i
+epochs     = args.epochs
+data_type  = args.data_type
+model_type = args.model_type
+k_foma     = args.k_foma
 device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 os.makedirs(f"./result_features/{method}/{data_type}", exist_ok=True)
 
@@ -44,7 +56,10 @@ elif data_type == "cifar10":
 for augment in augmentations:
     features_list = []
     labels_list = []
-    model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_0.pth"
+    if k_foma == 0:
+        model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
+    else:    
+        model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}_{k_foma}.pth"
     
     if model_type == "resnet18":
         model = ResNet18().to(device)
