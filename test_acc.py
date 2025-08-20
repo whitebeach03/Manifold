@@ -32,14 +32,15 @@ from src.methods.foma import foma
 augmentations = [
     # "Default",
     # "Mixup",
-    "Mixup-FOMA2",
+    # "Mixup-FOMA2",
     # "Mixup-FOMA-scaleup",_
     # "Manifold-Mixup",
-    # "Local-FOMA",
+    "Local-FOMA",
     # "FOMA-Mixup",
     # "RegMixup",
     # "FOMA-scaleup"
     # "CutMix"
+    # "SK-Mixup"
 ]
 
 corruption_types = [
@@ -50,13 +51,14 @@ corruption_types = [
 ]
 severity = 5
 def main():
-    for i in range(1):
+    for severity in range(1, 6):
+        print(f"SEVERITY = {severity}")
         parser = argparse.ArgumentParser()
         parser.add_argument("--i",          type=int, default=1)
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
-        parser.add_argument("--k_foma",     type=int, default=32)
+        parser.add_argument("--k_foma",     type=int, default=0)
         args = parser.parse_args() 
 
         i          = args.i
@@ -119,7 +121,7 @@ def main():
                     test_dataset_C = CIFAR10C(corruption_type=corruption, severity=severity, transform=transform)
                 test_loader_C  = torch.utils.data.DataLoader(test_dataset_C, batch_size=512, shuffle=False)
                 test_loss_C, test_acc_C = test(model, test_loader_C, criterion, device, augment, aug_ok=False)
-                print(f"  [{corruption}] Loss: {test_loss_C:.3f}, Accuracy: {test_acc_C:.2f}%")
+                # print(f"  [{corruption}] Loss: {test_loss_C:.3f}, Accuracy: {test_acc_C:.2f}%")
                 total_acc += test_acc_C
                 total_loss += test_loss_C
 

@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 def main():
-    for i in range(3, 4):
+    for i in range(1, 2):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
@@ -120,19 +120,19 @@ def main():
         score     = 0.0
         history   = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
 
-        os.makedirs(f"./logs/{model_type}/Mixup-FOMA2",    exist_ok=True)
-        os.makedirs(f"./history/{model_type}/Mixup-FOMA2", exist_ok=True)
+        os.makedirs(f"./logs/{model_type}/RegMixup",    exist_ok=True)
+        os.makedirs(f"./history/{model_type}/RegMixup", exist_ok=True)
         os.makedirs(f"./distance_log/{model_type}",      exist_ok=True)
 
         ### TRAINING ###
         for epoch in range(train_epoch):
-            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment="Default", num_classes=num_classes, aug_ok=False, epochs=epoch)
-            val_loss, val_acc     = val(model, val_loader, criterion, device, augment="Default", aug_ok=False)
+            train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment="RegMixup", num_classes=num_classes, aug_ok=False, epochs=epoch)
+            val_loss, val_acc     = val(model, val_loader, criterion, device, augment="RegMixup", aug_ok=False)
 
             if score <= val_acc:
                 print("Save model parameters...")
                 score = val_acc
-                model_save_path = f"./logs/{model_type}/Mixup-FOMA2/{data_type}_{epochs}_{i}.pth"
+                model_save_path = f"./logs/{model_type}/RegMixup/{data_type}_{epochs}_{i}.pth"
                 torch.save(model.state_dict(), model_save_path)
             
             history["loss"].append(train_loss)
@@ -141,7 +141,7 @@ def main():
             history["val_accuracy"].append(val_acc)
             print(f"| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |")
 
-        with open(f"./history/{model_type}/Mixup-FOMA2/{data_type}_{epochs}_{i}.pickle", "wb") as f:
+        with open(f"./history/{model_type}/RegMixup/{data_type}_{epochs}_{i}.pickle", "wb") as f:
             pickle.dump(history, f)
         
         ### TEST ###
@@ -150,7 +150,7 @@ def main():
         print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.5f}")
 
         test_history = {"acc": test_acc, "loss": test_loss}
-        with open(f"./history/{model_type}/Mixup-FOMA2/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
+        with open(f"./history/{model_type}/RegMixup/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
             pickle.dump(test_history, f)
 
 def set_seed(seed):
