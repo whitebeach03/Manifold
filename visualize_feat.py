@@ -173,9 +173,9 @@ os.makedirs(f"./result_features/{method}/{data_type}", exist_ok=True)
 
 augmentations = [
     # "FOMA-Mixup",
-    "Default",
-    "Mixup", 
-    # "Local-FOMA", 
+    # "Default",
+    # "Mixup", 
+    "Local-FOMA", 
     # "Mixup-FOMA2",
 ]
 
