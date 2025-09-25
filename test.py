@@ -30,7 +30,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from src.methods.foma import foma
 
 def main():
-    for i in range(3):
+    for i in range(5):
         parser = argparse.ArgumentParser()
         parser.add_argument("--epochs",     type=int, default=400)
         parser.add_argument("--augment",    type=str, default="Default")
