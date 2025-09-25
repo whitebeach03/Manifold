@@ -19,12 +19,13 @@ def main():
     
     augmentations = [
         # "Default",
-        "Mixup",
+        # "Mixup",
         # "Manifold-Mixup",
         # "CutMix",
         # "RegMixup",
-        # "Local-FOMA",
+        "Local-FOMA",
         # "Mixup-FOMA2",
+        
         # "Mixup-FOMA-scaleup"
         # "FOMA-Mixup"
 
@@ -87,8 +88,8 @@ def main():
         epochs = 250
     
     ### Plot accuracy & loss ###
-    plot_comparison_graph(model_type, augmentations, data_type, epochs, iteration)
-    plot_comparison_graph_train(model_type, augmentations, data_type, epochs, iteration)
+    # plot_comparison_graph(model_type, augmentations, data_type, epochs, iteration)
+    # plot_comparison_graph_train(model_type, augmentations, data_type, epochs, iteration)
     
     ### Print experiments result ###
     print("========================================================================================")
@@ -300,7 +301,7 @@ def load_std(path, iteration):
     acc_list = []
     for i in range(iteration):
         acc_list.append(dic[i]["acc"])
-    std_acc = np.std(acc_list, ddof=1)
+    std_acc = np.std(acc_list, ddof=0)
     std_acc = round(std_acc, 5)
     return std_acc * 100
 
