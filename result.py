@@ -19,12 +19,12 @@ def main():
     
     augmentations = [
         # "Default",
-        # "Mixup",
+        "Mixup",
         # "Manifold-Mixup",
         # "CutMix",
         # "RegMixup",
         # "Local-FOMA",
-        "Mixup-FOMA2",
+        # "Mixup-FOMA2",
         # "Mixup-FOMA-scaleup"
         # "FOMA-Mixup"
 
@@ -300,9 +300,9 @@ def load_std(path, iteration):
     acc_list = []
     for i in range(iteration):
         acc_list.append(dic[i]["acc"])
-    std_acc = np.std(acc_list)
+    std_acc = np.std(acc_list, ddof=1)
     std_acc = round(std_acc, 5)
-    return std_acc
+    return std_acc * 100
 
 if __name__ == "__main__":
     main()
