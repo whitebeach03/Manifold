@@ -9,7 +9,7 @@ import torchvision.transforms.functional as F
 # ───────────────────────────────────────────────
 # 画像を読み込む
 # ───────────────────────────────────────────────
-SRC_IMG = "input.jpg"              # ここを書き換えてください
+SRC_IMG = "six.jpeg"              # ここを書き換えてください
 OUT_DIR  = Path("output")
 OUT_DIR.mkdir(exist_ok=True)
 
@@ -43,7 +43,7 @@ AUGS = {
     "ShearY"      : lambda x: F.affine(x, angle=0, translate=(0,0), scale=1, shear=(0, 20)),
     "TranslateX"  : lambda x: F.affine(x, angle=0, translate=(int(0.2*x.size[0]),0), scale=1, shear=0),
     "TranslateY"  : lambda x: F.affine(x, angle=0, translate=(0,int(0.2*x.size[1])), scale=1, shear=0),
-    "Rotate"      : lambda x: F.rotate(x, angle=30),
+    "Rotate"      : lambda x: F.rotate(x, angle=160),
 
     # ピクセル変換
     "AutoContrast": lambda x: ImageOps.autocontrast(x),
