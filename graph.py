@@ -23,10 +23,10 @@ import pickle
 import matplotlib.pyplot as plt
 
 # === 1. pickleファイルの読み込み ===
-with open('/home/shirahama/Manifold/history/wide_resnet_28_10/RegMixup/cifar100_360_2.pickle', 'rb') as f:
+with open('/home/takumi/Manifold/history/wide_resnet_28_10/RegMixup/cifar100_360_3.pickle', 'rb') as f:
     data_360 = pickle.load(f)
 
-with open('/home/shirahama/Manifold/history/wide_resnet_28_10/Mixup-FOMA2/cifar100_400_2.pickle', 'rb') as f:
+with open('/home/takumi/Manifold/history/wide_resnet_28_10/Mixup-FOMA2/cifar100_400_3.pickle', 'rb') as f:
     data_400 = pickle.load(f)
 
 # with open('/home/shirahama/Manifold/history/wide_resnet_28_10/Mixup/cifar100_400_2.pickle', 'rb') as f:
