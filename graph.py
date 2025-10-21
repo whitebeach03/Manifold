@@ -1,40 +1,49 @@
+# import pickle
+# import matplotlib.pyplot as plt
+
+# file_path = './history/wide_resnet_28_10/Mixup-FOMA2/cifar100_400_3.pickle'
+
+# with open(file_path, 'rb') as f:
+#     accuracy_list = pickle.load(f)
+
+# val_acc = accuracy_list['val_accuracy']
+# epochs = range(1, len(val_acc) + 1)
+
+# plt.plot(epochs, val_acc, linestyle='solid', linewidth=0.8, label='Mixup-FOMA2')
+
+# plt.title('Validation Accuracy')
+# plt.xlabel('Epochs')
+# plt.ylabel('Accuracy')
+# plt.legend()
+# plt.grid(True)
+# plt.show()
+
+
 import pickle
 import matplotlib.pyplot as plt
 
-file_path = './history/wide_resnet_28_10/Mixup-FOMA2/cifar100_400_3.pickle'
-
 # === 1. pickleファイルの読み込み ===
-# 例: "accuracy_per_epoch.pkl" に保存されているとする
-with open(file_path, 'rb') as f:
-    accuracy_list = pickle.load(f)
+with open('/home/shirahama/Manifold/history/wide_resnet_28_10/Mixup/cifar100_400_0.pickle', 'rb') as f:
+    data_360 = pickle.load(f)
 
-val_acc = accuracy_list['val_accuracy']
-epochs = range(1, len(val_acc) + 1)
+with open('/home/shirahama/Manifold/history/wide_resnet_28_10/Mixup-FOMA2/cifar100_400_0.pickle', 'rb') as f:
+    data_400 = pickle.load(f)
 
-plt.plot(epochs, val_acc, linestyle='solid', linewidth=0.8, label='Mixup-FOMA2')
-
-# === 2. データの形式確認 ===
-# accuracy_list がリストや numpy 配列を想定
-# 各エポックごとの正解率 [0.85, 0.87, 0.89, ...] のような形式
-# if not isinstance(accuracy_list, (list, tuple)):
-#     raise ValueError("正解率データがリスト形式ではありません。")
+# === 2. データの連結 ===
+# 360エポック学習済み → 360個
+# 追加40エポック → 40個
+# 注意: data_400 の最初の部分が360と重複していないか確認
+val_acc = data_360['val_accuracy'] + data_400['val_accuracy']
 
 # === 3. グラフ描画 ===
-plt.title('Validation Accuracy')
-plt.xlabel('Epochs')
+epochs = list(range(1, len(val_acc) + 1))
+
+plt.figure(figsize=(8, 5))
+plt.plot(epochs, val_acc, label='Validation Accuracy', linewidth=2)
+plt.title('Model Accuracy over 400 Epochs')
+plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()
-
-
-# epochs = list(range(1, len(accuracy_list) + 1))
-
-# plt.figure(figsize=(8, 5))
-# plt.plot(epochs, accuracy_list, marker='o', linewidth=2)
-# plt.title('Model Accuracy per Epoch')
-# plt.xlabel('Epoch')
-# plt.ylabel('Accuracy')
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
