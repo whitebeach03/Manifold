@@ -9,7 +9,7 @@ import torchvision.transforms.functional as F
 # ───────────────────────────────────────────────
 # 画像を読み込む
 # ───────────────────────────────────────────────
-SRC_IMG = "six.jpeg"              # ここを書き換えてください
+SRC_IMG = "fish.png"              # ここを書き換えてください
 OUT_DIR  = Path("output")
 OUT_DIR.mkdir(exist_ok=True)
 
