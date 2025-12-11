@@ -43,7 +43,8 @@ AUGS = {
     "ShearY"      : lambda x: F.affine(x, angle=0, translate=(0,0), scale=1, shear=(0, 20)),
     "TranslateX"  : lambda x: F.affine(x, angle=0, translate=(int(0.2*x.size[0]),0), scale=1, shear=0),
     "TranslateY"  : lambda x: F.affine(x, angle=0, translate=(0,int(0.2*x.size[1])), scale=1, shear=0),
-    "Rotate"      : lambda x: F.rotate(x, angle=160),
+    "Rotate"      : lambda x: F.rotate(x, angle=110),
+    "FlipLR"      : lambda x: F.hflip(x),
 
     # ピクセル変換
     "AutoContrast": lambda x: ImageOps.autocontrast(x),
@@ -55,6 +56,15 @@ AUGS = {
     "Color"       : lambda x: ImageEnhance.Color(x).enhance(1.8),
     "Brightness"  : lambda x: ImageEnhance.Brightness(x).enhance(1.5),
     "Sharpness"   : lambda x: ImageEnhance.Sharpness(x).enhance(2.0),
+    "Scale"       : lambda x: F.affine(x, angle=0, translate=(0,0), scale=random.uniform(0.7, 1.3), shear=0),
+    "RandCrop"    : lambda x: F.resized_crop(
+                        x,
+                        top=random.randint(0, int(0.2 * x.size[1])),
+                        left=random.randint(0, int(0.2 * x.size[0])),
+                        height=int(x.size[1] * 0.8),
+                        width=int(x.size[0] * 0.8),
+                        size=x.size,
+                    ),
 
     # 領域／サンプル系
     "Cutout"      : cutout,

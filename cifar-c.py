@@ -49,7 +49,7 @@ from torchvision.datasets import CIFAR10
 import torchvision.transforms as T
 import os
 
-image_idx = 14
+image_idx = 112
 
 # --- 1. CIFAR-10 Original ---
 transform = T.ToTensor()
