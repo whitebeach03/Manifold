@@ -49,7 +49,7 @@ from torchvision.datasets import CIFAR10
 import torchvision.transforms as T
 import os
 
-image_idx = 112
+image_idx = 14
 
 # --- 1. CIFAR-10 Original ---
 transform = T.ToTensor()
@@ -65,7 +65,7 @@ corruptions = [
 ]
 
 # --- 3. severity の設定（1〜5） ---
-severity = 5
+severity = 4
 
 # --- 4. 出力フォルダ ---
 out_dir = f"./visualized_corruptions/severity_{severity}"
@@ -83,14 +83,30 @@ print("Saved: Original")
 # --- 6. 各 corruption タイプごとに出力 ---
 for cname in corruptions:
     c_data = np.load(f"./data/CIFAR-10-C/{cname}.npy")
-    c_img = c_data[image_idx] / 255.0  # severity に対応する最初の画像を使用
-    
+
+    # severity を反映したインデックス
+    base_idx = image_idx + (severity - 1) * 10000  # 0〜49999 の範囲
+    c_img = c_data[base_idx] / 255.0
+
     plt.imshow(c_img)
     plt.title(f"{cname.replace('_', ' ').title()} (sev={severity})", fontsize=10)
     plt.axis("off")
     plt.tight_layout()
-    
+
     save_path = os.path.join(out_dir, f"{cname}_sev{severity}.png")
     plt.savefig(save_path, bbox_inches="tight")
     plt.close()
-    print(f"Saved: {cname}")
+    print(f"Saved: {cname} (sev={severity})")
+# for cname in corruptions:
+#     c_data = np.load(f"./data/CIFAR-10-C/{cname}.npy")
+#     c_img = c_data[image_idx] / 255.0  # severity に対応する最初の画像を使用
+    
+#     plt.imshow(c_img)
+#     plt.title(f"{cname.replace('_', ' ').title()} (sev={severity})", fontsize=10)
+#     plt.axis("off")
+#     plt.tight_layout()
+    
+#     save_path = os.path.join(out_dir, f"{cname}_sev{severity}.png")
+#     plt.savefig(save_path, bbox_inches="tight")
+#     plt.close()
+#     print(f"Saved: {cname}")

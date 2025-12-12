@@ -1,0 +1,295 @@
+import argparse
+import numpy as np
+import random
+import os
+import pickle
+import torch
+import torchvision
+import torchvision.transforms as transforms
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from src.utils import mixup_data, mixup_criterion, compute_foma_loss
+from src.models.resnet import ResNet18, ResNet101
+from src.models.wide_resnet import Wide_ResNet
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import NearestNeighbors
+from tqdm import tqdm
+from torchvision.datasets import STL10, CIFAR10, CIFAR100
+from torch.utils.data import DataLoader, random_split, Subset
+from src.methods.foma import foma,compute_foma_loss
+from cc_foma import cc_foma
+from memory_bank import FeatureMemoryBank
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--i",          type=int, default=0)
+    parser.add_argument("--epochs",     type=int, default=400)
+    parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
+    parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
+    args = parser.parse_args() 
+
+    i          = args.i
+    epochs     = args.epochs
+    data_type  = args.data_type
+    model_type = args.model_type
+    device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    augment    = "Mixup-FOMA"
+    set_seed(i)
+
+    # Number of Classes & Batch Size
+    if data_type == "stl10":
+        num_classes = 10
+        batch_size  = 64
+    elif data_type == "cifar100":
+        num_classes = 100
+        batch_size  = 128
+    elif data_type == "cifar10":
+        num_classes = 10
+        batch_size  = 128
+    
+    default_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.Pad(4),
+        transforms.RandomCrop(32),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
+    transform = transforms.Compose([
+        transforms.ToTensor(), 
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+            
+    # Loading Dataset
+    if data_type == "stl10":
+        train_dataset = STL10(root="./data", split="test",  download=True, transform=default_transform)
+        test_dataset  = STL10(root="./data", split="train", download=True, transform=transform)
+    elif data_type == "cifar100":
+        full_train_aug   = CIFAR100(root="./data", train=True,  transform=default_transform, download=True)
+        full_train_plain = CIFAR100(root="./data", train=True,  transform=transform,         download=True)
+        test_dataset     = CIFAR100(root="./data", train=False, transform=transform,         download=True)
+    elif data_type == "cifar10":
+        full_train_aug   = CIFAR10(root="./data", train=True,  transform=default_transform, download=True)
+        full_train_plain = CIFAR10(root="./data", train=True,  transform=transform,         download=True)
+        test_dataset     = CIFAR10(root="./data", train=False, transform=transform,         download=True)
+
+    n_samples = len(full_train_aug)
+    n_train   = int(n_samples * 0.8)
+    index_file = f"./data_split/split_indices_{data_type}_{i}.pkl"
+
+    if os.path.exists(index_file):
+        print(f"Loading split indices from {index_file}")
+        with open(index_file, "rb") as f:
+            train_indices, val_indices = pickle.load(f)
+    else:
+        print("Generating new split indices...")
+        indices = list(range(n_samples))
+        random.shuffle(indices)  # set_seedで固定される
+        train_indices, val_indices = indices[:n_train], indices[n_train:]
+        with open(index_file, "wb") as f:
+            pickle.dump((train_indices, val_indices), f)
+
+    train_dataset = torch.utils.data.Subset(full_train_aug, train_indices)
+    val_dataset   = torch.utils.data.Subset(full_train_plain, val_indices)
+    
+    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)     
+    test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
+    
+    print(f"\n==> Training with {augment} ...")
+    distance_log = []
+
+    # Select Model
+    if model_type == "resnet18":
+        model = ResNet18().to(device)
+    elif model_type == "resnet101":
+        model = ResNet101().to(device)
+    elif model_type == "wide_resnet_28_10":
+        model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
+        
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters())
+    score     = 0.0
+    history   = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
+
+    os.makedirs(f"./logs/{model_type}/{augment}",    exist_ok=True)
+    os.makedirs(f"./history/{model_type}/{augment}", exist_ok=True)
+    os.makedirs(f"./distance_log/{model_type}",      exist_ok=True)
+
+    feature_dim = model.linear.in_features
+    memory_bank = FeatureMemoryBank(feature_dim=feature_dim, memory_size=5000, num_classes=num_classes)
+
+    ### TRAINING ###
+    for epoch in range(epochs):
+        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok=False, epochs=epoch, k_foma=32, memory_bank=memory_bank)
+        val_loss, val_acc     = val(model, val_loader, criterion, device, augment, aug_ok=False)
+
+        if score <= val_acc:
+            print("Save model parameters...")
+            score = val_acc
+            model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
+            torch.save(model.state_dict(), model_save_path)
+        
+        history["loss"].append(train_loss)
+        history["accuracy"].append(train_acc)
+        history["val_loss"].append(val_loss)
+        history["val_accuracy"].append(val_acc)
+        print(f"| {epoch+1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |")
+
+    with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}.pickle", "wb") as f:
+        pickle.dump(history, f)
+    
+    ### TEST ###
+    model.load_state_dict(torch.load(model_save_path, weights_only=True))
+    test_loss, test_acc = test(model, test_loader, criterion, device, augment=None, aug_ok=False)
+    print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.5f}")
+
+    test_history = {"acc": test_acc, "loss": test_loss}
+    with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
+        pickle.dump(test_history, f)
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok, epochs, k_foma=32, memory_bank=None):
+    model.train()
+    train_loss = 0.0
+    train_acc  = 0.0
+
+    # 切り替えエポックの設定
+    if num_classes == 100:
+        t_mixup = 380
+        total_epochs = 400
+    elif num_classes == 10:
+        t_mixup = 230
+        total_epochs = 250
+    else:
+        t_mixup = int(epochs * 0.9)
+        total_epochs = epochs
+
+    # enumerate でバッチを回す
+    for batch_idx, (images, labels) in enumerate(tqdm(train_loader, leave=False)):
+        images, labels = images.to(device), labels.to(device)
+        labels_true = labels
+
+        # === 共通処理: 特徴量抽出とメモリバンク更新 ===
+        # Phase 1, Phase 2 問わず、特徴量をメモリバンクに貯め続けるのが重要です。
+        # 提示されたモデルには extract_features があるのでこれを使います。
+        
+        # 勾配計算グラフを切断してメモリバンクに入れるため .detach() します
+        with torch.no_grad():
+            features_raw = model.extract_features(images)
+        
+        if memory_bank is not None:
+            memory_bank.update(features_raw, labels)
+
+        # === Phase 分岐 ===
+        if epochs < t_mixup:
+            # ---------------------------------------------------------
+            # Phase 1: Mixup (Manifold Mixup or Input Mixup)
+            # ---------------------------------------------------------
+            # モデルの forward が Manifold Mixup に対応しているため、
+            # 引数 augment, aug_ok をそのまま渡して処理させます。
+            
+            mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+            
+            # augment="Default" などにして通常のforwardを呼ぶ
+            # (forwardの引数はモデル定義に合わせて調整してください)
+            preds = model(mixed_x, labels, device, augment=None, aug_ok=False)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        else:
+            # ---------------------------------------------------------
+            # Phase 2: CC-FOMA (Local Refinement)
+            # ---------------------------------------------------------
+            # 重み係数 w_foma (Warm-up)
+            phase2_epoch = epochs - t_mixup
+            phase2_total = total_epochs - t_mixup
+            w_foma = min(1.0, phase2_epoch / (phase2_total / 2)) if phase2_total > 0 else 1.0
+
+            # w_foma = 1
+
+            # 1. Clean Loss
+            # extract_features で特徴量を取り、linear層に通す
+            # ※ ここでは勾配が必要なので、再度計算グラフに乗せて計算します
+            features_clean = model.extract_features(images)
+            preds_clean = model.linear(features_clean)
+            loss_clean = criterion(preds_clean, labels)
+
+            # 2. CC-FOMA Loss
+            # メモリバンクを使って摂動特徴量を生成
+            z_aug = cc_foma(
+                features_clean, labels, memory_bank, 
+                k=k_foma, alpha=1.0, rho=0.9
+            )
+
+            # 摂動特徴量を classifier (self.linear) に通す
+            preds_aug = model.linear(z_aug)
+            
+            # ラベルは元のまま (Class-Conditional)
+            loss_foma = criterion(preds_aug, labels)
+
+            # 総合損失
+            loss = loss_clean + w_foma * loss_foma
+            preds = preds_clean # 精度計算用
+
+        # --- Optimization ---
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        # --- Metrics ---
+        train_loss += loss.item()
+        y_pred = preds.argmax(dim=1)
+        batch_acc = (y_pred == labels_true).float().mean().item()
+        train_acc += batch_acc
+
+    train_loss /= len(train_loader)
+    train_acc  /= len(train_loader)
+    
+    return train_loss, train_acc
+
+def val(model, val_loader, criterion, device, augment, aug_ok):
+    model.eval()
+    val_loss = 0.0
+    val_acc  = 0.0
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images, labels = images.to(device), labels.to(device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
+            val_loss += loss.item()
+            y_pred = preds.argmax(dim=1)
+            batch_acc = (y_pred == labels).float().mean().item()
+            val_acc += batch_acc
+
+    val_loss /= len(val_loader)
+    val_acc  /= len(val_loader)
+    return val_loss, val_acc
+
+def test(model, test_loader, criterion, device, augment, aug_ok):
+    model.eval()
+    test_loss = 0.0
+    test_acc  = 0.0
+    with torch.no_grad():
+        for images, labels in tqdm(test_loader, leave=False):
+            images, labels = images.to(device), labels.to(device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss  = criterion(preds, labels)
+            test_loss += loss.item()
+            y_pred = preds.argmax(dim=1)
+            batch_acc = (y_pred == labels).float().mean().item()
+            test_acc += batch_acc
+
+    test_loss /= len(test_loader)
+    test_acc  /= len(test_loader)
+    return test_loss, test_acc
+
+if __name__ == "__main__":
+    main()
