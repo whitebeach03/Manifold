@@ -190,15 +190,13 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             # ---------------------------------------------------------
             # Phase 1: Mixup (Manifold Mixup or Input Mixup)
             # ---------------------------------------------------------
-            # モデルの forward が Manifold Mixup に対応しているため、
-            # 引数 augment, aug_ok をそのまま渡して処理させます。
+            preds = model(images, labels=labels, device=device, augment=augment)
+            loss_clean = criterion(preds, labels)
             
             mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-            
-            # augment="Default" などにして通常のforwardを呼ぶ
-            # (forwardの引数はモデル定義に合わせて調整してください)
-            preds = model(mixed_x, labels, device, augment=None, aug_ok=False)
-            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            preds_mix = model(mixed_x, labels, device, augment, aug_ok)
+            loss_mix = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
+            loss = loss_clean + loss_mix
 
         else:
             # ---------------------------------------------------------
