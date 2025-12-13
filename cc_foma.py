@@ -93,6 +93,8 @@ def cc_foma(
     # 中心化
     Zi_mean = Zi.mean(dim=1, keepdim=True)
     Zi_centered = Zi - Zi_mean
+    jitter = 1e-4  
+    Zi_centered += torch.randn_like(Zi_centered) * jitter
     
     # Batch SVD
     # U: (B, k, k), S: (B, k), Vt: (B, k, D)

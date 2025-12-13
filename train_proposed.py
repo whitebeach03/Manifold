@@ -24,7 +24,7 @@ from memory_bank import FeatureMemoryBank
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--i",          type=int, default=0)
-    parser.add_argument("--epochs",     type=int, default=400)
+    parser.add_argument("--epochs",     type=int, default=250)
     parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     args = parser.parse_args() 
@@ -109,7 +109,9 @@ def main():
         model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
         
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters())
+    # optimizer = optim.Adam(model.parameters())
+    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     score     = 0.0
     history   = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
 
@@ -124,6 +126,7 @@ def main():
     for epoch in range(epochs):
         train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok=False, epochs=epoch, k_foma=32, memory_bank=memory_bank)
         val_loss, val_acc     = val(model, val_loader, criterion, device, augment, aug_ok=False)
+        scheduler.step()
 
         if score <= val_acc:
             print("Save model parameters...")
@@ -163,15 +166,8 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
     train_acc  = 0.0
 
     # 切り替えエポックの設定
-    if num_classes == 100:
-        t_mixup = 380
-        total_epochs = 400
-    elif num_classes == 10:
-        t_mixup = 230
-        total_epochs = 250
-    else:
-        t_mixup = int(epochs * 0.9)
-        total_epochs = epochs
+    total_epochs = 250
+    t_mixup = int(total_epochs * 0.9)
 
     # enumerate でバッチを回す
     for batch_idx, (images, labels) in enumerate(tqdm(train_loader, leave=False)):
@@ -211,9 +207,10 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             # 重み係数 w_foma (Warm-up)
             phase2_epoch = epochs - t_mixup
             phase2_total = total_epochs - t_mixup
-            w_foma = min(1.0, phase2_epoch / (phase2_total / 2)) if phase2_total > 0 else 1.0
-
-            # w_foma = 1
+            # w_foma = min(1.0, phase2_epoch / (phase2_total / 2)) if phase2_total > 0 else 1.0
+            progress = phase2_epoch / phase2_total
+            w_foma = progress
+            w_mix = 1.0 - progress
 
             # 1. Clean Loss
             # extract_features で特徴量を取り、linear層に通す
@@ -228,15 +225,18 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
                 features_clean, labels, memory_bank, 
                 k=k_foma, alpha=1.0, rho=0.9
             )
-
             # 摂動特徴量を classifier (self.linear) に通す
             preds_aug = model.linear(z_aug)
-            
-            # ラベルは元のまま (Class-Conditional)
             loss_foma = criterion(preds_aug, labels)
+            
+            # 3. Mixup Loss
+            mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+            preds_mix = model(mixed_x, labels, device, augment=None, aug_ok=False)
+            loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
 
             # 総合損失
-            loss = loss_clean + w_foma * loss_foma
+            # loss = loss_clean + w_foma * loss_foma
+            loss  = loss_clean + (w_foma * loss_foma) + (w_mix * loss_mix)
             preds = preds_clean # 精度計算用
 
         # --- Optimization ---

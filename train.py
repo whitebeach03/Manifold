@@ -22,7 +22,7 @@ from src.methods.foma import foma
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--i",          type=int, default=0)
-    parser.add_argument("--epochs",     type=int, default=400)
+    parser.add_argument("--epochs",     type=int, default=250)
     parser.add_argument("--augment",    type=str, default="Default")
     parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
@@ -114,7 +114,9 @@ def main():
         model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
         
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters())
+    # optimizer = optim.Adam(model.parameters())
+    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     score     = 0.0
     history   = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
 
@@ -126,12 +128,7 @@ def main():
     for epoch in range(epochs):
         train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, augment, num_classes, aug_ok=False, epochs=epoch)
         val_loss, val_acc     = val(model, val_loader, criterion, device, augment, aug_ok=False)
-
-        # train_feats = extract_wrn_features(model, train_loader.dataset, device)
-        # feats_t = torch.from_numpy(train_feats).to(device)
-        # avg_dist = compute_avg_knn_distance(feats_t, k=10)
-        # distance_log.append((epoch+1, avg_dist))
-        # print(f"  → Epoch {epoch+1}: Avg 10-NN dist = {avg_dist:.4f}")
+        scheduler.step()
 
         if score <= val_acc:
             print("Save model parameters...")
@@ -147,8 +144,6 @@ def main():
 
     with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}.pickle", "wb") as f:
         pickle.dump(history, f)
-    
-    # save_distance_log(distance_log, f"./distance_log/{model_type}/{data_type}_{epochs}_{i}_knn_dist.pkl")
     
     ### TEST ###
     model.load_state_dict(torch.load(model_save_path, weights_only=True))
