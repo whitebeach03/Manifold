@@ -28,13 +28,12 @@ def main():
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     args = parser.parse_args() 
 
-    set_seed(i)
-
     i          = args.i
     epochs     = args.epochs
     augment    = args.augment
     data_type  = args.data_type
     model_type = args.model_type
+    set_seed(i)
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Number of Classes & Batch Size
