@@ -57,7 +57,7 @@ def main():
             batch_size  = 64
             test_dataset = STL10(root="./data", split="train", download=True, transform=transform)
         elif data_type == "cifar100":
-            epochs      = 400
+            epochs      = 250
             num_classes = 100
             batch_size  = 128
             test_dataset   = CIFAR100(root="./data", train=False, transform=transform, download=True)
