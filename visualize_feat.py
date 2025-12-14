@@ -184,7 +184,7 @@ if data_type == "stl10":
     num_classes = 10
     batch_size  = 64
 elif data_type == "cifar100":
-    epochs      = 400
+    epochs      = 250
     num_classes = 100  # ← 学習済みモデルは100クラス想定のまま
     batch_size  = 128
 elif data_type == "cifar10":
