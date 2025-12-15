@@ -20,6 +20,7 @@ import torchvision.transforms.functional as TF
 import torch.nn.functional as F
 from torch.distributions import Beta
 import math
+from src.methods.mix_methods import *   
 from scipy.special import betaincinv
 from src.methods.mixup import *
 from src.methods.cutout import Cutout
@@ -51,6 +52,43 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         if augment == "Default":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
+        
+        elif augment == "FMix":
+            # FMix: 周波数領域でのマスク生成
+            # decay_power=3.0 は自然画像の統計性質に合致するため推奨
+            images, index, lam = fmix_data(images, alpha=1.0, decay_power=3.0, shape=images.shape[2:])
+            y_a, y_b = labels, labels[index]
+            
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        elif augment == "ResizeMix":
+            # ResizeMix: 画像Bをリサイズしてペースト
+            images, y_a, y_b, lam = resizemix_data(images, labels, alpha=1.0, device=device)
+            
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        elif augment == "SaliencyMix":
+            # SaliencyMix: 勾配を利用して重要領域をカット＆ペースト
+            # 内部で勾配計算を行うため、optimizer.zero_grad()のタイミングに注意が必要だが、
+            # 以下の処理はパラメータ更新用の勾配には影響させず、入力画像の勾配のみを使用する。
+            images, y_a, y_b, lam = saliencymix_data(model, images, labels, criterion, alpha=1.0, device=device)
+            
+            # Saliency計算のための計算グラフはここで一度切れているため、再度Forwardして学習用グラフを作る
+            # （SaliencyMix内ではモデルをEvalモードで使ったりdetachしているため安全）
+            model.train() # 念のためTrainモード保証
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+
+        elif augment == "PuzzleMix":
+            # PuzzleMix: Saliency情報を利用してパッチの混合を最適化
+            # 計算コストが高いため、ここでは Greedy Block Matching 戦略を採用
+            images, y_a, y_b, lam = puzzlemix_data(model, images, labels, criterion, alpha=1.0, device=device, block_size=4)
+            
+            model.train()
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
         
         elif augment == "ES-Mixup":
             if epochs < t_mixup:
@@ -96,19 +134,6 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             w_mix = 1 - w_foma
             
             loss = w_mix*loss_mix + loss_foma
-            
-            
-        elif augment == "Mixup-FOMA" or augment == "Mixup-FOMA-scaleup":
-            if augment == "Mixup-FOMA":
-                scaleup = False
-            elif augment == "Mixup-FOMA-scaleup":
-                scaleup = True
-            if epochs < t_mixup:
-                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-                preds = model(images, labels, device, augment, aug_ok)
-                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-            else:
-                loss, preds = compute_foma_loss(model, images, labels, k=16, num_classes=num_classes, lambda_almp=1.0, device=device, scaleup=scaleup)
             
         elif augment == "Mixup-FOMA2":
             if epochs < t_mixup:
@@ -159,96 +184,6 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             mix_loss = -(mixed_y * F.log_softmax(preds, dim=1)).sum(dim=1).mean()
             loss = mix_loss
 
-        elif augment == "FOMix":
-            loss, preds = compute_fomix_loss(model, images, labels)
-        elif augment == "FOMA":
-            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device, scaleup=False)
-        elif augment == "FOMA-scaleup":
-            loss, preds = compute_foma_loss(model, images, labels, lambda_almp=1.0, device=device, scaleup=True)
-        elif augment == "FOMA-Mixup":
-            if epochs < 50:
-                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device, scaleup=False)
-            else:
-                preds = model(images, labels=labels, device=device, augment=augment)
-                loss_clean = criterion(preds, labels)
-                mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-                preds_mix = model(mixed_x, labels, device, augment, aug_ok)
-                loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
-                loss = loss_clean + loss_mix
-        elif augment == "FOMA-Mixup2":
-            if epochs < 50:
-                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device, scaleup=False)
-            else:
-                mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-                preds = model(mixed_x, labels, device, augment, aug_ok)
-                loss  = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        elif augment == "FOMA-scaleup-Mixup":
-            if epochs < 50:
-                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device, scaleup=True)
-            else:
-                mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-                preds = model(mixed_x, labels, device, augment, aug_ok)
-                loss  = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        elif augment == "FOMA-Manifold-Mixup":
-            if epochs < 50:
-                loss, preds = compute_foma_loss(model, images, labels, k=10, lambda_almp=1.0, device=device)
-            else:
-                preds = model(images, labels=labels, device=device, augment=augment, aug_ok=False)
-                loss_clean = criterion(preds, labels)
-                preds_mix, y_a, y_b, lam = model(images, labels, device, augment, aug_ok=True)
-                loss_mix = mixup_criterion(criterion, preds, y_a, y_b, lam)
-                loss = loss_clean + loss_mix
-        elif augment == "FOMA-knn-Curriculum":
-            if epochs < 100:
-                k = 10
-            elif epochs >= 100 and epochs < 200:
-                k = 20
-            elif epochs >= 200 and epochs < 300:
-                k = 30
-            elif epochs >= 300 and epochs < 400:
-                k = 40
-            loss, preds = compute_foma_loss(model, images, labels, augment, k, lambda_almp=1.0, device=device)
-        elif augment == "PCA":
-            loss, preds = compute_almp_loss_wrn(model, images, labels, method="pca", lambda_almp=1.0, device=device)
-        elif augment == "SVD":
-            loss, preds = compute_almp_loss_wrn(model, images, labels, method="svd", lambda_almp=1.0, device=device)
-        elif augment == "Cholesky":
-            loss, preds = compute_almp_loss_wrn(model, images, labels, method="cholesky", lambda_almp=1.0, device=device)
-        elif augment == "AugMix":
-            # Apply AugMix per image in the batch
-            images_aug = torch.zeros_like(images)
-            for i in range(images.size(0)):
-                images_aug[i] = augmix_transform(images[i])
-            preds = model(images_aug, labels, device, augment, aug_ok)
-            loss = criterion(preds, labels)
-        elif augment == "Teacher-SK-Mixup":
-            teacher = Wide_ResNet(28, 10, 0.3, num_classes=num_classes).to(device)
-            teacher.load_state_dict(torch.load("./logs/wide_resnet_28_10/Mixup/cifar100_400_0.pth", weights_only=True))
-            teacher.eval()
-            with torch.no_grad():
-                feats = teacher.extract_features(images)  # → [B, D]
-            lam, index = skmixup_fn._get_params(images.size(0), device)
-            mixed_x, _ = skmixup_fn(images, labels, feats)
-            y_a = labels
-            y_b = labels[index]
-            preds = model(mixed_x, labels=None, device=device, augment=augment)
-            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
-        elif augment == "Teacher-SK-Mixup-Curriculum":
-            if epochs < 50:
-                teacher = Wide_ResNet(28, 10, 0.3, num_classes=num_classes).to(device)
-                teacher.load_state_dict(torch.load("./logs/wide_resnet_28_10/Mixup/cifar100_400_0.pth", weights_only=True))
-                teacher.eval()
-                with torch.no_grad():
-                    feats = teacher.extract_features(images)  # → [B, D]
-            else:
-                with torch.no_grad():
-                    feats = model.extract_features(images) 
-                lam, index = skmixup_fn._get_params(images.size(0), device)
-                mixed_x, _ = skmixup_fn(images, labels, feats)
-                y_a = labels
-                y_b = labels[index]
-                preds = model(mixed_x, labels=None, device=device, augment=augment)
-                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
         elif augment == "Ent-Mixup":
             images, y_a, y_b, lam, alpha = ent_augment_mixup(
                 x=images,
