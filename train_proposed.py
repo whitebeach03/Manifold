@@ -190,13 +190,16 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             # ---------------------------------------------------------
             # Phase 1: Mixup (Manifold Mixup or Input Mixup)
             # ---------------------------------------------------------
-            preds = model(images, labels=labels, device=device, augment=augment)
-            loss_clean = criterion(preds, labels)
+            # preds = model(images, labels=labels, device=device, augment=augment)
+            # loss_clean = criterion(preds, labels)
             
-            mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-            preds_mix = model(mixed_x, labels, device, augment, aug_ok)
-            loss_mix = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
-            loss = loss_clean + loss_mix
+            # mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+            # preds_mix = model(mixed_x, labels, device, augment, aug_ok)
+            # loss_mix = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
+            # loss = loss_clean + loss_mix
+            images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+            preds = model(images, labels, device, augment, aug_ok)
+            loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
 
         else:
             # ---------------------------------------------------------
