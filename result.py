@@ -21,6 +21,7 @@ def main():
         "Default",
         "Mixup",
         "Manifold-Mixup",
+        "CutMix",
         "ResizeMix",
         # "CutMix",
         # "RegMixup",
