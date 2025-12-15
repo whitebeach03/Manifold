@@ -81,13 +81,23 @@ def sample_mask(alpha, decay_power, shape, max_soft, reformulate):
     img = np.fft.ifft2(noise).real
     
     # Normalize
-    img = (img - img.min()) / (img.max() - img.min())
+    img = (img - img.min()) / (img.max() - img.min() + 1e-7)
     
+    # --- 【修正箇所】 ---
     # Binarize based on lambda
-    # FMixの論文ではtop-k pixelsを維持するように閾値を決める
     flat = np.sort(img.flatten())
-    threshold = flat[int(lam * len(flat))]
     
+    # lam の割合だけ「1」を残したい場合、
+    # 閾値は「下位 (1-lam)」の位置にする必要があります。
+    # 例: lam=0.9 なら、下位10% (0.1) を境界線にして、それ以上を1にする
+    idx = int((1 - lam) * len(flat))
+    
+    # インデックスのエラー防止
+    idx = np.clip(idx, 0, len(flat) - 1)
+    
+    threshold = flat[idx]
+    
+    # これで lam=0.9 のとき、約90%の画素が True(1) になります
     binary_mask = (img > threshold).astype(float)
     
     return lam, binary_mask
