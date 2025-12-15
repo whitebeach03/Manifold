@@ -18,13 +18,14 @@ def main():
     model_type = args.model_type
     
     augmentations = [
-        # "Default",
-        # "Mixup",
+        "Default",
+        "Mixup",
         # "Manifold-Mixup",
         # "CutMix",
         # "RegMixup",
-        "Local-FOMA",
+        # "Local-FOMA",
         # "Mixup-FOMA2",
+        "ES-Mixup",
         
         # "Mixup-FOMA-scaleup"
         # "FOMA-Mixup"
@@ -81,28 +82,23 @@ def main():
         # "Mixup-Original&PCA",
         # "PCA",
     ]
-
-    if data_type == "cifar100":
-        epochs = 400
-    elif data_type == "cifar10":
-        epochs = 250
     
     ### Plot accuracy & loss ###
-    # plot_comparison_graph(model_type, augmentations, data_type, epochs, iteration)
-    # plot_comparison_graph_train(model_type, augmentations, data_type, epochs, iteration)
+    plot_comparison_graph(model_type, augmentations, data_type, epochs, iteration)
+    plot_comparison_graph_train(model_type, augmentations, data_type, epochs, iteration)
     
-    ### Print experiments result ###
-    print("========================================================================================")
-    for augment in augmentations:
-        print(augment)
-        pickle_file_path = f"history/{model_type}/{augment}/{data_type}_{epochs}"
-        avg_acc  = load_acc(pickle_file_path, iteration)
-        best_acc = load_best_acc(pickle_file_path, iteration)
-        avg_loss = load_loss(pickle_file_path, iteration)
-        std_acc  = load_std(pickle_file_path, iteration)
+    # ### Print experiments result ###
+    # print("========================================================================================")
+    # for augment in augmentations:
+    #     print(augment)
+    #     pickle_file_path = f"history/{model_type}/{augment}/{data_type}_{epochs}"
+    #     avg_acc  = load_acc(pickle_file_path, iteration)
+    #     best_acc = load_best_acc(pickle_file_path, iteration)
+    #     avg_loss = load_loss(pickle_file_path, iteration)
+    #     std_acc  = load_std(pickle_file_path, iteration)
 
-        print(f"| Average Accuracy: {avg_acc}% | Best Accuracy: {best_acc}% | Test Loss: {avg_loss} | std: {std_acc} |")
-        print("========================================================================================")
+    #     print(f"| Average Accuracy: {avg_acc}% | Best Accuracy: {best_acc}% | Test Loss: {avg_loss} | std: {std_acc} |")
+    #     print("========================================================================================")
         
 def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, iteration):
     os.makedirs(f"./result_plot/{model_type}/", exist_ok=True)
