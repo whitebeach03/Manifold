@@ -51,7 +51,16 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
         if augment == "Default":  
             preds = model(images, labels, device, augment, aug_ok)
             loss  = criterion(preds, labels)
-            
+        
+        elif augment == "ES-Mixup":
+            if epochs < t_mixup:
+                images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+                preds = model(images, labels, device, augment, aug_ok)
+                loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
+            else:
+                preds = model(images, labels, device, augment, aug_ok)
+                loss  = criterion(preds, labels)
+
         elif augment == "Mixup":
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
             preds = model(images, labels, device, augment, aug_ok)
