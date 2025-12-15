@@ -20,7 +20,7 @@ def main():
     augmentations = [
         "Default",
         "Mixup",
-        # "Manifold-Mixup",
+        "Manifold-Mixup",
         # "CutMix",
         # "RegMixup",
         # "Local-FOMA",
@@ -119,13 +119,6 @@ def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, ite
         train_acc = train_acc / iteration
                 
         epochs = range(1, len(train_acc) + 1)
-
-        if augment == "Mixup":
-            augment = "Mixup(alpha=1.0)"
-        elif augment == "Manifold-Mixup":
-            augment = "Manifold-Mixup(alpha=2.0)"
-        elif augment == "SVD":
-            augment = "PCA"
         plt.plot(epochs, train_acc, linestyle='solid', linewidth=0.8, label=f'{augment}')
         
     plt.title('Train Accuracy')
@@ -150,13 +143,6 @@ def plot_comparison_graph_train(model_type, augmentations, data_type, epoch, ite
         train_loss = train_loss / iteration
         
         epochs = range(1, len(train_loss) + 1)
-
-        if augment == "Mixup":
-            augment = "Mixup(alpha=1.0)"
-        elif augment == "Manifold-Mixup":
-            augment = "Manifold-Mixup(alpha=2.0)"
-        elif augment == "SVD":
-            augment = "PCA"
         plt.plot(epochs, train_loss, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Train Loss')
@@ -188,15 +174,6 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
         val_acc = val_acc / iteration
                 
         epochs = range(1, len(val_acc) + 1)
-
-        if augment == "Mixup":
-            augment = "Mixup(alpha=1.0)"
-        elif augment == "Manifold-Mixup":
-            augment = "Manifold-Mixup(alpha=2.0)"
-        elif augment == "SVD":
-            augment = "PCA"
-        elif augment == "FOMA-Mixup2":
-            augment = "FOMA-Mixup"
         plt.plot(epochs, val_acc, linestyle='solid', linewidth=0.8, label=f'{augment}')
         
     plt.title('Validation Accuracy')
@@ -221,15 +198,6 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
         val_loss = val_loss / iteration
         
         epochs = range(1, len(val_loss) + 1)
-
-        if augment == "Mixup":
-            augment = "Mixup(alpha=1.0)"
-        elif augment == "Manifold-Mixup":
-            augment = "Manifold-Mixup(alpha=2.0)"
-        elif augment == "SVD":
-            augment = "PCA"
-        elif augment == "FOMA-Mixup2":
-            augment = "FOMA-Mixup"
         plt.plot(epochs, val_loss, linestyle='solid', linewidth=1, label=f'{augment}')
         
     plt.title('Validation Loss')
