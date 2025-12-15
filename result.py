@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--iteration",  type=int, default=6)
-    parser.add_argument("--epochs",     type=int, default=400)
+    parser.add_argument("--iteration",  type=int, default=1)
+    parser.add_argument("--epochs",     type=int, default=250)
     parser.add_argument("--data_type",  type=str, default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     args = parser.parse_args()
@@ -21,11 +21,13 @@ def main():
         "Default",
         "Mixup",
         "Manifold-Mixup",
+        "ResizeMix",
         # "CutMix",
         # "RegMixup",
         # "Local-FOMA",
         # "Mixup-FOMA2",
         "ES-Mixup",
+        "Mixup-FOMA",
         
         # "Mixup-FOMA-scaleup"
         # "FOMA-Mixup"
