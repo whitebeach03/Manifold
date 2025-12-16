@@ -131,7 +131,7 @@ def main():
     os.makedirs(f"./distance_log/{model_type}",      exist_ok=True)
 
     feature_dim = model.linear.in_features
-    memory_bank = FeatureMemoryBank(feature_dim=feature_dim, memory_size=10000, num_classes=num_classes)
+    memory_bank = FeatureMemoryBank(feature_dim=feature_dim, memory_size=5000, num_classes=num_classes)
 
     ### TRAINING ###
     for epoch in range(train_epoch):
