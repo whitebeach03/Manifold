@@ -107,10 +107,6 @@ def main():
     start_epoch = 225
     train_epoch = 25
         
-    # Phase 1 (Mixup) のモデルをロード
-    mixup_save_path = f"./logs/wide_resnet_28_10/Mixup/{data_type}_{start_epoch}_{i}.pth"
-    model.load_state_dict(torch.load(mixup_save_path, weights_only=True))
-        
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
     for param_group in optimizer.param_groups:
@@ -124,6 +120,17 @@ def main():
     # 保存先ディレクトリ名を変更 (ES-Mixup)
     os.makedirs(f"./logs/{model_type}/ES-Mixup",    exist_ok=True)
     os.makedirs(f"./history/{model_type}/ES-Mixup", exist_ok=True)
+    
+    # Phase 1 (Mixup) のモデルをロード
+    mixup_save_path = f"./logs/wide_resnet_28_10/Mixup/{data_type}_{start_epoch}_{i}.pth"
+    # model.load_state_dict(torch.load(mixup_save_path, weights_only=True))
+    
+    checkpoint = torch.load(mixup_save_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    scheduler.load_state_dict(checkpoint['scheduler_state_dict']) # 必要なら
+
+    start_epoch = checkpoint['epoch'] + 1
     
     ### TRAINING ###
     for epoch in range(train_epoch):

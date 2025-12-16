@@ -133,7 +133,13 @@ def main():
             print("Save model parameters...")
             score = val_acc
             model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
-            torch.save(model.state_dict(), model_save_path)
+            # torch.save(model.state_dict(), model_save_path)
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(), 
+            }, model_save_path)
         
         history["loss"].append(train_loss)
         history["accuracy"].append(train_acc)
