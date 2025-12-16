@@ -116,6 +116,8 @@ def main():
         
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+    for param_group in optimizer.param_groups:
+        param_group['initial_lr'] = 0.1
     # スケジューラの引継ぎ設定（last_epochを指定）
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, last_epoch=start_epoch-1)
     
