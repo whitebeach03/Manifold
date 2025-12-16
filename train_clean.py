@@ -30,7 +30,7 @@ def main():
     data_type  = args.data_type
     model_type = args.model_type
     device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    augment    = "Standard" # ログ用の名前
+    augment    = "Default" # ログ用の名前
     
     set_seed(i)
     
