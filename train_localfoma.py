@@ -16,6 +16,7 @@ from sklearn.metrics import accuracy_score
 from tqdm import tqdm
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from torch.utils.data import DataLoader, random_split, Subset
+from src.methods.foma import compute_foma_loss
 
 def main():
     parser = argparse.ArgumentParser()
@@ -128,7 +129,7 @@ def main():
     ### TRAINING ###
     for epoch in range(train_epoch):
         # train関数を通常学習用に変更
-        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, num_classes)
+        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, num_classes, epochs=epoch)
         val_loss, val_acc     = val(model, val_loader, criterion, device)
         scheduler.step()
 
@@ -157,10 +158,14 @@ def main():
     with open(f"./history/{model_type}/Local-FOMA/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
         pickle.dump(test_history, f)
 
-def train(model, train_loader, criterion, optimizer, device, num_classes):
+def train(model, train_loader, criterion, optimizer, device, num_classes, epochs):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
+    
+    # 切り替えエポックの設定
+    total_epochs = 250
+    t_mixup = int(total_epochs * 0.9)
 
     # enumerate でバッチを回す
     for batch_idx, (images, labels) in enumerate(tqdm(train_loader, leave=False)):
