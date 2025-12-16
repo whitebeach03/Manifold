@@ -132,6 +132,18 @@ def main():
 
     feature_dim = model.linear.in_features
     memory_bank = FeatureMemoryBank(feature_dim=feature_dim, memory_size=5000, num_classes=num_classes)
+    
+    # =============== 追加コードここから ===============
+    print("==> Filling Memory Bank (Warm-up)...")
+    model.eval() # 学習はしないのでevalモード
+    with torch.no_grad():
+        for images, labels in tqdm(train_loader, desc="Memory Bank Init", leave=False):
+            images, labels = images.to(device), labels.to(device)
+            # 特徴量を抽出してバンクに入れるだけ
+            features = model.extract_features(images)
+            memory_bank.update(features, labels)
+    print("==> Memory Bank is ready!")
+    # =============== 追加コードここまで ===============
 
     ### TRAINING ###
     for epoch in range(train_epoch):
