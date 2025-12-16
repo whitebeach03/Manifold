@@ -18,16 +18,16 @@ def main():
     model_type = args.model_type
     
     augmentations = [
-        "Default",
+        # "Default",
         "Mixup",
-        "Manifold-Mixup",
-        "CutMix",
-        "ResizeMix",
+        # "Manifold-Mixup",
+        # "CutMix",
+        # "ResizeMix",
         # "CutMix",
         # "RegMixup",
         # "Local-FOMA",
         # "Mixup-FOMA2",
-        "ES-Mixup",
+        # "ES-Mixup",
         "Mixup-FOMA",
         
         # "Mixup-FOMA-scaleup"
