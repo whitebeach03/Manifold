@@ -135,11 +135,11 @@ def main():
     for epoch in range(epochs):
         train_loss, train_acc = train(
             model, train_loader, criterion, optimizer, device, 
-            augment, num_classes, aug_ok=False, epochs=epoch
+            augment, num_classes, epochs=epoch
         )
         val_loss, val_acc = val(
             model, val_loader, criterion, device, 
-            augment, aug_ok=False
+            augment
         )
         scheduler.step()
 
@@ -175,7 +175,7 @@ def main():
     checkpoint = torch.load(model_save_path, weights_only=True)
     model.load_state_dict(checkpoint['model_state_dict'])
     
-    test_loss, test_acc = test(model, test_loader, criterion, device, augment=None, aug_ok=False)
+    test_loss, test_acc = test(model, test_loader, criterion, device, augment=None)
     print(f"Phase 1 Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.5f}")
 
     test_history = {"acc": test_acc, "loss": test_loss}
