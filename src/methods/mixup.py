@@ -370,9 +370,11 @@ class KernelMixup(AbstractMixup):
         y: Tensor,
         feats: Tensor,
         warp_param: float = 1.0,
-    ) -> tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor]: # 戻り値の型ヒントを変更
+        # 内部で lam と index を生成
         lam, index = self._get_params(x.size()[0], x.device)
 
+        # --- 距離計算とWarping (変更なし) ---
         if self.warping == "lookup":
             dist = (
                 (feats - feats[index])
@@ -427,10 +429,17 @@ class KernelMixup(AbstractMixup):
             k_lam = self.lookup_table[lookup_x, lookup_y]
         else:
             raise NotImplementedError
+        # ------------------------------------
+
+        # k_lam (Tensor) の形状調整 (Batch方向以外を1にする)
+        # linear_mixing内でやっているが、戻り値として返すためにここでも確認推奨
+        # 以下の self._linear_mixing 呼び出しはそのままでOK
 
         mixed_x = self._linear_mixing(k_lam, x, index)
         mixed_y = self._mix_target(k_lam, y, index)
-        return mixed_x, mixed_y
+        
+        # 【修正点】mixed_x, mixed_y に加えて、実際に使った k_lam と index を返す
+        return mixed_x, mixed_y, k_lam, index
 
 
 class RankMixupMNDCG(AbstractMixup):

@@ -270,7 +270,7 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
 
             # 2. Mixup Loss
             mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-            preds_mix = model(mixed_x, labels, device, augment=None, aug_ok=False)
+            preds_mix = model(mixed_x, labels, device, augment=None)
             loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
 
             # 3. FOMA Loss (Manifold Perturbation)
@@ -284,13 +284,13 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
         elif method == "Mixup":
             # === Plain Mixup Logic ===
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-            preds_mix = model(images, labels, device, augment="Mixup", aug_ok=False)
+            preds_mix = model(images, labels, device, augment="Mixup")
             loss = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
             preds_for_acc = preds_mix
 
         elif method == "ES-Mixup":
             # === Clean Fine-tuning Logic ===
-            preds = model(images, labels, device, augment=None, aug_ok=False)
+            preds = model(images, labels, device, augment=None)
             loss  = criterion(preds, labels)
             preds_for_acc = preds
         
