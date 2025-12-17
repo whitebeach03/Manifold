@@ -196,7 +196,7 @@ def main():
             memory_bank=memory_bank
         )
         
-        val_loss, val_acc = val(model, val_loader, criterion, device, augment)
+        val_loss, val_acc = val(model, val_loader, criterion, device, augment=method)
         scheduler.step()
 
         # Save Best Model
