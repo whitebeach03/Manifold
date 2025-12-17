@@ -48,12 +48,15 @@ def main():
     if data_type == "stl10":
         num_classes = 10
         batch_size  = 64
+        mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
     elif data_type == "cifar100":
         num_classes = 100
         batch_size  = 128
+        mean, std = [0.5071, 0.4867, 0.4408], [0.2675, 0.2565, 0.2761]
     elif data_type == "cifar10":
         num_classes = 10
         batch_size  = 128
+        mean, std = [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
     
     # Transforms
     default_transform = transforms.Compose([
@@ -61,14 +64,14 @@ def main():
         transforms.Pad(4),
         transforms.RandomCrop(32),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=mean, std=std),
     ])
 
     transform = transforms.Compose([
         transforms.ToTensor(), 
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=mean, std=std),
     ])
-            
+
     # Loading Dataset
     if data_type == "stl10":
         full_train_aug = STL10(root="./data", split="test",  download=True, transform=default_transform)
