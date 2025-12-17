@@ -67,7 +67,7 @@ def train(model, train_loader, criterion, optimizer, device, augment, num_classe
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
 
         elif augment == "Manifold-Mixup":
-            preds, y_a, y_b, lam = model(images, labels, device, augment=True)
+            preds, y_a, y_b, lam = model(images, labels, device, augment)
             loss = mixup_criterion(criterion, preds, y_a, y_b, lam)
             
         elif augment == "CutMix":
