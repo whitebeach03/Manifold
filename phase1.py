@@ -137,10 +137,7 @@ def main():
             model, train_loader, criterion, optimizer, device, 
             augment, num_classes, epochs=epoch
         )
-        val_loss, val_acc = val(
-            model, val_loader, criterion, device, 
-            augment
-        )
+        val_loss, val_acc = val(model, val_loader, criterion, device, augment)
         scheduler.step()
 
         # Save Best & Current Model

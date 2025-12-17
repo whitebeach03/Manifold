@@ -136,10 +136,7 @@ def main():
             model, train_loader, criterion, optimizer, device, 
             augment, num_classes, epochs=epoch
         )
-        val_loss, val_acc = val(
-            model, val_loader, criterion, device, 
-            augment="Default"
-        )
+        val_loss, val_acc = val(model, val_loader, criterion, device, augment="Default")
         scheduler.step()
 
         if score <= val_acc:
