@@ -151,11 +151,13 @@ def main():
     # Hack: Reset initial_lr for scheduler resume
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = 0.1
+        
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, last_epoch=current_start_epoch-1)
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     
     current_lr = optimizer.param_groups[0]['lr']
     print(f"Resume Learning Rate: {current_lr}")
-        
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, last_epoch=current_start_epoch-1)
     
     score     = 0.0
     history   = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
