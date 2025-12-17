@@ -224,7 +224,7 @@ def main():
     ### TEST ###
     print(f"Loading best model from {model_save_path} for testing...")
     model.load_state_dict(torch.load(model_save_path, weights_only=True))
-    test_loss, test_acc = test(model, test_loader, criterion, device)
+    test_loss, test_acc = test(model, test_loader, criterion, device, augment=method)
     print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.5f}")
 
     test_history = {"acc": test_acc, "loss": test_loss}
