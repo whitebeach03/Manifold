@@ -31,13 +31,14 @@ def main():
     
     args = parser.parse_args() 
 
-    i          = args.i
-    epochs     = args.epochs
-    data_type  = args.data_type
-    model_type = args.model_type
-    method     = args.method
-    k_foma     = args.k_foma
-    device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    i            = args.i
+    epochs       = args.epochs
+    data_type    = args.data_type
+    model_type   = args.model_type
+    method       = args.method
+    phase1_ratio = args.phase1_ratio
+    k_foma       = args.k_foma
+    device       = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     seed_everything(i)
     g = torch.Generator()
