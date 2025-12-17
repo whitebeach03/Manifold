@@ -20,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description="General Training (Baselines)")
     parser.add_argument("--i",          type=int, default=0, help="Seed index")
     parser.add_argument("--epochs",     type=int, default=250, help="Total training epochs")
-    parser.add_argument("--augment",    type=str, default="Default", choices=["Default", "Mixup", "CutMix", "Manifold-Mixup", "ResizeMix", "SaliencyMix"], help="Augmentation method")
+    parser.add_argument("--augment",    type=str, default="Default", choices=["Default", "Mixup", "CutMix", "Manifold-Mixup", "ResizeMix", "SaliencyMix", "SK-Mixup"], help="Augmentation method")
     parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     args = parser.parse_args() 
