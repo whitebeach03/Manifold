@@ -138,7 +138,7 @@ def main():
         )
         val_loss, val_acc = val(
             model, val_loader, criterion, device, 
-            augment
+            augment="Default"
         )
         scheduler.step()
 
