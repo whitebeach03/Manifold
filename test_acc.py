@@ -40,8 +40,8 @@ def main():
     for severity in range(1, 6):
         print(f"SEVERITY = {severity}")
         parser = argparse.ArgumentParser()
-        parser.add_argument("--i",          type=int, default=1)
-        parser.add_argument("--epochs",     type=int, default=400)
+        parser.add_argument("--i",          type=int, default=0)
+        parser.add_argument("--epochs",     type=int, default=250)
         parser.add_argument("--augment",    type=str, default="Default")
         parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
         parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
