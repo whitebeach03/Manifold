@@ -277,9 +277,9 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
             preds_for_acc = preds_clean
 
             # 2. Mixup Loss
-            mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-            preds_mix = model(mixed_x, labels, device, augment=None)
-            loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
+            # mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
+            # preds_mix = model(mixed_x, labels, device, augment=None)
+            # loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
 
             # 3. FOMA Loss (Manifold Perturbation)
             z_aug = cc_foma(features_clean, labels, memory_bank, k=k_foma, alpha=1.0, rho=0.9)
@@ -287,7 +287,8 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
             loss_foma = criterion(preds_aug, labels)
 
             # Combined Loss
-            loss = loss_clean + (w_foma * loss_foma) + (w_mix * loss_mix)
+            # loss = loss_clean + (w_foma * loss_foma) + (w_mix * loss_mix)
+            loss = loss_clean + 0.5*loss_foma
 
         elif method == "Mixup":
             # === Plain Mixup Logic ===
