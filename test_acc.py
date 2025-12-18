@@ -102,7 +102,7 @@ def main():
             model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}_{k_foma}.pth"
         model.load_state_dict(torch.load(model_save_path, weights_only=True))
         if severity == 1:
-            test_loss, test_acc = test(model, test_loader, criterion, device, augment, aug_ok=False)
+            test_loss, test_acc = test(model, test_loader, criterion, device, augment)
             print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc*100:.4f}")
 
         for corruption in corruption_types:
