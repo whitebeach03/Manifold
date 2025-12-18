@@ -132,7 +132,7 @@ def main():
     print(f"Phase 1 Epochs (Load point): {start_epoch_phase1}")
     print(f"Phase 2 Epochs (Training): {train_epoch_phase2}")
         
-    mixup_save_path = f"./logs/wide_resnet_28_10/Mixup/{data_type}_{start_epoch_phase1}_{i}.pth"
+    mixup_save_path = f"./logs/{model_type}/Mixup/{data_type}_{start_epoch_phase1}_{i}.pth"
     print(f"Loading Phase 1 model from {mixup_save_path} ...")
     
     # 辞書形式チェックポイントのロード
