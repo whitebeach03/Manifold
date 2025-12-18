@@ -114,7 +114,7 @@ def main():
     elif model_type == "resnet101":
         model = ResNet101().to(device)
     elif model_type == "wide_resnet_28_10":
-        model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
+        model = Wide_ResNet(28, 10, 0.0, num_classes).to(device)
         
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
