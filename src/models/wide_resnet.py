@@ -36,8 +36,13 @@ class wide_basic(nn.Module):
             )
 
     def forward(self, x):
-        out  = self.dropout(self.conv1(F.relu(self.bn1(x))))
-        out  = self.conv2(F.relu(self.bn2(out)))
+        # out  = self.dropout(self.conv1(F.relu(self.bn1(x))))
+        # out  = self.conv2(F.relu(self.bn2(out)))
+        out = self.conv1(F.relu(self.bn1(x)))
+        out = self.bn2(out)
+        out = F.relu(out)
+        out = self.dropout(out)
+        out = self.conv2(out)
         out += self.shortcut(x)
 
         return out
@@ -58,7 +63,7 @@ class Wide_ResNet(nn.Module):
         self.layer1 = self._wide_layer(wide_basic, nStages[1], n, dropout_rate, stride=1)
         self.layer2 = self._wide_layer(wide_basic, nStages[2], n, dropout_rate, stride=2)
         self.layer3 = self._wide_layer(wide_basic, nStages[3], n, dropout_rate, stride=2)
-        self.bn1    = nn.BatchNorm2d(nStages[3], momentum=0.9)
+        self.bn1    = nn.BatchNorm2d(nStages[3])
         self.linear = nn.Linear(nStages[3], num_classes)
 
     def _wide_layer(self, block, planes, num_blocks, dropout_rate, stride):
