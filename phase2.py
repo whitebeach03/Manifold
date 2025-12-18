@@ -174,7 +174,7 @@ def main():
     if method == "Mixup-FOMA":
         print("==> Initializing Feature Memory Bank...")
         feature_dim = model.linear.in_features
-        memory_bank = FeatureMemoryBank(feature_dim=feature_dim, memory_size=len(train_dataset), num_classes=num_classes)
+        memory_bank = FeatureMemoryBank(feature_dim=feature_dim, memory_size=5000, num_classes=num_classes)
         
         print("==> Filling Memory Bank (Warm-up)...")
         model.eval()
