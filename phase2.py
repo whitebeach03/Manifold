@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--model_type",   type=str,   default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     parser.add_argument("--method",       type=str,   default="ES-Mixup",          choices=["ES-Mixup", "Mixup", "Mixup-FOMA"], help="Phase 2 method: ES-Mixup (Clean), Mixup (Continue), or Mixup-FOMA")
     parser.add_argument("--phase1_ratio", type=float, default=0.9,                 help="Ratio of Phase 1 epochs")
-    parser.add_argument("--k_foma",       type=int,   default=32,                  help="k-neighbors for FOMA")
+    parser.add_argument("--k_foma",       type=int,   default=64,                  help="k-neighbors for FOMA")
     
     args = parser.parse_args() 
 
