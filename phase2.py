@@ -122,7 +122,7 @@ def main():
     elif model_type == "resnet101":
         model = ResNet101().to(device)
     elif model_type == "wide_resnet_28_10":
-        model = Wide_ResNet(28, 10, 0.0, num_classes).to(device)
+        model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
     
     # Phase 1のロード設定
     start_epoch_phase1 = int(epochs * phase1_ratio)
