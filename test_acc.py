@@ -56,9 +56,14 @@ def main():
         k_foma     = args.k_foma
         device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+        if data_type == "cifar100":
+            mean, std = [0.5071, 0.4867, 0.4408], [0.2675, 0.2565, 0.2761]
+        elif data_type == "cifar10":
+            mean, std = [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
+
         transform = transforms.Compose([
             transforms.ToTensor(), 
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(mean=mean, std=std),
         ])
                 
         # Loading Dataset
@@ -67,12 +72,10 @@ def main():
             batch_size  = 64
             test_dataset = STL10(root="./data", split="train", download=True, transform=transform)
         elif data_type == "cifar100":
-            epochs      = 400
             num_classes = 100
             batch_size  = 128
             test_dataset   = CIFAR100(root="./data", train=False, transform=transform, download=True)
         elif data_type == "cifar10":
-            epochs      = 250
             num_classes = 10
             batch_size  = 128
             test_dataset   = CIFAR10(root="./data", train=False, transform=transform, download=True)
