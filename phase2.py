@@ -251,7 +251,7 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
     # progress = relative_epoch / total_epochs_phase2
     # w_foma = progress
     # w_mix  = 1.0 - progress
-    w_clean = 1.0
+    w_clean = 0.5
     w_foma = 0.5
 
     for batch_idx, (images, labels) in enumerate(tqdm(train_loader, leave=False)):
