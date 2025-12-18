@@ -248,9 +248,11 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
     train_acc  = 0.0
     
     # FOMA用: 進行度合いの計算 (0.0 -> 1.0)
-    progress = relative_epoch / total_epochs_phase2
-    w_foma = progress
-    w_mix  = 1.0 - progress
+    # progress = relative_epoch / total_epochs_phase2
+    # w_foma = progress
+    # w_mix  = 1.0 - progress
+    w_clean = 1.0
+    w_foma = 0.5
 
     for batch_idx, (images, labels) in enumerate(tqdm(train_loader, leave=False)):
         images, labels = images.to(device), labels.to(device)
@@ -276,19 +278,13 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
             loss_clean = criterion(preds_clean, labels)
             preds_for_acc = preds_clean
 
-            # 2. Mixup Loss
-            # mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-            # preds_mix = model(mixed_x, labels, device, augment=None)
-            # loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
-
-            # 3. FOMA Loss (Manifold Perturbation)
+            # 2. FOMA Loss (Manifold Perturbation)
             z_aug = cc_foma(features_clean, labels, memory_bank, k=k_foma, alpha=1.0, rho=0.9)
             preds_aug = model.linear(z_aug)
             loss_foma = criterion(preds_aug, labels)
 
             # Combined Loss
-            # loss = loss_clean + (w_foma * loss_foma) + (w_mix * loss_mix)
-            loss = loss_clean + 0.5*loss_foma
+            loss = w_clean*loss_clean + w_foma*loss_foma
 
         elif method == "Mixup":
             # === Plain Mixup Logic ===
