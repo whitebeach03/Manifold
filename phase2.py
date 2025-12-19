@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--model_type",   type=str,   default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     parser.add_argument("--method",       type=str,   default="ES-Mixup",          choices=["ES-Mixup", "Mixup", "Mixup-FOMA"], help="Phase 2 method: ES-Mixup (Clean), Mixup (Continue), or Mixup-FOMA")
     parser.add_argument("--phase1_ratio", type=float, default=0.9,                 help="Ratio of Phase 1 epochs")
-    parser.add_argument("--k_foma",       type=int,   default=64,                  help="k-neighbors for FOMA")
+    parser.add_argument("--k_foma",       type=int,   default=8,                   help="k-neighbors for FOMA")
     
     args = parser.parse_args() 
 
@@ -228,6 +228,51 @@ def main():
     # Save History
     with open(f"./history/{model_type}/{save_dir_name}/{data_type}_{epochs}_{i}.pickle", "wb") as f:
         pickle.dump(history, f)
+
+    # ==========================================
+    # Save Phase 2 History & Merge
+    # ==========================================
+    
+    # 1. パスを変数として定義する（これを追加！）
+    phase2_history_path = f"./history/{model_type}/{save_dir_name}/{data_type}_{epochs}_{i}.pickle"
+
+    # 2. まずPhase 2単体のデータを保存
+    with open(phase2_history_path, "wb") as f:
+        pickle.dump(history, f)
+
+    # 3. Phase 1との統合処理
+    print("\n==> Merging Phase 1 and Phase 2 history...")
+    
+    phase1_history_path = f"./history/{model_type}/Mixup/{data_type}_{start_epoch_phase1}_{i}.pickle"
+    
+    if os.path.exists(phase1_history_path):
+        try:
+            # Phase 1 の読み込み
+            with open(phase1_history_path, "rb") as f:
+                h1 = pickle.load(f)
+            
+            # Phase 2 はメモリ上の変数 history をそのまま使う
+            h2 = history
+            
+            merged_history = {}
+            keys = ["loss", "accuracy", "val_loss", "val_accuracy"]
+            
+            # リスト結合
+            for key in keys:
+                if key in h1 and key in h2:
+                    merged_history[key] = h1[key] + h2[key]
+            
+            # 結合したデータで上書き保存 (定義した変数を使う)
+            with open(phase2_history_path, "wb") as f:
+                pickle.dump(merged_history, f)
+                
+            print(f"Successfully merged! Full history saved to:")
+            print(f" -> {phase2_history_path}")
+            
+        except Exception as e:
+            print(f"Warning: Failed to merge histories. Error: {e}")
+    else:
+        print(f"Warning: Phase 1 history file not found at {phase1_history_path}.")
     
     ### TEST ###
     print(f"Loading best model from {model_save_path} for testing...")
