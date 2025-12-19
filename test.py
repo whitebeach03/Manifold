@@ -92,7 +92,15 @@ def main():
         model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}.pth"
     else:    
         model_save_path = f"./logs/{model_type}/{augment}/{data_type}_{epochs}_{i}_{k_foma}.pth"
-    model.load_state_dict(torch.load(model_save_path, weights_only=True))
+
+    checkpoint = torch.load(model_save_path, weights_only=True)
+
+    # 'model_state_dict' キーが含まれているか確認してロード
+    if 'model_state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        # 万が一、キーが含まれていない場合（古い形式など）はそのままロード
+        model.load_state_dict(checkpoint)
 
     test_loss, test_acc = test(model, test_loader, criterion, device, augment)
     print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc*100:.4f}")
