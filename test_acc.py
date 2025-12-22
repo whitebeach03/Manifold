@@ -111,7 +111,7 @@ def main():
             elif data_type == "cifar10":
                 test_dataset_C = CIFAR10C(corruption_type=corruption, severity=severity, transform=transform)
             test_loader_C  = torch.utils.data.DataLoader(test_dataset_C, batch_size=512, shuffle=False)
-            test_loss_C, test_acc_C = test(model, test_loader_C, criterion, device, augment, aug_ok=False)
+            test_loss_C, test_acc_C = test(model, test_loader_C, criterion, device, augment)
             # print(f"  [{corruption}] Loss: {test_loss_C:.3f}, Accuracy: {test_acc_C:.2f}%")
             total_acc += test_acc_C
             total_loss += test_loss_C
