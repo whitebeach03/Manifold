@@ -119,7 +119,7 @@ def main():
         avg_acc = total_acc / len(corruption_types)
         avg_loss = total_loss / len(corruption_types)
 
-        print(f"\nLoss: {avg_loss:.4f}, Accuracy: {avg_acc:.4f}%")
+        print(f"\nLoss: {avg_loss*100:.4f}, Accuracy: {avg_acc*100:.4f}%")
 
 
 class CIFAR100C(Dataset):
