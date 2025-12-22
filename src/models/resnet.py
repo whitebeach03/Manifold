@@ -141,16 +141,47 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, k=10, aug_ok=False, num_classes=100):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        out = F.avg_pool2d(out, out.size()[2])
-        out = out.view(out.size(0), -1)
-        out = self.linear(out)
-        return out
+    def forward(self, x, labels, device, augment, num_classes=100):
+        if augment == "Manifold-Mixup":
+            mixup_alpha = 2.0
+            layer_mix = random.randint(0,4)
+            out = x
+
+            if layer_mix == 0:
+                out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
+            
+            out = F.relu(self.bn1(self.conv1(x)))
+            out = self.layer1(out)
+            if layer_mix == 1:
+                out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
+
+            out = self.layer2(out)
+            if layer_mix == 2:
+                out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
+
+            out = self.layer3(out)
+            if layer_mix == 3:
+                out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
+
+            out = self.layer4(out)
+            out = F.avg_pool2d(out, out.size()[2])
+            out = out.view(out.size(0), -1)
+            if layer_mix == 4:
+                out, y_a, y_b, lam = mixup_data(out, labels, mixup_alpha)
+            
+            out = self.linear(out)
+            return out, y_a, y_b, lam
+        
+        else:
+            out = F.relu(self.bn1(self.conv1(x)))
+            out = self.layer1(out)
+            out = self.layer2(out)
+            out = self.layer3(out)
+            out = self.layer4(out)
+            out = F.avg_pool2d(out, out.size()[2])
+            out = out.view(out.size(0), -1)
+            out = self.linear(out)
+            return out
 
     def extract_features(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
