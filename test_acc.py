@@ -37,7 +37,7 @@ corruption_types = [
 ]
 
 def main():
-    for i in range(0, 2):
+    for i in range(0, 3):
         for severity in range(1, 6):
             print(f"SEVERITY = {severity}")
             parser = argparse.ArgumentParser()
@@ -107,7 +107,7 @@ def main():
                 model.load_state_dict(checkpoint['model_state_dict'])
             else:
                 model.load_state_dict(checkpoint)
-                
+
             if severity == 1:
                 test_loss, test_acc = test(model, test_loader, criterion, device, augment)
                 print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc*100:.4f}")
