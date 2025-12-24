@@ -76,9 +76,9 @@ class Wide_ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, num_classes=100):
-        if augment == "Manifold-Mixup":
-            mixup_alpha = 2.0
+    def forward(self, x, labels, device, augment, num_classes=100, test=False):
+        if augment == "Manifold-Mixup" and not test:
+            mixup_alpha = 1.0
             layer_mix = random.randint(0,4)
             out = x
             

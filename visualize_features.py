@@ -55,14 +55,6 @@ elif data_type == "cifar10":
     num_classes = 10
     batch_size  = 128
 
-# ===== 追加: CIFAR-100 可視化を「代表20クラス」のみに制限する設定 =====
-# 各スーパークラスから1クラスずつ任意選択（fine label index）
-# 参考: apple(0)=fruit_and_vegetables, aquarium_fish(1)=fish, bear(3)=large_carnivores, bicycle(8)=vehicles_1,
-# bottle(9)=household_containers, camel(15)=large_omnivores_and_herbivores, clock(22)=household_electrical_devices,
-# cloud(23)=natural, forest(33)=outdoor_scenes, house(37)=household_furniture,
-# lawn_mower(45)=household_electrical_devices, leopard(46)=large_carnivores, man(47)=people,
-# orange(49)=fruit_and_vegetables, pickup_truck(58)=vehicles_2, plain(59)=outdoor_scenes,
-# rocket(61)=vehicles_2, sea(71)=natural, table(84)=household_furniture, whale(95)=aquatic_mammals
 REPRESENTATIVE_20_FINE = [0, 1, 3, 8, 9, 15, 22, 23, 33, 37,
                           45, 46, 47, 49, 58, 59, 61, 71, 84, 95]
 REPRESENTATIVE_20_NAMES = [
@@ -91,22 +83,13 @@ for augment in augmentations:
         transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         full_dataset  = CIFAR100(root="./data", train=False, transform=transform, download=True)
 
-        # --- 代表20クラスのみ抽出（Subset化） ---
-        # full_dataset.targets は fine labels (0-99)
         indices = [idx for idx, fine in enumerate(full_dataset.targets) if fine in REPRESENTATIVE_20_FINE]
         test_dataset = Subset(full_dataset, indices)
 
-        # 注意: モデルは100クラスのまま（feature抽出なのでOK）
     elif data_type == "cifar10":
         transform     = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         test_dataset  = CIFAR10(root="./data", train=False, transform=transform, download=True)
-    
-    # テストセットの1/10だけ使う（必要なら）
-    # total_len = len(test_dataset)
-    # subset_len = total_len // 10
-    # indices = random.sample(range(total_len), subset_len)
-    # test_dataset = Subset(test_dataset, indices)
-    
+
     test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
 
     model.load_state_dict(torch.load(model_save_path, weights_only=True))
@@ -120,9 +103,7 @@ for augment in augmentations:
     X = torch.cat(features_list, dim=0).numpy()
     y = torch.cat(labels_list, dim=0).numpy()
 
-    # --- CIFAR-100 のときは 0..19 に再マッピング（色分けのため） ---
     if data_type == "cifar100":
-        # y は fine label (0-99) のはずなので，代表20以外は存在しない前提
         y = np.vectorize(FINE_TO_20IDX.get)(y)
 
     if method == "tsne":
@@ -143,20 +124,10 @@ for augment in augmentations:
     if augment == "Default":
         augment = "Baseline"
     if data_type == "cifar100":
-        # cmap = cm.get_cmap('tab20', 20)
         cmap = plt.get_cmap('tab20', 20)
-        # bright_colors = [
-        #     "red", "blue", "green", "orange", "purple",
-        #     "cyan", "magenta", "yellow", "brown", "lime",
-        #     "pink", "teal", "navy", "gold", "darkred",
-        #     "darkgreen", "darkblue", "darkorange", "darkviolet", "olive"
-        # ]
-        # cmap = ListedColormap(bright_colors)
-        # cmap = plt.cm.get_cmap("gist_rainbow", 20)  # 20 クラス対応
         scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap=cmap, s=10, alpha=0.7)
         cbar = plt.colorbar(scatter, ticks=np.arange(20))
         cbar.set_label("Representative class (20)")
-        # 余裕があればクラス名も表示（長い場合は省略されます）
         try:
             cbar.ax.set_yticklabels(REPRESENTATIVE_20_NAMES)
         except Exception:

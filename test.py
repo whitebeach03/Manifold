@@ -95,11 +95,9 @@ def main():
 
     checkpoint = torch.load(model_save_path, weights_only=True)
 
-    # 'model_state_dict' キーが含まれているか確認してロード
     if 'model_state_dict' in checkpoint:
         model.load_state_dict(checkpoint['model_state_dict'])
     else:
-        # 万が一、キーが含まれていない場合（古い形式など）はそのままロード
         model.load_state_dict(checkpoint)
 
     test_loss, test_acc = test(model, test_loader, criterion, device, augment)

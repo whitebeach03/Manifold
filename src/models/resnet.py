@@ -6,6 +6,7 @@ import random
 from torch.autograd import Variable
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
+from src.utils import mixup_data, mixup_criterion
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -141,9 +142,9 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x, labels, device, augment, num_classes=100):
-        if augment == "Manifold-Mixup":
-            mixup_alpha = 2.0
+    def forward(self, x, labels, device, augment, num_classes=100, test=False):
+        if augment == "Manifold-Mixup" and not test:
+            mixup_alpha = 1.0
             layer_mix = random.randint(0,4)
             out = x
 

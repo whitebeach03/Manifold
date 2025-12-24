@@ -141,7 +141,7 @@ def val(model, val_loader, criterion, device, augment):
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
             
-            preds = model(images, labels, device, augment)
+            preds = model(images, labels, device, augment, test=True)
             loss  = criterion(preds, labels)
 
             val_loss += loss.item()
@@ -161,7 +161,7 @@ def test(model, test_loader, criterion, device, augment):
         for images, labels in tqdm(test_loader, leave=False):
             images, labels = images.to(device), labels.to(device)
             
-            preds = model(images, labels, device, augment)
+            preds = model(images, labels, device, augment, test=True)
             loss  = criterion(preds, labels)
 
             test_loss += loss.item()
