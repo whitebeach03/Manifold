@@ -44,7 +44,6 @@ def main():
     g = torch.Generator()
     g.manual_seed(i)
     
-    # Dataset Parameters
     if data_type == "stl10":
         num_classes = 10
         batch_size  = 64
@@ -58,7 +57,6 @@ def main():
         batch_size  = 128
         mean, std = [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
     
-    # Transforms
     default_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.Pad(4),
@@ -98,7 +96,7 @@ def main():
     else:
         print("Generating new split indices...")
         indices = list(range(n_samples))
-        random.shuffle(indices) # seed_everythingで固定済
+        random.shuffle(indices) 
         train_indices, val_indices = indices[:n_train], indices[n_train:]
         with open(index_file, "wb") as f:
             pickle.dump((train_indices, val_indices), f)
@@ -124,7 +122,6 @@ def main():
     elif model_type == "wide_resnet_28_10":
         model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
     
-    # Phase 1のロード設定
     start_epoch_phase1 = int(epochs * phase1_ratio)
     train_epoch_phase2 = epochs - start_epoch_phase1
 
@@ -135,7 +132,6 @@ def main():
     mixup_save_path = f"./logs/{model_type}/Mixup/{data_type}_{start_epoch_phase1}_{i}.pth"
     print(f"Loading Phase 1 model from {mixup_save_path} ...")
     
-    # 辞書形式チェックポイントのロード
     checkpoint = torch.load(mixup_save_path, weights_only=True)
     if 'model_state_dict' in checkpoint:
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -144,11 +140,9 @@ def main():
         model.load_state_dict(checkpoint)
         current_start_epoch = start_epoch_phase1 
 
-    # Optimizer & Scheduler Setup
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
     
-    # Hack: Reset initial_lr for scheduler resume
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = 0.1
         
@@ -163,12 +157,12 @@ def main():
     history   = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
 
     # Logging Directories
-    save_dir_name = method # "ES-Mixup", "Mixup", or "Mixup-FOMA"
+    save_dir_name = method
     os.makedirs(f"./logs/{model_type}/{save_dir_name}",    exist_ok=True)
     os.makedirs(f"./history/{model_type}/{save_dir_name}", exist_ok=True)
     
     # ==========================================
-    # FOMA Specific Setup (Memory Bank & Warm-up)
+    # FOMA Setup (Memory Bank)
     # ==========================================
     memory_bank = None
     if method == "Mixup-FOMA":
@@ -185,11 +179,7 @@ def main():
                 memory_bank.update(features, labels)
         print("==> Memory Bank is ready!")
 
-    # ==========================================
-    # Phase 2 Training Loop
-    # ==========================================
     for epoch in range(train_epoch_phase2):
-        # relative_epoch: 0〜24 (Phase 2の中での進行度)
         train_loss, train_acc = train_phase2(
             model=model, 
             train_loader=train_loader, 
@@ -207,7 +197,6 @@ def main():
         val_loss, val_acc = val(model, val_loader, criterion, device, augment=method)
         scheduler.step()
 
-        # Save Best Model
         if score <= val_acc:
             print("Save model parameters...")
             score = val_acc
@@ -225,7 +214,6 @@ def main():
         
         print(f"| {current_start_epoch + epoch} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |")
 
-    # Save History
     with open(f"./history/{model_type}/{save_dir_name}/{data_type}_{epochs}_{i}.pickle", "wb") as f:
         pickle.dump(history, f)
 
@@ -233,36 +221,30 @@ def main():
     # Save Phase 2 History & Merge
     # ==========================================
     
-    # 1. パスを変数として定義する（これを追加！）
     phase2_history_path = f"./history/{model_type}/{save_dir_name}/{data_type}_{epochs}_{i}.pickle"
 
-    # 2. まずPhase 2単体のデータを保存
     with open(phase2_history_path, "wb") as f:
         pickle.dump(history, f)
 
-    # 3. Phase 1との統合処理
+    # Phase 1との統合処理
     print("\n==> Merging Phase 1 and Phase 2 history...")
     
     phase1_history_path = f"./history/{model_type}/Mixup/{data_type}_{start_epoch_phase1}_{i}.pickle"
     
     if os.path.exists(phase1_history_path):
         try:
-            # Phase 1 の読み込み
             with open(phase1_history_path, "rb") as f:
                 h1 = pickle.load(f)
             
-            # Phase 2 はメモリ上の変数 history をそのまま使う
             h2 = history
             
             merged_history = {}
             keys = ["loss", "accuracy", "val_loss", "val_accuracy"]
             
-            # リスト結合
             for key in keys:
                 if key in h1 and key in h2:
                     merged_history[key] = h1[key] + h2[key]
             
-            # 結合したデータで上書き保存 (定義した変数を使う)
             with open(phase2_history_path, "wb") as f:
                 pickle.dump(merged_history, f)
                 
@@ -284,18 +266,12 @@ def main():
     with open(f"./history/{model_type}/{save_dir_name}/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
         pickle.dump(test_history, f)
 
-# ==========================================
-# 3. Unified Train Function
-# ==========================================
+
 def train_phase2(model, train_loader, criterion, optimizer, device, method, num_classes, relative_epoch, total_epochs_phase2, k_foma=32, memory_bank=None):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
-    
-    # FOMA用: 進行度合いの計算 (0.0 -> 1.0)
-    # progress = relative_epoch / total_epochs_phase2
-    # w_foma = progress
-    # w_mix  = 1.0 - progress
+
     w_clean = 0.5
     w_foma = 0.5
 
@@ -304,54 +280,41 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
         labels_true = labels
         loss = 0.0
         preds_for_acc = None
-
-        # -----------------------------------------------------------
-        # Logic Branch based on Method
-        # -----------------------------------------------------------
         
         if method == "Mixup-FOMA":
-            # === FOMA Logic ===
-            # Update Memory Bank (Clean Features)
             with torch.no_grad():
                 features_raw = model.extract_features(images)
             if memory_bank is not None:
                 memory_bank.update(features_raw, labels)
             
-            # 1. Clean Loss (Gradient required)
+            # 1. Clean Loss
             features_clean = model.extract_features(images)
             preds_clean = model.linear(features_clean)
             loss_clean = criterion(preds_clean, labels)
             preds_for_acc = preds_clean
 
-            # 2. FOMA Loss (Manifold Perturbation)
+            # 2. FOMA Loss 
             z_aug = cc_foma(features_clean, labels, memory_bank, k=k_foma, alpha=1.0, rho=0.9)
             preds_aug = model.linear(z_aug)
             loss_foma = criterion(preds_aug, labels)
 
-            # Combined Loss
             loss = w_clean*loss_clean + w_foma*loss_foma
 
         elif method == "Mixup":
-            # === Plain Mixup Logic ===
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
             preds_mix = model(images, labels, device, augment="Mixup")
             loss = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
             preds_for_acc = preds_mix
 
         elif method == "ES-Mixup":
-            # === Clean Fine-tuning Logic ===
             preds = model(images, labels, device, augment=None)
             loss  = criterion(preds, labels)
             preds_for_acc = preds
-        
-        # -----------------------------------------------------------
-        # Optimization
-        # -----------------------------------------------------------
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        # Metrics
         train_loss += loss.item()
         if preds_for_acc is not None:
             y_pred = preds_for_acc.argmax(dim=1)
