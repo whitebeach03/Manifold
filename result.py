@@ -18,17 +18,17 @@ def main():
     model_type = args.model_type
     
     augmentations = [
-        # "Default",
-        "Mixup",
+        "Default",
+        # "Mixup",
         # "Manifold-Mixup",
         # "CutMix",
         # "ResizeMix",
         # "CutMix",
         # "RegMixup",
-        # "Local-FOMA",
+        "Local-FOMA",
         # "Mixup-FOMA2",
         # "ES-Mixup",
-        "Mixup-FOMA",
+        # "Mixup-FOMA",
         
         # "Mixup-FOMA-scaleup"
         # "FOMA-Mixup"
@@ -182,6 +182,12 @@ def plot_comparison_graph(model_type, augmentations, data_type, epoch, iteration
     plt.title('Validation Accuracy')
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
+    
+    # === 追加: Y軸の下限を0.5に設定 ===
+    plt.ylim(bottom=0.5) 
+    # もし上限も1.0に固定したい場合は plt.ylim(0.5, 1.0) と書いてもOKです
+    # ===============================
+
     plt.legend()
     plt.grid(True)
     # plt.ylim(bottom=0.2)

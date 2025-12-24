@@ -7,62 +7,71 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from src.utils import *
-from src.models.resnet import ResNet18, ResNet101
-from src.models.wide_resnet import Wide_ResNet
-from sklearn.metrics import accuracy_score
 from tqdm import tqdm
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
-from torch.utils.data import DataLoader, random_split, Subset
-from src.methods.foma import compute_foma_loss
+from torch.utils.data import DataLoader, Subset
+
+from src.utils import train, val, test, seed_everything, worker_init_fn
+from src.models.resnet import ResNet18, ResNet101
+from src.models.wide_resnet import Wide_ResNet
+from src.methods.cc_foma import cc_foma
+from src.memory_bank import FeatureMemoryBank
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--i",          type=int, default=0)
-    parser.add_argument("--epochs",     type=int, default=250)
+    parser = argparse.ArgumentParser(description="General Training (Baselines)")
+    parser.add_argument("--i",          type=int, default=0, help="Seed index")
+    parser.add_argument("--epochs",     type=int, default=250, help="Total training epochs")
+    parser.add_argument("--augment",    type=str, default="Local-FOMA", choices=["Local-FOMA"])
     parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
+    parser.add_argument("--k_foma",     type=int, default=8, help="k-neighbors for FOMA")
     args = parser.parse_args() 
 
     i          = args.i
     epochs     = args.epochs
+    augment    = args.augment
     data_type  = args.data_type
     model_type = args.model_type
-    device     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    augment    = "Local-FOMA" # ログ用の名前
+    k_foma     = args.k_foma
     
-    set_seed(i)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    # Number of Classes & Batch Size
+    seed_everything(i)
+    g = torch.Generator()
+    g.manual_seed(i)
+
     if data_type == "stl10":
         num_classes = 10
         batch_size  = 64
+        mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
     elif data_type == "cifar100":
         num_classes = 100
         batch_size  = 128
+        mean, std = [0.5071, 0.4867, 0.4408], [0.2675, 0.2565, 0.2761]
     elif data_type == "cifar10":
         num_classes = 10
         batch_size  = 128
+        mean, std = [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
     
     default_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.Pad(4),
         transforms.RandomCrop(32),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=mean, std=std),
     ])
 
     transform = transforms.Compose([
         transforms.ToTensor(), 
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=mean, std=std),
     ])
             
     # Loading Dataset
     if data_type == "stl10":
-        train_dataset = STL10(root="./data", split="test",  download=True, transform=default_transform)
-        test_dataset  = STL10(root="./data", split="train", download=True, transform=transform)
+        full_train_aug = STL10(root="./data", split="train",  download=True, transform=default_transform)
+        full_train_plain = STL10(root="./data", split="train", download=True, transform=transform)
+        test_dataset   = STL10(root="./data", split="test",  download=True, transform=transform)
     elif data_type == "cifar100":
         full_train_aug   = CIFAR100(root="./data", train=True,  transform=default_transform, download=True)
         full_train_plain = CIFAR100(root="./data", train=True,  transform=transform,         download=True)
@@ -72,8 +81,10 @@ def main():
         full_train_plain = CIFAR10(root="./data", train=True,  transform=transform,         download=True)
         test_dataset     = CIFAR10(root="./data", train=False, transform=transform,         download=True)
 
+    # Split Indices
     n_samples = len(full_train_aug)
     n_train   = int(n_samples * 0.8)
+    os.makedirs("./data_split", exist_ok=True)
     index_file = f"./data_split/split_indices_{data_type}_{i}.pkl"
 
     if os.path.exists(index_file):
@@ -83,19 +94,20 @@ def main():
     else:
         print("Generating new split indices...")
         indices = list(range(n_samples))
-        random.shuffle(indices)  
+        random.shuffle(indices) 
         train_indices, val_indices = indices[:n_train], indices[n_train:]
         with open(index_file, "wb") as f:
             pickle.dump((train_indices, val_indices), f)
 
-    train_dataset = torch.utils.data.Subset(full_train_aug, train_indices)
-    val_dataset   = torch.utils.data.Subset(full_train_plain, val_indices)
+    train_dataset = Subset(full_train_aug, train_indices)
+    val_dataset   = Subset(full_train_plain, val_indices)
     
-    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False)     
-    test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False)
+    # DataLoaders with Reproducibility
+    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True,  num_workers=2, worker_init_fn=worker_init_fn, generator=g)
+    val_loader   = DataLoader(dataset=val_dataset,   batch_size=batch_size, shuffle=False, num_workers=2, worker_init_fn=worker_init_fn, generator=g)     
+    test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False, num_workers=2, worker_init_fn=worker_init_fn, generator=g)
     
-    print(f"\n==> Training with Local-FOMA Training ...")
+    print(f"\n==> General Training with {augment} ...")
 
     # Select Model
     if model_type == "resnet18":
@@ -104,179 +116,126 @@ def main():
         model = ResNet101().to(device)
     elif model_type == "wide_resnet_28_10":
         model = Wide_ResNet(28, 10, 0.3, num_classes).to(device)
-    
-    start_epoch = 225
-    train_epoch = 25
         
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-    for param_group in optimizer.param_groups:
-        param_group['initial_lr'] = 0.1
-    # スケジューラの引継ぎ設定（last_epochを指定して学習率を継続）
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, last_epoch=start_epoch-1)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     
     score     = 0.0
     history   = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
 
-    # 保存先ディレクトリ名を変更 (Local-FOMA)
-    os.makedirs(f"./logs/{model_type}/Local-FOMA",    exist_ok=True)
-    os.makedirs(f"./history/{model_type}/Local-FOMA", exist_ok=True)
-    
-    # Phase 1 (Mixup) のモデルをロード
-    mixup_save_path = f"./logs/wide_resnet_28_10/Mixup/{data_type}_{start_epoch}_{i}.pth"
-    # model.load_state_dict(torch.load(mixup_save_path, weights_only=True))
-    
-    checkpoint = torch.load(mixup_save_path)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    scheduler.load_state_dict(checkpoint['scheduler_state_dict']) # 必要なら
+    save_dir = f"./logs/{model_type}/{augment}"
+    os.makedirs(save_dir, exist_ok=True)
+    os.makedirs(f"./history/{model_type}/{augment}", exist_ok=True)
 
-    start_epoch = checkpoint['epoch'] + 1
+    memory_bank = None
+    print("==> Initializing Feature Memory Bank...")
+    feature_dim = model.linear.in_features
+    memory_bank = FeatureMemoryBank(feature_dim=feature_dim, memory_size=5000, num_classes=num_classes)
     
+    print("==> Filling Memory Bank (Warm-up)...")
+    model.eval()
+    with torch.no_grad():
+        for images, labels in tqdm(train_loader, desc="Memory Bank Init", leave=False):
+            images, labels = images.to(device), labels.to(device)
+            features = model.extract_features(images)
+            memory_bank.update(features, labels)
+    print("==> Memory Bank is ready!")
+
     ### TRAINING ###
-    for epoch in range(train_epoch):
-        # train関数を通常学習用に変更
-        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, num_classes, epochs=epoch)
-        val_loss, val_acc     = val(model, val_loader, criterion, device)
+    for epoch in range(epochs):
+        train_loss, train_acc = train_localfoma(
+            model=model, 
+            train_loader=train_loader, 
+            criterion=criterion, 
+            optimizer=optimizer, 
+            device=device, 
+            num_classes=num_classes, 
+            k_foma=k_foma,
+            memory_bank=memory_bank
+        )
+        val_loss, val_acc = val(model, val_loader, criterion, device, augment="Default")
         scheduler.step()
 
         if score <= val_acc:
             print("Save model parameters...")
             score = val_acc
-            # ファイル名区別のためディレクトリを変更
-            model_save_path = f"./logs/{model_type}/Local-FOMA/{data_type}_{epochs}_{i}.pth"
-            torch.save(model.state_dict(), model_save_path)
+            model_save_path = f"{save_dir}/{data_type}_{epochs}_{i}.pth"
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'val_acc': val_acc
+            }, model_save_path)
         
         history["loss"].append(train_loss)
         history["accuracy"].append(train_acc)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_acc)
-        print(f"| {start_epoch + epoch + 1} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |")
+        print(f"| {epoch+1}/{epochs} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.3f} | Val loss: {val_loss:.3f} | Val acc: {val_acc:.3f} |")
 
-    with open(f"./history/{model_type}/Local-FOMA/{data_type}_{epochs}_{i}.pickle", "wb") as f:
+    with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}.pickle", "wb") as f:
         pickle.dump(history, f)
     
     ### TEST ###
-    model.load_state_dict(torch.load(model_save_path, weights_only=True))
-    test_loss, test_acc = test(model, test_loader, criterion, device)
+    print(f"Loading Best model from {model_save_path} ...")
+    checkpoint = torch.load(model_save_path, weights_only=True)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    
+    test_loss, test_acc = test(model, test_loader, criterion, device, augment=None)
     print(f"Test Loss: {test_loss:.3f}, Test Accuracy: {test_acc:.5f}")
 
     test_history = {"acc": test_acc, "loss": test_loss}
-    with open(f"./history/{model_type}/Local-FOMA/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
+    with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
         pickle.dump(test_history, f)
 
-def train(model, train_loader, criterion, optimizer, device, num_classes, epochs):
+def train_localfoma(model, train_loader, criterion, optimizer, device, num_classes, k_foma=32, memory_bank=None):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
-    
-    # 切り替えエポックの設定
-    total_epochs = 250
-    t_mixup = int(total_epochs * 0.9)
 
-    # enumerate でバッチを回す
+    w_clean = 0.5
+    w_foma = 0.5
+
     for batch_idx, (images, labels) in enumerate(tqdm(train_loader, leave=False)):
         images, labels = images.to(device), labels.to(device)
         labels_true = labels
-
-        # === 共通処理: 特徴量抽出とメモリバンク更新 ===
-        # Phase 1, Phase 2 問わず、特徴量をメモリバンクに貯め続けるのが重要です。
-        # 提示されたモデルには extract_features があるのでこれを使います。
+        loss = 0.0
+        preds_for_acc = None
         
-
-        # ---------------------------------------------------------
-        # Phase 2: CC-FOMA (Local Refinement)
-        # ---------------------------------------------------------
-        # 重み係数 w_foma (Warm-up)
-        phase2_epoch = epochs
-        phase2_total = total_epochs - t_mixup
-        # w_foma = min(1.0, phase2_epoch / (phase2_total / 2)) if phase2_total > 0 else 1.0
-        progress = phase2_epoch / phase2_total
-        w_foma = progress
-        w_mix = 1.0 - progress
-
+        with torch.no_grad():
+            features_raw = model.extract_features(images)
+        if memory_bank is not None:
+            memory_bank.update(features_raw, labels)
+        
         # 1. Clean Loss
-        # extract_features で特徴量を取り、linear層に通す
-        # ※ ここでは勾配が必要なので、再度計算グラフに乗せて計算します
         features_clean = model.extract_features(images)
         preds_clean = model.linear(features_clean)
         loss_clean = criterion(preds_clean, labels)
+        preds_for_acc = preds_clean
 
-        # 2. Local-FOMA Loss
-        loss_foma, preds_aug = compute_foma_loss(model, images, labels, k=32, num_classes=num_classes, lambda_almp=w_foma, device=device, scaleup=False)
-        # preds_aug = model.linear(z_aug)
-        # loss_foma = criterion(preds_aug, labels)
-        
-        # 3. Mixup Loss
-        mixed_x, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
-        preds_mix = model(mixed_x, labels, device, augment=None, aug_ok=False)
-        loss_mix  = mixup_criterion(criterion, preds_mix, y_a, y_b, lam)
+        # 2. FOMA Loss 
+        z_aug = cc_foma(features_clean, labels, memory_bank, k=k_foma, alpha=1.0, rho=0.9)
+        preds_aug = model.linear(z_aug)
+        loss_foma = criterion(preds_aug, labels)
 
-        # 総合損失
-        # loss = loss_clean + w_foma * loss_foma
-        loss  = loss_clean + (w_foma * loss_foma) + (w_mix * loss_mix)
-        preds = preds_clean # 精度計算用
+        loss = w_clean*loss_clean + w_foma*loss_foma
 
-        # --- Optimization ---
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        # --- Metrics ---
         train_loss += loss.item()
-        y_pred = preds.argmax(dim=1)
-        batch_acc = (y_pred == labels_true).float().mean().item()
-        train_acc += batch_acc
+        if preds_for_acc is not None:
+            y_pred = preds_for_acc.argmax(dim=1)
+            batch_acc = (y_pred == labels_true).float().mean().item()
+            train_acc += batch_acc
 
     train_loss /= len(train_loader)
     train_acc  /= len(train_loader)
     
     return train_loss, train_acc
-
-def val(model, val_loader, criterion, device):
-    model.eval()
-    val_loss = 0.0
-    val_acc  = 0.0
-    with torch.no_grad():
-        for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)
-            # augment=None で通常評価
-            preds = model(images, labels, device, augment=None, aug_ok=False)
-            loss  = criterion(preds, labels)
-            val_loss += loss.item()
-            y_pred = preds.argmax(dim=1)
-            batch_acc = (y_pred == labels).float().mean().item()
-            val_acc += batch_acc
-
-    val_loss /= len(val_loader)
-    val_acc  /= len(val_loader)
-    return val_loss, val_acc
-
-def test(model, test_loader, criterion, device):
-    model.eval()
-    test_loss = 0.0
-    test_acc  = 0.0
-    with torch.no_grad():
-        for images, labels in tqdm(test_loader, leave=False):
-            images, labels = images.to(device), labels.to(device)
-            preds = model(images, labels, device, augment=None, aug_ok=False)
-            loss  = criterion(preds, labels)
-            test_loss += loss.item()
-            y_pred = preds.argmax(dim=1)
-            batch_acc = (y_pred == labels).float().mean().item()
-            test_acc += batch_acc
-
-    test_loss /= len(test_loader)
-    test_acc  /= len(test_loader)
-    return test_loss, test_acc
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 
 if __name__ == "__main__":
     main()
