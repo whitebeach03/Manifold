@@ -300,6 +300,32 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
 
             loss = w_clean*loss_clean + w_foma*loss_foma
 
+        elif method == "Mixup-FOMA2":
+            # 1. Clean Loss
+            # メモリバンクを使わないのでno_gradでの事前抽出は不要
+            features_clean = model.extract_features(images)
+            preds_clean = model.linear(features_clean)
+            loss_clean = criterion(preds_clean, labels) # 通常のHard Label Loss
+            preds_for_acc = preds_clean
+
+            # 2. Unrestricted FOMA (Soft Labels)
+            # メモリバンクはNone扱い、または引数として渡さない
+            z_aug, y_aug_soft = unrestricted_foma(
+                features_clean, 
+                labels, 
+                k=k_foma, 
+                alpha=1.0, 
+                rho=0.9, 
+                num_classes=num_classes
+            )
+            
+            preds_aug = model.linear(z_aug)
+            
+            # ソフトラベル用の損失関数を使用
+            loss_foma = soft_cross_entropy(preds_aug, y_aug_soft)
+
+            loss = w_clean * loss_clean + w_foma * loss_foma
+
         elif method == "Mixup":
             images, y_a, y_b, lam = mixup_data(images, labels, 1.0, device)
             preds_mix = model(images, labels, device, augment="Mixup")
@@ -325,6 +351,16 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
     train_acc  /= len(train_loader)
     
     return train_loss, train_acc
+
+def soft_cross_entropy(pred, soft_targets):
+    """
+    ソフトラベル対応のクロスエントロピー誤差
+    Args:
+        pred: モデルの出力 (Logits)
+        soft_targets: ソフトラベル (確率分布, Sum=1)
+    """
+    logsoftmax = F.log_softmax(pred, dim=1)
+    return torch.mean(torch.sum(-soft_targets * logsoftmax, dim=1))
 
 if __name__ == "__main__":
     main()

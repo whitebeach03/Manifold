@@ -1,5 +1,133 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+
+def unrestricted_foma(
+    x_anchor: torch.Tensor, 
+    y_anchor: torch.Tensor, 
+    k: int = 4, 
+    alpha: float = 1.0, 
+    rho: float = 0.9,
+    num_classes: int = None
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Unrestricted Local-FOMA (Batch Only)
+    ミニバッチ内のデータのみを使用し、クラス制約なしで近傍探索を行う。
+    特徴量とラベルの双方をSVDを用いて多様体上で変形する。
+    
+    Args:
+        x_anchor (Tensor): 入力バッチの特徴量 (B, D)
+        y_anchor (Tensor): 入力バッチのラベル (B,) or (B, C)
+        k (int): 近傍数 (自身を含むため、最低でも2以上推奨)
+        alpha (float): Beta分布のパラメータ
+        rho (float): 支配的成分の累積寄与率閾値
+        num_classes (int): クラス数 (Noneの場合はバッチ内の最大値から推論)
+        
+    Returns:
+        x_aug (Tensor): 摂動後の特徴量 (B, D)
+        y_aug (Tensor): SVD変形されたソフトラベル (B, C)
+    """
+    B, D = x_anchor.shape
+    device = x_anchor.device
+    
+    # --- 前処理: ラベル処理 ---
+    # One-hotならIndexに戻す（近傍探索の便宜上）
+    if y_anchor.ndim > 1:
+        y_idx = y_anchor.argmax(dim=1)
+    else:
+        y_idx = y_anchor
+        
+    # クラス数の確定
+    if num_classes is None:
+        num_classes = y_idx.max().item() + 1
+
+    # --- 1. バッチ内 近傍探索 (クラス制約なし) ---
+    # 自分自身を含む距離行列 (B, B)
+    dist = torch.cdist(x_anchor, x_anchor)
+    
+    # バッチサイズがkより小さい場合のガード
+    search_k = min(k, B)
+    
+    # 距離が近い順にインデックスを取得
+    # 通常、自分自身(距離0)が最上位に来る
+    knn_vals, knn_indices = torch.topk(dist, k=search_k, largest=False, sorted=True) # (B, k)
+    
+    # --- 2. 局所多様体構成 (Features & Labels) ---
+    # 近傍の特徴量を取得 (B, k, D)
+    Z_i = x_anchor[knn_indices]
+    
+    # 近傍のラベルを取得してOne-Hot化 (B, k, C)
+    neighbor_labels = y_idx[knn_indices]
+    L_i = F.one_hot(neighbor_labels, num_classes=num_classes).float()
+    
+    # ※ 数値誤差で自分自身がindex 0に来ない可能性を排除するため、
+    # 明示的にindex 0をAnchor自身で上書きする (FOMAの定義: Anchor中心)
+    Z_i[:, 0, :] = x_anchor
+    L_i[:, 0, :] = F.one_hot(y_idx, num_classes=num_classes).float()
+
+    # --- 3. SVD & Perturbation ---
+    # 特徴量の中心化
+    Z_mean = Z_i.mean(dim=1, keepdim=True)
+    Z_centered = Z_i - Z_mean
+    
+    # ラベルの中心化
+    L_mean = L_i.mean(dim=1, keepdim=True)
+    L_centered = L_i - L_mean
+
+    # 特徴量に微小ノイズ付加 (SVD安定化)
+    jitter = 1e-4  
+    Z_centered_noise = Z_centered + torch.randn_like(Z_centered) * jitter
+    
+    # SVD実行: Z = U S V^T
+    # U: (B, k, k), S: (B, k)
+    try:
+        U, S, Vt = torch.linalg.svd(Z_centered_noise, full_matrices=False)
+    except RuntimeError:
+        # SVD失敗時は元のデータをそのまま返す（One-hot化して）
+        return x_anchor, F.one_hot(y_idx, num_classes=num_classes).float()
+
+    # 累積寄与率とスケーリング係数の計算
+    S_sum = S.sum(dim=1, keepdim=True) + 1e-8
+    cum_score = torch.cumsum(S, dim=1) / S_sum
+    mask_dominant = cum_score <= rho
+    
+    # 摂動係数 lambda ~ Beta(alpha, alpha)
+    lam = torch.distributions.Beta(alpha, alpha).sample((B, 1)).to(device)
+    
+    # 主要成分は維持(1.0倍)、ノイズ成分は縮小(lambda倍)
+    scale = torch.where(mask_dominant, torch.tensor(1.0, device=device), lam) # (B, k)
+    
+    # --- 4. 特徴量の再構成 ---
+    # Z_new = Mean + U * (S * scale) * Vt
+    S_scaled = S * scale
+    rec_feats = U @ (S_scaled.unsqueeze(2) * Vt)
+    Z_new = rec_feats + Z_mean
+    
+    x_aug = Z_new[:, 0, :] # 中心(Anchor)に対応するデータを取り出す
+    
+    # --- 5. ラベルの再構成 (Soft Label) ---
+    # ラベルも特徴空間の構造(U)に従って変形する
+    # L_new = Mean + U * (Projected_Coeffs * scale)
+    # Projected_Coeffs = U^T @ L_centered
+    
+    # U^T: (B, k, k) @ L_centered: (B, k, C) -> 係数: (B, k, C)
+    L_coeffs = torch.bmm(U.transpose(1, 2), L_centered)
+    
+    # 係数をスケーリング (scaleを(B,k,1)に拡張)
+    L_coeffs_scaled = L_coeffs * scale.unsqueeze(2)
+    
+    # 再構成: U @ coeffs_scaled + Mean
+    L_rec = torch.bmm(U, L_coeffs_scaled) + L_mean
+    
+    y_aug_raw = L_rec[:, 0, :] # Anchorに対応するソフトラベル
+    
+    # --- 6. ラベルの正規化 ---
+    # 値が [0, 1] を超えたり負になるのを防ぎ、合計を1にする
+    y_aug = torch.clamp(y_aug_raw, min=0.0)
+    y_sum = y_aug.sum(dim=1, keepdim=True) + 1e-8
+    y_aug = y_aug / y_sum
+    
+    return x_aug, y_aug
 
 def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
     B = X.shape[0]
