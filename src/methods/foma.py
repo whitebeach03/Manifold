@@ -2,132 +2,137 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def unrestricted_foma(
-    x_anchor: torch.Tensor, 
-    y_anchor: torch.Tensor, 
-    k: int = 4, 
-    alpha: float = 1.0, 
-    rho: float = 0.9,
-    num_classes: int = None
+def local_foma_fast_with_memory(
+    X: torch.Tensor,             # (B, D) 特徴ベクトル (Anchor)
+    Y: torch.Tensor,             # (B,) or (B, C) ラベル (Anchor)
+    memory_bank,                 # FeatureMemoryBank
+    num_classes: int,
+    alpha: float,
+    rho: float,
+    k: int = 10,
+    scaleup: bool = False,
+    small_singular: bool = True,
+    lam: torch.Tensor = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    Unrestricted Local-FOMA (Batch Only)
-    ミニバッチ内のデータのみを使用し、クラス制約なしで近傍探索を行う。
-    特徴量とラベルの双方をSVDを用いて多様体上で変形する。
-    
-    Args:
-        x_anchor (Tensor): 入力バッチの特徴量 (B, D)
-        y_anchor (Tensor): 入力バッチのラベル (B,) or (B, C)
-        k (int): 近傍数 (自身を含むため、最低でも2以上推奨)
-        alpha (float): Beta分布のパラメータ
-        rho (float): 支配的成分の累積寄与率閾値
-        num_classes (int): クラス数 (Noneの場合はバッチ内の最大値から推論)
-        
-    Returns:
-        x_aug (Tensor): 摂動後の特徴量 (B, D)
-        y_aug (Tensor): SVD変形されたソフトラベル (B, C)
+    local_foma_fast に メモリバンク を導入した実装。
+    特徴量とラベルを結合([X, Y])してSVDを行い、メモリバンク内の近傍(他クラス含む)を利用して
+    多様体を構成し、特徴量とソフトラベルを同時に生成する。
     """
-    B, D = x_anchor.shape
-    device = x_anchor.device
-    
-    # --- 前処理: ラベル処理 ---
-    # One-hotならIndexに戻す（近傍探索の便宜上）
-    if y_anchor.ndim > 1:
-        y_idx = y_anchor.argmax(dim=1)
+    B, D = X.shape
+    device = X.device
+
+    # --- 1. Anchorの結合データ(Z_anchor)作成 ---
+    if Y.ndim == 1:
+        Yh = F.one_hot(Y, num_classes).float()
     else:
-        y_idx = y_anchor
-        
-    # クラス数の確定
-    if num_classes is None:
-        num_classes = y_idx.max().item() + 1
+        Yh = Y.float()
+    
+    # Anchor: (B, D+C)
+    Z_anchor = torch.cat([X, Yh], dim=1)
 
-    # --- 1. バッチ内 近傍探索 (クラス制約なし) ---
-    # 自分自身を含む距離行列 (B, B)
-    dist = torch.cdist(x_anchor, x_anchor)
+    # --- 2. Memory Bank からのデータ取得とSupport Set構築 ---
+    mem_feats, mem_labels = memory_bank.get_memory()
     
-    # バッチサイズがkより小さい場合のガード
-    search_k = min(k, B)
-    
-    # 距離が近い順にインデックスを取得
-    # 通常、自分自身(距離0)が最上位に来る
-    knn_vals, knn_indices = torch.topk(dist, k=search_k, largest=False, sorted=True) # (B, k)
-    
-    # --- 2. 局所多様体構成 (Features & Labels) ---
-    # 近傍の特徴量を取得 (B, k, D)
-    Z_i = x_anchor[knn_indices]
-    
-    # 近傍のラベルを取得してOne-Hot化 (B, k, C)
-    neighbor_labels = y_idx[knn_indices]
-    L_i = F.one_hot(neighbor_labels, num_classes=num_classes).float()
-    
-    # ※ 数値誤差で自分自身がindex 0に来ない可能性を排除するため、
-    # 明示的にindex 0をAnchor自身で上書きする (FOMAの定義: Anchor中心)
-    Z_i[:, 0, :] = x_anchor
-    L_i[:, 0, :] = F.one_hot(y_idx, num_classes=num_classes).float()
+    if mem_feats is None:
+        # メモリバンクが空なら、通常のバッチ内処理(local_foma_fast)にフォールバック
+        # または恒等写像を返す
+        return X, Yh
 
-    # --- 3. SVD & Perturbation ---
-    # 特徴量の中心化
-    Z_mean = Z_i.mean(dim=1, keepdim=True)
-    Z_centered = Z_i - Z_mean
+    # Memory Labels を One-hot 化
+    if mem_labels.ndim == 1:
+        mem_Yh = F.one_hot(mem_labels, num_classes).float()
+    else:
+        mem_Yh = mem_labels.float()
     
-    # ラベルの中心化
-    L_mean = L_i.mean(dim=1, keepdim=True)
-    L_centered = L_i - L_mean
+    # Memory: (M, D+C)
+    Z_memory = torch.cat([mem_feats, mem_Yh], dim=1)
 
-    # 特徴量に微小ノイズ付加 (SVD安定化)
-    jitter = 1e-4  
-    Z_centered_noise = Z_centered + torch.randn_like(Z_centered) * jitter
+    # Support Set (Anchor(勾配切る) + Memory): (B+M, D+C)
+    # これが近傍探索のプールになる
+    Z_support = torch.cat([Z_anchor.detach(), Z_memory], dim=0)
     
-    # SVD実行: Z = U S V^T
-    # U: (B, k, k), S: (B, k)
+    # 距離計算用の特徴量部分のみ抽出: (B+M, D)
+    X_support = Z_support[:, :D]
+
+    # --- 3. 近傍探索 (Unrestricted KNN) ---
+    # Anchor(X) と Support(X_support) の距離行列 (B, B+M)
+    # ※ ラベル情報(Y)は距離計算には含めない（見た目が似ているものを探すため）
+    dist = torch.cdist(X, X_support)
+    
+    # 自分自身(index 0~B-1)を除外したい場合はここでinf埋めをするが、
+    # FOMAは「自分+近傍」で構成するため、自分を含めてtop-kをとるのが自然。
+    # ただし、確実に自分をindex 0に置くために、k-1個を探索してあとで結合する。
+    
+    # 自分自身(対角ブロック付近)を無限大にして、純粋な近傍だけをk-1個探す
+    # dist[:, :B].fill_diagonal_(float("inf")) # 必要に応じて
+    
+    # k-1個の近傍を取得
+    search_k = min(k - 1, Z_support.shape[0])
+    if search_k < 1:
+         return X, Yh
+
+    _, nbr_indices = torch.topk(dist, k=search_k, largest=False, sorted=True) # (B, k-1)
+
+    # --- 4. 局所バッチ(Z_batch)の構築 ---
+    # 近傍データをSupport SetからGather: (B, k-1, D+C)
+    Z_neighbors = Z_support[nbr_indices]
+    
+    # Anchor(勾配あり) を先頭(index 0)に追加して結合
+    # Z_batch: (B, k, D+C)
+    Z_batch = torch.cat([Z_anchor.unsqueeze(1), Z_neighbors], dim=1)
+
+    # --- 5. Batched SVD (local_foma_fastと同一ロジック) ---
+    # 中心化
+    Z_mean = Z_batch.mean(dim=1, keepdim=True)
+    Z_centered = Z_batch - Z_mean
+
+    # SVD実行: Input (B, k, D+C)
     try:
-        U, S, Vt = torch.linalg.svd(Z_centered_noise, full_matrices=False)
+        U, S, Vt = torch.linalg.svd(Z_centered, full_matrices=False)
     except RuntimeError:
-        # SVD失敗時は元のデータをそのまま返す（One-hot化して）
-        return x_anchor, F.one_hot(y_idx, num_classes=num_classes).float()
+        return X, Yh
 
-    # 累積寄与率とスケーリング係数の計算
+    # 累積寄与率とマスク
     S_sum = S.sum(dim=1, keepdim=True) + 1e-8
     cum_score = torch.cumsum(S, dim=1) / S_sum
-    mask_dominant = cum_score <= rho
     
-    # 摂動係数 lambda ~ Beta(alpha, alpha)
-    lam = torch.distributions.Beta(alpha, alpha).sample((B, 1)).to(device)
+    if small_singular:
+        mask = cum_score > rho
+    else:
+        mask = cum_score < rho
+
+    # Lambda (Perturbation Scale)
+    if lam is None:
+        lam_val = torch.distributions.Beta(alpha, alpha).sample((B, 1)).to(device)
+        if scaleup: lam_val += 1.0
+    else:
+        lam_val = lam
+        if lam_val.ndim == 1: lam_val = lam_val.view(B, 1)
+
+    scale = torch.where(mask, lam_val, torch.tensor(1.0, device=device))
+    S_new = S * scale
+
+    # --- 6. 再構成と分割 ---
+    # Z_rec = Mean + U @ S_new @ Vt
+    # Broadcasting: (B, k, r) * (B, 1, r) -> (B, k, r)
+    Z_rec_centered = (U * S_new.unsqueeze(1)) @ Vt
+    Z_rec = Z_rec_centered + Z_mean
     
-    # 主要成分は維持(1.0倍)、ノイズ成分は縮小(lambda倍)
-    scale = torch.where(mask_dominant, torch.tensor(1.0, device=device), lam) # (B, k)
-    
-    # --- 4. 特徴量の再構成 ---
-    # Z_new = Mean + U * (S * scale) * Vt
-    S_scaled = S * scale
-    rec_feats = U @ (S_scaled.unsqueeze(2) * Vt)
-    Z_new = rec_feats + Z_mean
-    
-    x_aug = Z_new[:, 0, :] # 中心(Anchor)に対応するデータを取り出す
-    
-    # --- 5. ラベルの再構成 (Soft Label) ---
-    # ラベルも特徴空間の構造(U)に従って変形する
-    # L_new = Mean + U * (Projected_Coeffs * scale)
-    # Projected_Coeffs = U^T @ L_centered
-    
-    # U^T: (B, k, k) @ L_centered: (B, k, C) -> 係数: (B, k, C)
-    L_coeffs = torch.bmm(U.transpose(1, 2), L_centered)
-    
-    # 係数をスケーリング (scaleを(B,k,1)に拡張)
-    L_coeffs_scaled = L_coeffs * scale.unsqueeze(2)
-    
-    # 再構成: U @ coeffs_scaled + Mean
-    L_rec = torch.bmm(U, L_coeffs_scaled) + L_mean
-    
-    y_aug_raw = L_rec[:, 0, :] # Anchorに対応するソフトラベル
-    
-    # --- 6. ラベルの正規化 ---
-    # 値が [0, 1] を超えたり負になるのを防ぎ、合計を1にする
-    y_aug = torch.clamp(y_aug_raw, min=0.0)
-    y_sum = y_aug.sum(dim=1, keepdim=True) + 1e-8
-    y_aug = y_aug / y_sum
-    
-    return x_aug, y_aug
+    # Anchor(index 0)を取り出し
+    Z_anchor_new = Z_rec[:, 0, :] # (B, D+C)
+
+    # 特徴量とラベルに分離
+    X_aug = Z_anchor_new[:, :D]
+    Y_aug_logits = Z_anchor_new[:, D:]
+
+    # ラベルの正規化 (Softmax or Clamp&Normalize)
+    # FOMA論文的にはSoftmaxだが、Mixup的にはLinear interpolateなので
+    # 負値をクリップして正規化する方が分布が保存されやすい場合がある。
+    # ここでは元の実装に合わせて Softmax を採用
+    Y_aug = F.softmax(Y_aug_logits, dim=1)
+
+    return X_aug, Y_aug
 
 def foma(X, Y, num_classes, alpha, rho, small_singular=True, lam=None):
     B = X.shape[0]
@@ -259,6 +264,127 @@ def local_foma(
 
         X_aug[i] = x2
         Y_aug[i] = y2
+
+    return X_aug, Y_aug
+
+def local_foma_fast(
+    X: torch.Tensor,             # (B, D) 特徴ベクトル
+    Y: torch.Tensor,             # (B,) あるいは (B, C) one-hot ラベル
+    num_classes: int,
+    alpha: float,
+    rho: float,
+    k: int = 10,
+    scaleup: bool = False,
+    small_singular: bool = True,
+    lam: torch.Tensor = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    local_foma の完全ベクトル化による高速化実装
+    (論理的な挙動は元の実装と同一)
+    """
+    B, D = X.shape
+    device = X.device
+
+    # 1. ラベルのOne-hot化と結合データの準備
+    if Y.ndim == 1:
+        Yh = F.one_hot(Y, num_classes).float()
+    else:
+        Yh = Y.float()
+    
+    # 特徴量とラベルを結合: Global Z (B, D+C)
+    Z_global = torch.cat([X, Yh], dim=1)
+    dim_combined = D + num_classes
+
+    # 2. k-近傍探索 (Batch処理)
+    # 距離行列計算 (B, B)
+    dist = torch.cdist(X, X)
+    
+    # 自分自身を除外するために無限大を埋める
+    dist.fill_diagonal_(float("inf"))
+    
+    # 近傍k-1個のインデックスを取得 (B, k-1)
+    # ※ バッチサイズがkより小さい場合のエラーハンドリングが必要ならmin(k-1, B-1)とする
+    _, nbr_indices = torch.topk(dist, k=k-1, largest=False, sorted=True)
+    
+    # 自分自身のインデックス (B, 1)
+    self_indices = torch.arange(B, device=device).view(B, 1)
+    
+    # 自分を先頭にして結合: (B, k)
+    knn_indices = torch.cat([self_indices, nbr_indices], dim=1)
+
+    # 3. 局所データの抽出 (Gather)
+    # Global Z からインデックスを使ってバッチ一括抽出
+    # (B, D+C) -> (B, k, D+C)
+    Z_batch = Z_global[knn_indices]
+
+    # 4. 中心化 (Batch処理)
+    # 平均: (B, 1, D+C)
+    Z_mean = Z_batch.mean(dim=1, keepdim=True)
+    Z_centered = Z_batch - Z_mean
+
+    # 5. Batched SVD (ここが高速化の肝)
+    # 入力が (B, k, D+C) の場合、出力は
+    # U: (B, k, k), S: (B, min(k, D+C)), Vt: (B, min(k, D+C), D+C)
+    try:
+        U, S, Vt = torch.linalg.svd(Z_centered, full_matrices=False)
+    except RuntimeError:
+        # SVD失敗時は元の値を返す（安全策）
+        return X, F.softmax(Yh, dim=1)
+
+    # 6. 特異値のスケーリング係数計算 (Batch処理)
+    # 累積寄与率: (B, min_rank)
+    S_sum = S.sum(dim=1, keepdim=True) + 1e-8
+    cum_score = torch.cumsum(S, dim=1) / S_sum
+    
+    # マスク作成 (small_singular=Trueなら、累積寄与率が高い「末尾」の方をTrueにする)
+    if small_singular:
+        mask = cum_score > rho
+    else:
+        mask = cum_score < rho
+
+    # Lambdaの準備
+    if lam is None:
+        # (B, 1)
+        lam_val = torch.distributions.Beta(alpha, alpha).sample((B, 1)).to(device)
+        if scaleup:
+            lam_val += 1.0
+    else:
+        lam_val = lam if torch.is_tensor(lam) else torch.tensor(lam, device=device)
+        if lam_val.ndim == 0:
+            lam_val = lam_val.view(1, 1)
+        elif lam_val.ndim == 1:
+            lam_val = lam_val.view(B, 1)
+
+    # スケール適用: マスクがTrueの部分にlam_valを、それ以外は1.0を適用
+    # (B, min_rank)
+    scale = torch.where(mask, lam_val, torch.tensor(1.0, device=device))
+    
+    # 特異値の更新
+    S_new = S * scale
+
+    # 7. 再構成 (Batch MatMul)
+    # U @ diag(S_new) @ Vt
+    # diag行列を作る代わりにブロードキャストを利用
+    # (B, k, min_rank) * (B, 1, min_rank) -> (B, k, min_rank)
+    # ※ Vt は (B, min_rank, D+C)
+    
+    # 計算: U に S_new を掛け合わせてから Vt と積をとる
+    # U: (B, k, r), S_new: (B, r) -> U * S_new.unsqueeze(1): (B, k, r)
+    # (B, k, r) @ (B, r, D+C) -> (B, k, D+C)
+    Z_rec_centered = (U * S_new.unsqueeze(1)) @ Vt
+    
+    # 平均を足す
+    Z_rec = Z_rec_centered + Z_mean
+
+    # 8. アンカー(自分自身)の取り出しと分割
+    # knn_indicesの0番目が自分自身だったので、dim=1の0番目を取り出す
+    Z_anchor_new = Z_rec[:, 0, :] # (B, D+C)
+
+    X_aug = Z_anchor_new[:, :D]
+    Y_aug_logits = Z_anchor_new[:, D:]
+
+    # ラベルのSoftmax化
+    Y_aug = F.softmax(Y_aug_logits, dim=1)
 
     return X_aug, Y_aug
 

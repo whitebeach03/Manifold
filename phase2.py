@@ -18,6 +18,7 @@ from src.models.resnet import ResNet18, ResNet101
 from src.models.wide_resnet import Wide_ResNet
 from src.methods.cc_foma import cc_foma
 from src.memory_bank import FeatureMemoryBank
+from src.methods.foma import local_foma, local_foma_fast, local_foma_fast_with_memory
 
 def main():
     parser = argparse.ArgumentParser()
@@ -25,7 +26,7 @@ def main():
     parser.add_argument("--epochs",       type=int,   default=250,                 help="Total epochs (Phase1 + Phase2)")
     parser.add_argument("--data_type",    type=str,   default="cifar100",          choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type",   type=str,   default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
-    parser.add_argument("--method",       type=str,   default="ES-Mixup",          choices=["ES-Mixup", "Mixup", "Mixup-FOMA"], help="Phase 2 method: ES-Mixup (Clean), Mixup (Continue), or Mixup-FOMA")
+    parser.add_argument("--method",       type=str,   default="ES-Mixup",          choices=["ES-Mixup", "Mixup", "Mixup-FOMA", "Mixup-FOMA2"], help="Phase 2 method: ES-Mixup (Clean), Mixup (Continue), or Mixup-FOMA")
     parser.add_argument("--phase1_ratio", type=float, default=0.9,                 help="Ratio of Phase 1 epochs")
     parser.add_argument("--k_foma",       type=int,   default=8,                   help="k-neighbors for FOMA")
     
@@ -165,7 +166,7 @@ def main():
     # FOMA Setup (Memory Bank)
     # ==========================================
     memory_bank = None
-    if method == "Mixup-FOMA":
+    if method == "Mixup-FOMA" or method == "Mixup-FOMA2":
         print("==> Initializing Feature Memory Bank...")
         feature_dim = model.linear.in_features
         memory_bank = FeatureMemoryBank(feature_dim=feature_dim, memory_size=5000, num_classes=num_classes)
@@ -200,7 +201,7 @@ def main():
         if score <= val_acc:
             print("Save model parameters...")
             score = val_acc
-            if method == "Mixup-FOMA":
+            if method == "Mixup-FOMA" or method == "Mixup-FOMA2":
                 model_save_path = f"./logs/{model_type}/{save_dir_name}/{data_type}_{epochs}_{i}_{k_foma}.pth"
             else:
                 model_save_path = f"./logs/{model_type}/{save_dir_name}/{data_type}_{epochs}_{i}.pth"
@@ -301,18 +302,23 @@ def train_phase2(model, train_loader, criterion, optimizer, device, method, num_
             loss = w_clean*loss_clean + w_foma*loss_foma
 
         elif method == "Mixup-FOMA2":
+            with torch.no_grad():
+                features_raw = model.extract_features(images)
+            if memory_bank is not None:
+                memory_bank.update(features_raw, labels)
             # 1. Clean Loss
-            # メモリバンクを使わないのでno_gradでの事前抽出は不要
+
             features_clean = model.extract_features(images)
             preds_clean = model.linear(features_clean)
             loss_clean = criterion(preds_clean, labels) # 通常のHard Label Loss
             preds_for_acc = preds_clean
 
             # 2. Unrestricted FOMA (Soft Labels)
-            # メモリバンクはNone扱い、または引数として渡さない
-            z_aug, y_aug_soft = unrestricted_foma(
+
+            z_aug, y_aug_soft = local_foma_fast_with_memory(
                 features_clean, 
                 labels, 
+                memory_bank=memory_bank,
                 k=k_foma, 
                 alpha=1.0, 
                 rho=0.9, 
