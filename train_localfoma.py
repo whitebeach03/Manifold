@@ -13,7 +13,7 @@ from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from torch.utils.data import DataLoader, Subset
 
 from src.utils import train, val, test, seed_everything, worker_init_fn
-from src.models.resnet import ResNet18, ResNet101
+from src.models.resnet import ResNet18, ResNet101, ResNet, PreActBlock
 from src.models.wide_resnet import Wide_ResNet
 from src.methods.cc_foma import cc_foma
 from src.memory_bank import FeatureMemoryBank
@@ -111,7 +111,7 @@ def main():
 
     # Select Model
     if model_type == "resnet18":
-        model = ResNet18().to(device)
+        model = ResNet(PreActBlock, [2,2,2,2], num_classes).to(device)
     elif model_type == "resnet101":
         model = ResNet101().to(device)
     elif model_type == "wide_resnet_28_10":
