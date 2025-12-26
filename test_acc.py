@@ -20,7 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from src.utils import *
-from src.models.resnet import ResNet18, ResNet101
+from src.models.resnet import ResNet18, ResNet101, ResNet, PreActBlock
 from src.models.wide_resnet import Wide_ResNet
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import NearestNeighbors
