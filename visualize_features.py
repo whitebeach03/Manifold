@@ -39,8 +39,9 @@ augmentations = [
     # "Default",
     # "Mixup", 
     # "Local-FOMA", 
-    "Mixup-FOMA"
-    # "Mixup-FOMA2",
+    # "Mixup-FOMA",
+    "Mixup-FOMA2",
+    # "ES-Mixup",
 ]
 
 if data_type == "stl10":
@@ -119,8 +120,6 @@ for augment in augmentations:
     X_2d = reducer.fit_transform(X)
 
     plt.figure(figsize=(8, 6))
-    if augment == "Mixup-FOMA2":
-        augment = "Mixup-FOMA"
     if augment == "Default":
         augment = "Baseline"
     if data_type == "cifar100":
@@ -133,7 +132,7 @@ for augment in augmentations:
         except Exception:
             pass
         title = f"{augment}"
-        save_suffix = "_20classes"
+        save_suffix = "20classes"
     else:
         scatter = plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y, cmap='tab10', s=6, alpha=1)
         plt.colorbar(scatter, label="Class label")

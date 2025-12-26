@@ -8,6 +8,7 @@ import torchvision
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 from tqdm import tqdm
 from torchvision.datasets import STL10, CIFAR10, CIFAR100
 from torch.utils.data import DataLoader, Subset
@@ -16,13 +17,14 @@ from src.utils import train, val, test, seed_everything, worker_init_fn
 from src.models.resnet import ResNet18, ResNet101, ResNet, PreActBlock
 from src.models.wide_resnet import Wide_ResNet
 from src.methods.cc_foma import cc_foma
+from src.methods.foma import local_foma_fast_with_memory
 from src.memory_bank import FeatureMemoryBank
 
 def main():
     parser = argparse.ArgumentParser(description="General Training (Baselines)")
     parser.add_argument("--i",          type=int, default=0, help="Seed index")
     parser.add_argument("--epochs",     type=int, default=250, help="Total training epochs")
-    parser.add_argument("--augment",    type=str, default="Local-FOMA", choices=["Local-FOMA"])
+    parser.add_argument("--augment",    type=str, default="Local-FOMA1", choices=["Local-FOMA1", "Local-FOMA2"])
     parser.add_argument("--data_type",  type=str, default="cifar100",  choices=["stl10", "cifar100", "cifar10"])
     parser.add_argument("--model_type", type=str, default="wide_resnet_28_10", choices=["resnet18", "resnet101", "wide_resnet_28_10"])
     parser.add_argument("--k_foma",     type=int, default=8, help="k-neighbors for FOMA")
@@ -151,6 +153,7 @@ def main():
             optimizer=optimizer, 
             device=device, 
             num_classes=num_classes, 
+            augment=augment,
             k_foma=k_foma,
             memory_bank=memory_bank
         )
@@ -190,7 +193,7 @@ def main():
     with open(f"./history/{model_type}/{augment}/{data_type}_{epochs}_{i}_test.pickle", "wb") as f:
         pickle.dump(test_history, f)
 
-def train_localfoma(model, train_loader, criterion, optimizer, device, num_classes, k_foma=32, memory_bank=None):
+def train_localfoma(model, train_loader, criterion, optimizer, device, num_classes, augment, k_foma=32, memory_bank=None):
     model.train()
     train_loss = 0.0
     train_acc  = 0.0
@@ -209,18 +212,52 @@ def train_localfoma(model, train_loader, criterion, optimizer, device, num_class
         if memory_bank is not None:
             memory_bank.update(features_raw, labels)
         
-        # 1. Clean Loss
-        features_clean = model.extract_features(images)
-        preds_clean = model.linear(features_clean)
-        loss_clean = criterion(preds_clean, labels)
-        preds_for_acc = preds_clean
+        if augment == "Local-FOMA1":
+            with torch.no_grad():
+                features_raw = model.extract_features(images)
+            if memory_bank is not None:
+                memory_bank.update(features_raw, labels)
+            
+            # 1. Clean Loss
+            features_clean = model.extract_features(images)
+            preds_clean = model.linear(features_clean)
+            loss_clean = criterion(preds_clean, labels)
+            preds_for_acc = preds_clean
 
-        # 2. FOMA Loss 
-        z_aug = cc_foma(features_clean, labels, memory_bank, k=k_foma, alpha=1.0, rho=0.9)
-        preds_aug = model.linear(z_aug)
-        loss_foma = criterion(preds_aug, labels)
+            # 2. FOMA Loss 
+            z_aug = cc_foma(features_clean, labels, memory_bank, k=k_foma, alpha=1.0, rho=0.9)
+            preds_aug = model.linear(z_aug)
+            loss_foma = criterion(preds_aug, labels)
 
-        loss = w_clean*loss_clean + w_foma*loss_foma
+            loss = w_clean*loss_clean + w_foma*loss_foma
+
+        elif augment == "Local-FOMA2":
+            with torch.no_grad():
+                features_raw = model.extract_features(images)
+            if memory_bank is not None:
+                memory_bank.update(features_raw, labels)
+
+            # 1. Clean Loss
+            features_clean = model.extract_features(images)
+            preds_clean = model.linear(features_clean)
+            loss_clean = criterion(preds_clean, labels) 
+            preds_for_acc = preds_clean
+
+            # 2. Unrestricted FOMA (Soft Labels)
+            z_aug, y_aug_soft = local_foma_fast_with_memory(
+                features_clean, 
+                labels, 
+                memory_bank=memory_bank,
+                k=k_foma, 
+                alpha=1.0, 
+                rho=0.9, 
+                num_classes=num_classes
+            )
+            
+            preds_aug = model.linear(z_aug)
+            loss_foma = soft_cross_entropy(preds_aug, y_aug_soft)
+
+            loss = w_clean * loss_clean + w_foma * loss_foma
 
         optimizer.zero_grad()
         loss.backward()
@@ -236,6 +273,16 @@ def train_localfoma(model, train_loader, criterion, optimizer, device, num_class
     train_acc  /= len(train_loader)
     
     return train_loss, train_acc
+
+def soft_cross_entropy(pred, soft_targets):
+    """
+    ソフトラベル対応のクロスエントロピー誤差
+    Args:
+        pred: モデルの出力 (Logits)
+        soft_targets: ソフトラベル (確率分布, Sum=1)
+    """
+    logsoftmax = F.log_softmax(pred, dim=1)
+    return torch.mean(torch.sum(-soft_targets * logsoftmax, dim=1))
 
 if __name__ == "__main__":
     main()
