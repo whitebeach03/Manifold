@@ -192,7 +192,7 @@ augmentations = [
     # "Local-FOMA", 
     "ES-Mixup",
     "Mixup-FOMA",
-    "Mixup-FOMA2",
+    # "Mixup-FOMA2",
 ]
 
 # --- 1. データセットの準備 (ループの外で一度だけ行う) ---
