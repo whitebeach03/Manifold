@@ -4,6 +4,7 @@ history/
 distance_log/
 our_dataset/
 never_correct_data/
+data_split/
 umap_results.npy
 mnist.pkl
 all_generated_high_dim_data.npy
