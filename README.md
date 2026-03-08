@@ -1,7 +1,7 @@
 # Manifold
 
 ## セットアップ
-ライブラリの導入: `pip install -r requirement.txt`
+`pip install -r requirement.txt`
 
 ## 実験
 共通引数: 
@@ -13,7 +13,7 @@
 ```bash
 python train.py --data_type [cifar100/cifar10/stl10] --model_type [model] --augment [Default/Mixup/CutMix/Manifold-Mixup/ResizeMix/SaliencyMix/SK-Mixup]
 
-`## 2. 二段階学習 (`train_phase1.py` → `train_phase2.py`)`
+\## 2. 二段階学習 (`train_phase1.py` → `train_phase2.py`)
 ```bash
 # フェーズ1: 事前学習
 python train_phase1.py --data_type [cifar100/cifar10/stl10] --model_type [model] --epochs [num] --augment [Method]
