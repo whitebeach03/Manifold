@@ -18,3 +18,4 @@ src/models/__pycache__
 CIFAR-100-C.tar
 CIFAR-10-C.tar
 *.out
+data_split/
