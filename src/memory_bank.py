@@ -3,12 +3,12 @@ import torch
 class FeatureMemoryBank:
     def __init__(self, feature_dim: int, memory_size: int, num_classes: int = 100):
         """
-        CC-FOMA用 Feature Memory Bank
+        Feature Memory Bank
         
         Args:
             feature_dim (int): 特徴量の次元数 D
-            memory_size (int): 保存するサンプルの総数 M (例: 4096, 8192)
-            num_classes (int): クラス数 (One-hot変換等のために保持)
+            memory_size (int): 保存するサンプルの総数 M 
+            num_classes (int): クラス数 
         """
         self.feature_dim = feature_dim
         self.memory_size = memory_size
@@ -16,14 +16,11 @@ class FeatureMemoryBank:
         self.ptr = 0
         self.size = 0
         
-        # CPU/GPUはupdate時に動的に判定するため、初期化時はdevice指定しない
-        # あるいは register_buffer のように扱う
         self.features = None
         self.labels = None
         self.device = None
 
     def _init_memory(self, device):
-        """最初のupdate時にメモリを確保する"""
         self.features = torch.zeros(self.memory_size, self.feature_dim, device=device)
         self.labels = torch.zeros(self.memory_size, dtype=torch.long, device=device)
         self.device = device
@@ -68,7 +65,6 @@ class FeatureMemoryBank:
         self.size = min(self.size + batch_size, self.memory_size)
 
     def get_memory(self):
-        """現在保存されている有効な特徴量とラベルを返す"""
         if self.features is None or self.size == 0:
             return None, None
             
